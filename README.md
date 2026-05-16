@@ -36,3 +36,4 @@ AGENTS_REPO=/path/to/agents ./scripts/install-cursor.sh
 | Skill | Description |
 |-------|-------------|
 | [pr-first-contributions](cursor/skills/pr-first-contributions/) | PR-first git workflow with conventional titles and squash-merge descriptions |
+| [testing-philosophy](cursor/skills/testing-philosophy/) | Contract-first tests through production entry points; refactor-resistant |
