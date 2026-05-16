@@ -1,5 +1,5 @@
 ---
-name: production-shaped-tests
+name: testing-philosophy
 description: >-
   Write automated tests through production entry points and contracts; a useful
   test survives full internal refactors without changes. Avoid hand-wired
@@ -7,7 +7,7 @@ description: >-
   test strategy unless the user explicitly requests test-only shortcuts.
 ---
 
-# Production-shaped tests
+# Testing philosophy
 
 Automated tests should exercise code **the way it is used outside the test environment**—through the same public entry points, protocols, and dependency resolution paths as production. This is contract-first testing: not necessarily full E2E, but never a test-only invocation path that production never takes.
 
