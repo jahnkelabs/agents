@@ -1,0 +1,169 @@
+---
+name: pr-first-contributions
+description: >-
+  Contribute code changes via pull requests with conventional PR titles
+  (feat, fix, chore). Verifies the current branch was not already merged
+  before committing. Use when making code changes, committing, pushing,
+  opening or updating pull requests, or finishing a task that modifies
+  the repository unless the user explicitly requests direct commits to
+  main or bypassing PRs.
+---
+
+# PR-first contributions
+
+Contribute code through pull requests by default. Use conventional PR titles and a concise PR description—both become the squash-merge commit on the default branch. Never commit on a branch whose prior PR is already merged with no new work on top of the default branch.
+
+## Default policy
+
+- **Default:** All repository changes are delivered via a **PR** against the repo’s default branch (`main`, `master`, or whatever `origin/HEAD` points to).
+- **Exceptions:** Skip the PR workflow only when the user **clearly** instructs otherwise (e.g. “commit directly to main”, “no PR”, “push straight to default branch”). If ambiguous, ask once; otherwise follow this skill.
+- **Commits:** Only create commits when the user asks or when the PR workflow clearly requires it. Follow the user’s `committing-changes-with-git` rule (no secrets, no `--no-verify`, no amend unless allowed).
+- **Pushes:** Do not push unless the user asks or opening/updating a PR requires it.
+
+## Workflow
+
+```
+Task progress:
+- [ ] Confirm PR workflow applies (not an explicit bypass)
+- [ ] Run branch staleness check
+- [ ] Ensure on a feature branch (not default, not stale)
+- [ ] Implement changes
+- [ ] Commit (if appropriate)
+- [ ] Re-run staleness check before push
+- [ ] Push branch
+- [ ] Open or update PR with conventional title and description
+```
+
+### 1. Confirm PR workflow applies
+
+If the user explicitly bypassed PRs, commit/push per their instructions and stop using this checklist.
+
+### 2. Branch staleness check
+
+Run **before the first commit** on the current branch in the session, and **again before push or PR creation**.
+
+```bash
+git fetch origin
+
+BRANCH="$(git branch --show-current)"
+DEFAULT="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')"
+[ -z "$DEFAULT" ] && DEFAULT="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
+
+AHEAD="$(git rev-list --count "origin/${DEFAULT}..HEAD" 2>/dev/null || echo 0)"
+MERGED="$(gh pr list --head "$BRANCH" --state merged --limit 1 --json number,title,mergedAt 2>/dev/null)"
+```
+
+**Stale branch — do not commit yet** when any of:
+
+- `MERGED` is non-empty (JSON array with at least one PR) **and** `AHEAD` is `0`
+- `AHEAD` is `0` **and** `git merge-base --is-ancestor HEAD "origin/${DEFAULT}"` (branch tip fully contained in default)
+
+**Recovery:**
+
+1. Tell the user the branch was already merged; cite the merged PR number and title from `gh`.
+2. Update local default: `git switch "${DEFAULT}"` and `git pull origin "${DEFAULT}"` (or `git switch -c <new-branch> "origin/${DEFAULT}"`).
+3. Create a fresh branch named for the work, preferably prefixed by type: `feat/…`, `fix/…`, or `chore/…`.
+4. Carry forward uncommitted changes or cherry-pick only with user approval. No destructive git (`reset --hard`, force-push) without explicit approval.
+
+**OK to keep the same branch name:**
+
+- `AHEAD > 0` after a prior merged PR — new commits exist; open a **new** PR (do not assume the old PR is still open).
+
+**On default branch before work:**
+
+- Create a feature branch from latest `origin/${DEFAULT}` before committing.
+
+### 3. Implement and commit
+
+Make changes on the feature branch. Branch commits can be informal; **the PR title and description are what matter** because the default merge strategy is **squash**, and those fields become the commit title and body on the default branch.
+
+### 4. Push and open PR
+
+Follow the user’s `creating-pull-requests` rule:
+
+1. In parallel: `git status`, `git diff` (staged and unstaged), remote tracking status, `git log`, `git diff <default>...HEAD`.
+2. Push: `git push -u origin HEAD` (request network permission).
+3. Draft the PR **title** (conventional; see below) and **description** (concise summary + relevant context; see below).
+4. Create or update:
+
+```bash
+gh pr create --title "<conventional-title>" --body "$(cat <<'EOF'
+<Concise summary of what changed—1–3 short paragraphs or bullets.>
+
+<Optional: decisions, tradeoffs, migration notes, or other context worth preserving in git history. Omit if none.>
+EOF
+)"
+```
+
+5. Return the PR URL to the user.
+
+If a PR for this branch is already open, push new commits and update the PR title/description if the squash-merge message should change; do not open a duplicate.
+
+Do **not** include a test plan section in the PR body unless the user explicitly asks for one.
+
+## Squash merge (default)
+
+Assume PRs are **squash-merged** into the default branch. The squash commit uses:
+
+- **Commit title** ← PR title (must be conventional: `feat`, `fix`, or `chore`)
+- **Commit body** ← PR description
+
+Write both so they stand alone in `git log` without reading the PR thread. Branch-level commit messages are secondary.
+
+## Conventional PR titles
+
+The **PR title** must use one of these types only: `feat`, `fix`, `chore`.
+
+**Format:**
+
+```
+<type>(<optional-scope>): <short description>
+```
+
+| Type | Use for |
+|------|---------|
+| `feat` | New behavior or user-facing capability |
+| `fix` | Bug fix |
+| `chore` | Tooling, CI, deps, refactors without behavior change, docs-only |
+
+**Examples:**
+
+- `feat(cli): add install doctor command`
+- `fix(auth): handle expired token refresh`
+- `chore(ci): bump golangci-lint`
+
+**Rules:**
+
+- Title must start with `feat`, `fix`, or `chore` (required for semantic PR checks in repos like Sage).
+- Use lowercase type; scope is optional but encouraged.
+- If the change spans multiple types, pick the dominant type or split into multiple PRs (see `split-to-prs` skill for large mixed work).
+
+## PR description
+
+The PR body becomes the squash-merge **commit description**. Keep it concise.
+
+**Include:**
+
+- What changed and why (enough for a future reader of `git log`)
+- Notable considerations: breaking changes, migrations, follow-ups, intentional tradeoffs, links to issues/discussions when helpful
+
+**Do not include:**
+
+- A test plan section (unless the user explicitly requests one)
+- Boilerplate headers like `## Summary` unless they add clarity
+
+**Example body:**
+
+```
+Add install doctor command that verifies Go, git, and gh are on PATH.
+
+Uses the same check order as CONTRIBUTING.md. Skips network checks when
+offline so local dev isn't blocked. Breaking: none.
+```
+
+## Related skills and rules
+
+- **Post-PR CI/comments:** `babysit` skill
+- **Split large work:** `split-to-prs` skill
+- **Git safety:** user `committing-changes-with-git` rule
+- **PR creation details:** user `creating-pull-requests` rule
