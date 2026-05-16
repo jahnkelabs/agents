@@ -1,12 +1,6 @@
 ---
-name: pr-first-contributions
-description: >-
-  Contribute code changes via pull requests with conventional PR titles
-  (feat, fix, chore). Verifies the current branch was not already merged
-  before committing. Use when making code changes, committing, pushing,
-  opening or updating pull requests, or finishing a task that modifies
-  the repository unless the user explicitly requests direct commits to
-  main or bypassing PRs.
+description: PR-first git workflow with conventional titles and squash-merge descriptions
+alwaysApply: true
 ---
 
 # PR-first contributions
@@ -16,7 +10,7 @@ Contribute code through pull requests by default. Use conventional PR titles and
 ## Default policy
 
 - **Default:** All repository changes are delivered via a **PR** against the repo’s default branch (`main`, `master`, or whatever `origin/HEAD` points to).
-- **Exceptions:** Skip the PR workflow only when the user **clearly** instructs otherwise (e.g. “commit directly to main”, “no PR”, “push straight to default branch”). If ambiguous, ask once; otherwise follow this skill.
+- **Exceptions:** Skip the PR workflow only when the user **clearly** instructs otherwise (e.g. “commit directly to main”, “no PR”, “push straight to default branch”). If ambiguous, ask once; otherwise follow this rule.
 - **Commits:** Only create commits when the user asks or when the PR workflow clearly requires it. Follow the user’s `committing-changes-with-git` rule (no secrets, no `--no-verify`, no amend unless allowed).
 - **Pushes:** Do not push unless the user asks or opening/updating a PR requires it.
 
@@ -136,7 +130,7 @@ The **PR title** must use one of these types only: `feat`, `fix`, `chore`.
 
 - Title must start with `feat`, `fix`, or `chore` (required for semantic PR checks in repos like Sage).
 - Use lowercase type; scope is optional but encouraged.
-- If the change spans multiple types, pick the dominant type or split into multiple PRs (see `split-to-prs` skill for large mixed work).
+- If the change spans multiple types, pick the dominant type or split into multiple PRs (use `@split-to-prs` for large mixed work).
 
 ## PR description
 
@@ -160,10 +154,3 @@ Add install doctor command that verifies Go, git, and gh are on PATH.
 Uses the same check order as CONTRIBUTING.md. Skips network checks when
 offline so local dev isn't blocked. Breaking: none.
 ```
-
-## Related skills and rules
-
-- **Post-PR CI/comments:** `babysit` skill
-- **Split large work:** `split-to-prs` skill
-- **Git safety:** user `committing-changes-with-git` rule
-- **PR creation details:** user `creating-pull-requests` rule

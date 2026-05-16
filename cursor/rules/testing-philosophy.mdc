@@ -1,10 +1,6 @@
 ---
-name: testing-philosophy
-description: >-
-  Write automated tests through production entry points and contracts; a useful
-  test survives full internal refactors without changes. Avoid hand-wired
-  internal invocation. Use when writing, reviewing, or refactoring tests or
-  test strategy unless the user explicitly requests test-only shortcuts.
+description: Contract-first tests through production entry points; refactor-resistant
+alwaysApply: true
 ---
 
 # Testing philosophy

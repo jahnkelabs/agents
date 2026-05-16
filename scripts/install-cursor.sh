@@ -2,32 +2,33 @@
 set -euo pipefail
 
 REPO_ROOT="${AGENTS_REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
-SKILLS_SRC="${REPO_ROOT}/cursor/skills"
-SKILLS_DEST="${HOME}/.cursor/skills"
+RULES_SRC="${REPO_ROOT}/cursor/rules"
+RULES_DEST="${HOME}/.cursor/rules"
 
-if [[ ! -d "${SKILLS_SRC}" ]]; then
-  echo "error: skills directory not found: ${SKILLS_SRC}" >&2
+if [[ ! -d "${RULES_SRC}" ]]; then
+  echo "error: rules directory not found: ${RULES_SRC}" >&2
   exit 1
 fi
 
-mkdir -p "${SKILLS_DEST}"
+mkdir -p "${RULES_DEST}"
 
 installed=0
-for skill in "${SKILLS_SRC}"/*/; do
-  [[ -d "${skill}" ]] || continue
-  name="$(basename "${skill}")"
-  if [[ ! -f "${skill}/SKILL.md" ]]; then
-    echo "warning: skipping ${name} (no SKILL.md)" >&2
-    continue
-  fi
-  ln -sfn "${skill}" "${SKILLS_DEST}/${name}"
-  echo "linked ${SKILLS_DEST}/${name} -> ${skill}"
+shopt -s nullglob
+for rule in "${RULES_SRC}"/*.mdc; do
+  name="$(basename "${rule}")"
+  ln -sfn "${rule}" "${RULES_DEST}/${name}"
+  echo "linked ${RULES_DEST}/${name} -> ${rule}"
   installed=$((installed + 1))
 done
+shopt -u nullglob
 
 if [[ "${installed}" -eq 0 ]]; then
-  echo "error: no skills installed from ${SKILLS_SRC}" >&2
+  echo "error: no rules installed from ${RULES_SRC}" >&2
   exit 1
 fi
 
-echo "installed ${installed} skill(s)"
+# Remove retired skill symlinks
+rm -f "${HOME}/.cursor/skills/pr-first-contributions"
+rm -f "${HOME}/.cursor/skills/testing-philosophy"
+
+echo "installed ${installed} rule(s)"
