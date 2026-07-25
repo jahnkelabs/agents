@@ -1,43 +1,128 @@
 # agents
 
-Centralized configuration for AI coding agents (skills, rules, commands, hooks).
+Claude Code configuration: always-on rules and a research → plan → implement workflow built on
+the [Solo](https://soloterm.dev) MCP server.
 
-## Layout
-
-| Path | Purpose |
-|------|---------|
-| `cursor/rules/` | Cursor rules → `~/.cursor/rules/` (global, always-on) |
-| `cursor/skills/` | Reserved for optional on-demand skills |
-| `cursor/commands/` | Slash commands (optional) |
-| `cursor/hooks/` | Cursor hooks (optional) |
-| `shared/` | Agent-agnostic reference docs (optional) |
-| `scripts/` | Install scripts |
-
-Reserved for future use: `claude/`, `codex/`, `opencode/`.
-
-## Install (Cursor)
-
-From this repository:
+## Install
 
 ```bash
-./scripts/install-cursor.sh
+./scripts/install.sh
 ```
 
-This symlinks each `cursor/rules/*.mdc` file into `~/.cursor/rules/`. Re-run after adding rules or cloning on a new machine.
+Symlinks three directories into `~/.claude/`:
 
-Override the repo root:
+| Link | Contents |
+|---|---|
+| `~/.claude/rules` | always-on working agreements |
+| `~/.claude/commands` | slash commands |
+| `~/.claude/references` | tracker adapters used by `/stash` and `/recall` |
 
-```bash
-AGENTS_REPO=/path/to/agents ./scripts/install-cursor.sh
-```
+Idempotent — existing symlinks are repointed, and anything real in the way is moved to
+`~/.claude/backups/` first. Override the repo root with `AGENTS_REPO=/path/to/agents`.
 
-After install, confirm in **Cursor Settings → Rules** that each rule shows **Always Apply**.
+**This repository does not manage `~/.claude/settings.json` or `~/.claude/CLAUDE.md`.** Those
+are machine-local and yours.
 
-If rules do not appear, import via **Settings → Rules → Remote Rule (GitHub)** pointing at `jahnkelabs/agents` ([Cursor docs](https://cursor.com/docs/context/rules)).
+### Requirements
+
+| | |
+|---|---|
+| Solo MCP | `/plan`, `/implement`, `/critique`, `/stash`, `/recall` |
+| A tracker MCP | `/stash`, `/recall` — Linear adapter included |
+| Nothing | `/research`, `/grill`, and the rules |
 
 ## Rules
 
+Loaded into every session.
+
 | Rule | Description |
-|------|-------------|
-| [pr-first-contributions](cursor/rules/pr-first-contributions.mdc) | PR-first git workflow with conventional titles and squash-merge descriptions |
-| [testing-philosophy](cursor/rules/testing-philosophy.mdc) | Contract-first tests through production entry points; refactor-resistant |
+|---|---|
+| [pr-first-contributions](rules/pr-first-contributions.md) | PR-first git workflow, conventional titles, draft PRs, quality gates before presenting, approval before pushing |
+| [testing-philosophy](rules/testing-philosophy.md) | Contract-first tests through production entry points; refactor-resistant |
+
+## Commands
+
+| Command | Purpose |
+|---|---|
+| [`/research`](commands/research.md) | Map a codebase with parallel agents → a Solo scratchpad |
+| [`/plan`](commands/plan.md) | Research, grill, plan → one scratchpad, then implement / stash / park |
+| [`/implement`](commands/implement.md) | Execute a plan as parallel waves, critique, present |
+| [`/critique`](commands/critique.md) | Adversarial multi-model review of a diff, plan, files, or PR |
+| [`/stash`](commands/stash.md) | Move active work into a durable tracker |
+| [`/recall`](commands/recall.md) | Pull tracker work back into planning |
+| [`/grill`](commands/grill.md) | Interrogate a decision one question at a time |
+
+```mermaid
+flowchart LR
+    R["/research"]
+    P["/plan"]
+    I["/implement"]
+    C["/critique"]
+    S["/stash"]
+    RC["/recall"]
+    T[("tracker")]
+    PR["draft PR"]
+
+    R -->|"research pad"| P
+    P -->|"1. implement now"| I
+    P -->|"2. stash"| S
+    P -.->|"3. leave active"| P
+    P -.->|"critique the draft"| C
+    S --> T
+    T --> RC
+    RC -->|"always re-plans"| P
+    I -->|"before presenting"| C
+    I --> PR
+```
+
+## How state is divided
+
+**Solo is the active working set.** Scratchpads hold research and plans; they are short-lived
+and archived once the work ships. Todos exist only while a plan is being implemented. KV holds
+small orchestration pointers.
+
+**A tracker is the durable backlog.** Ideas parked for later, and large plans whose phases each
+get their own research → plan → implement cycle. Nothing crosses that boundary automatically —
+`/stash` and `/recall` are always explicit.
+
+Nothing in this repository stores your work. Research and plans live in Solo, not in git.
+
+| Kind | Name / key | Tags |
+|---|---|---|
+| Research pad | `research/<YYYY-MM-DD>T<HHMM>-<topic>` | `research`, `project:<repo>` |
+| Plan pad | `plan/<YYYY-MM-DD>T<HHMM>-<topic>` | `plan`, `project:<repo>` |
+| Phase todos | — | `plan:<slug>`, `project:<repo>`, `phase:N` |
+| Orchestration | `plan:<slug>:{todos,branch:<repo>,escalation:<N>}` | — |
+
+Commands use whichever Solo project is currently selected, and say which one in their first
+confirmation.
+
+## How the workflow behaves
+
+**Gates carry evidence.** Every confirmation shows why it inferred what it did — which repos,
+which files, which investigation — so a wrong guess is visible rather than buried.
+
+**`/plan` grills you.** Questions come one at a time, each with a recommended answer, ordered so
+the answer that changes the most other answers comes first. Anything discoverable from the
+filesystem or tools is looked up rather than asked. Length scales with the work: one question
+for a small change, twenty for a migration.
+
+**Phases run in parallel where their declared files are disjoint.** `/implement` computes waves
+from each phase's `**Files**:` list, spawns a Solo agent per phase, and joins on an idle timer.
+Workers hold per-path locks and never touch git — the orchestrator commits each phase's declared
+paths so history stays granular and nothing collides in the shared tree.
+
+**Workers escalate on deviation, not on failure.** A worker that cannot self-resolve, or that
+would need to depart meaningfully from the approved plan, records what it found and stops rather
+than improvising. Other workers in the wave finish, and everything surfaces together.
+
+**Critique is adversarial and multi-model.** `/critique` spawns a worker per model you select —
+Claude, Copilot, Kimi, or anything else enabled in Solo — each trying to break the target rather
+than survey it. Cross-model agreement ranks the findings; a defect two models independently find
+is probably real.
+
+## Adding a tracker
+
+Drop an adapter in `references/` describing that tracker's object model and field mapping.
+`/stash` and `/recall` own the semantics and read the adapter for the specifics, so a new
+tracker is one file rather than two commands. See [`references/linear.md`](references/linear.md).
