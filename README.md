@@ -34,9 +34,9 @@ are machine-local and yours.
 
 | | |
 |---|---|
-| Solo MCP | `/plan`, `/implement`, `/critique`, `/stash`, `/recall` |
+| Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/stash`, `/recall` |
 | A tracker MCP | `/stash`, `/recall` — Linear adapter included |
-| Nothing | `/research`, `/grill`, and the rules |
+| Nothing | `/grill` and the rules |
 
 ## Rules
 
@@ -45,13 +45,14 @@ Loaded into every session.
 | Rule | Description |
 |---|---|
 | [pr-first-contributions](rules/pr-first-contributions.md) | PR-first git workflow, conventional titles, draft PRs, quality gates before presenting, approval before pushing |
+| [solo-agent-orchestration](rules/solo-agent-orchestration.md) | Fan out with Solo agents, never a vendor's native sub-agents; spawn, join on a timer, collect from a durable surface |
 | [testing-philosophy](rules/testing-philosophy.md) | Contract-first tests through production entry points; refactor-resistant |
 
 ## Skills
 
 | Skill | Purpose | Invocation |
 |---|---|---|
-| [`/research`](skills/research/SKILL.md) | Map a codebase with parallel agents → a Solo scratchpad | you or Claude |
+| [`/research`](skills/research/SKILL.md) | Map a codebase with parallel Solo agents → a Solo scratchpad | you or Claude |
 | [`/critique`](skills/critique/SKILL.md) | Adversarial multi-model review of a diff, plan, files, or PR | you or Claude |
 | [`/grill`](skills/grill/SKILL.md) | Interrogate a decision one question at a time | you or Claude |
 | [`/plan`](skills/plan/SKILL.md) | Research, grill, plan → one scratchpad, then implement / stash / park | **you only** |
@@ -123,6 +124,12 @@ Skills use whichever Solo project is currently selected, and say which one in th
 confirmation.
 
 ## How the workflow behaves
+
+**Every worker is a Solo agent.** `/research`, `/plan`, `/implement`, and `/critique` all fan out
+with `spawn_agent` and join on an idle timer, never with the host runtime's own sub-agent
+mechanism. The policy and its reasoning live in
+[solo-agent-orchestration](rules/solo-agent-orchestration.md), so it also holds for fan-out that
+no skill initiated; the skills carry only their own worker prompts and constraints.
 
 **Gates carry evidence.** Every confirmation shows why it inferred what it did — which repos,
 which files, which investigation — so a wrong guess is visible rather than buried.

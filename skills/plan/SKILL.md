@@ -57,7 +57,7 @@ Before I investigate — confirm or adjust:
 
   Not included: <repo> (<why>)
 
-  I plan to investigate (<N> parallel agents):
+  I plan to investigate (<N> parallel Solo agents):
     1. <specific question>
     2. <specific question>
 
@@ -68,8 +68,9 @@ Accept, or tell me what to add or cut.
 
 ## Research phase
 
-Run the confirmed investigation as parallel sub-agents, following `/research`. Sub-agents
-document what exists; they do not write to Solo.
+Run the confirmed investigation following `/research`, including its worker protocol: one Solo
+agent per area, joined with an idle timer, per `solo-agent-orchestration`. Workers document what
+exists and write only their own per-area scratchpad; you own the plan pad.
 
 **If a standalone research pad was supplied:** absorb its content into the plan pad under
 `## Research`, then `scratchpad_archive` the source. Archiving hides without deleting, so it

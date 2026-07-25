@@ -51,6 +51,9 @@ Then run unattended through every wave.
 
 ## Wave execution
 
+Workers are Solo agents, per `solo-agent-orchestration`. Nothing below works otherwise — a
+vendor sub-agent cannot hold a lock, comment on a todo, or be joined by an idle timer.
+
 For each wave, for each phase in it:
 
 1. `todo_lock(todo_id, lease_ttl_seconds=3600)` and

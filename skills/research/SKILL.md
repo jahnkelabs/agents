@@ -46,7 +46,7 @@ Before I investigate — confirm or adjust:
   Repos in scope:
     <repo>  ─ <why: current repo / N code refs / named in request>
 
-  I plan to investigate (<N> parallel agents):
+  I plan to investigate (<N> parallel Solo agents):
     1. <specific question>
     2. <specific question>
 
@@ -61,22 +61,68 @@ easier to catch than a wrong inclusion.
 
 ## Step 2 — Investigate
 
-Spawn the confirmed sub-agents in parallel. Each gets one focused area and returns file paths,
-line numbers, and factual descriptions.
+Fan out with Solo agents, per `solo-agent-orchestration`. Never the host runtime's own
+sub-agent mechanism.
 
-Remind every agent: **document what IS, not what SHOULD BE.** Have each note which repo a
-finding belongs to when more than one is in scope.
+Build the slug first — `date +%Y-%m-%dT%H%M` plus a short topic, e.g.
+`2026-04-05T1423-jwt-auth`. Workers name their pads under it, and step 4 reuses it.
 
-Sub-agents do not write to Solo. They report to you; you own the pad.
+Resolve the runtime once with `list_agent_tools` and use the Claude entry unless the user named
+another. Then, per confirmed area:
+
+```
+spawn_agent(agent_tool_id=<id>, name="research-<area-slug>")
+  → process_id, agent_instructions
+send_input(process_id, input=<agent_instructions + the prompt below>)
+```
+
+```
+You are researching one area of: <topic>.
+
+## Working directory
+<absolute repo path>
+
+## Your area
+<the one specific question this worker owns>
+
+## Your only job is to document what exists
+Document what IS, not what SHOULD BE. No improvements, no critique, no proposed work.
+
+## Instructions
+1. Read the files you need fully — no limit/offset
+2. Report file paths, line numbers, and factual descriptions of how the pieces connect
+3. Note which repo each finding belongs to when more than one is in scope
+4. Write your findings to a scratchpad named "research/<slug>/<area-slug>", then stop
+
+## Constraints
+- Read-only: no edits, no branches, no commits, no other git write command
+- Do not create todos or write KV
+- Write only your own scratchpad — the orchestrator owns the research pad
+- Stay inside <absolute repo path>
+```
+
+Join without polling — timers are the only wake-up mechanism for Solo agents:
+
+```
+timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<guard>,
+  body="Research workers are idle. Read each one's scratchpad, synthesize the findings,
+        and write the research pad.")
+```
+
+Workers write only their own findings pad. You own the research pad.
 
 ## Step 3 — Synthesize
 
-Wait for all agents. Connect findings across components, keep every `file:line` reference, and
-resolve contradictions by going back to the code rather than picking one.
+On wake, read every worker's scratchpad. Connect findings across components, keep every
+`file:line` reference, and resolve contradictions by going back to the code rather than picking
+one.
+
+Then `close_process` each worker and archive its per-area scratchpad — the synthesized pad
+replaces them.
 
 ## Step 4 — Write the pad
 
-Build a slug from `date +%Y-%m-%dT%H%M` plus a short topic, e.g. `2026-04-05T1423-jwt-auth`.
+Reuse the slug built in step 2.
 
 **Standalone:**
 
