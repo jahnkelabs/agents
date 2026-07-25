@@ -45,6 +45,7 @@ Loaded into every session.
 | Rule | Description |
 |---|---|
 | [pr-first-contributions](rules/pr-first-contributions.md) | PR-first git workflow, conventional titles, draft PRs, quality gates before presenting, approval before pushing |
+| [solo-agent-orchestration](rules/solo-agent-orchestration.md) | Fan out with Solo agents, never a vendor's native sub-agents; spawn, join on a timer, collect from a durable surface |
 | [testing-philosophy](rules/testing-philosophy.md) | Contract-first tests through production entry points; refactor-resistant |
 
 ## Skills
@@ -125,10 +126,10 @@ confirmation.
 ## How the workflow behaves
 
 **Every worker is a Solo agent.** `/research`, `/plan`, `/implement`, and `/critique` all fan out
-with `spawn_agent` and join with an idle timer — never with the host runtime's own sub-agent
-mechanism (Claude's Task tool, Codex's, or any other vendor's). Solo workers are visible in the
-UI, addressable across turns, able to hold locks and comment on todos, and can run a model other
-than the session's. Vendor sub-agents are none of that, and they lock the workflow to one vendor.
+with `spawn_agent` and join on an idle timer, never with the host runtime's own sub-agent
+mechanism. The policy and its reasoning live in
+[solo-agent-orchestration](rules/solo-agent-orchestration.md), so it also holds for fan-out that
+no skill initiated; the skills carry only their own worker prompts and constraints.
 
 **Gates carry evidence.** Every confirmation shows why it inferred what it did — which repos,
 which files, which investigation — so a wrong guess is visible rather than buried.

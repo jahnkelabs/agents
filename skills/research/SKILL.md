@@ -61,10 +61,8 @@ easier to catch than a wrong inclusion.
 
 ## Step 2 — Investigate
 
-**Workers are always Solo agents.** Fan out with `spawn_agent` — never with the host runtime's
-own sub-agent mechanism (Claude's Task tool, Codex's, or any other vendor's). Solo workers are
-addressable, joinable, and survive the turn that started them; vendor sub-agents are none of
-those things.
+Fan out with Solo agents, per `solo-agent-orchestration`. Never the host runtime's own
+sub-agent mechanism.
 
 Build the slug first — `date +%Y-%m-%dT%H%M` plus a short topic, e.g.
 `2026-04-05T1423-jwt-auth`. Workers name their pads under it, and step 4 reuses it.
@@ -186,7 +184,6 @@ On a revision mismatch, re-read and retry — something else touched the pad.
 ## Notes
 
 - Read mentioned files fully before spawning anything
-- Every worker is a Solo agent — `spawn_agent`, never a vendor sub-agent
 - Read-only: no branches, no commits, no code changes
 - No todos — research precedes tracked work
 - The pad must stand alone. `/plan` may read it in a session that has none of this context

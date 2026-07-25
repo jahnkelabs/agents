@@ -68,11 +68,9 @@ Accept, or tell me what to add or cut.
 
 ## Research phase
 
-Run the confirmed investigation following `/research`, including its worker protocol: one
-**Solo agent** per area via `spawn_agent`, joined with `timer_fire_when_idle_all`. Never fan out
-with the host runtime's own sub-agent mechanism (Claude's Task tool, Codex's, or any other
-vendor's). Workers document what exists and write only their own per-area scratchpad; you own
-the plan pad.
+Run the confirmed investigation following `/research`, including its worker protocol: one Solo
+agent per area, joined with an idle timer, per `solo-agent-orchestration`. Workers document what
+exists and write only their own per-area scratchpad; you own the plan pad.
 
 **If a standalone research pad was supplied:** absorb its content into the plan pad under
 `## Research`, then `scratchpad_archive` the source. Archiving hides without deleting, so it

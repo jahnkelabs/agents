@@ -51,9 +51,8 @@ Then run unattended through every wave.
 
 ## Wave execution
 
-Workers are **always** Solo agents — `spawn_agent`, never the host runtime's own sub-agent
-mechanism (Claude's Task tool, Codex's, or any other vendor's). Nothing below works otherwise:
-vendor sub-agents cannot hold locks, comment on todos, or be joined by an idle timer.
+Workers are Solo agents, per `solo-agent-orchestration`. Nothing below works otherwise — a
+vendor sub-agent cannot hold a lock, comment on a todo, or be joined by an idle timer.
 
 For each wave, for each phase in it:
 
