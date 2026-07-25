@@ -66,6 +66,9 @@ own sub-agent mechanism (Claude's Task tool, Codex's, or any other vendor's). So
 addressable, joinable, and survive the turn that started them; vendor sub-agents are none of
 those things.
 
+Build the slug first — `date +%Y-%m-%dT%H%M` plus a short topic, e.g.
+`2026-04-05T1423-jwt-auth`. Workers name their pads under it, and step 4 reuses it.
+
 Resolve the runtime once with `list_agent_tools` and use the Claude entry unless the user named
 another. Then, per confirmed area:
 
@@ -121,7 +124,7 @@ replaces them.
 
 ## Step 4 — Write the pad
 
-Build a slug from `date +%Y-%m-%dT%H%M` plus a short topic, e.g. `2026-04-05T1423-jwt-auth`.
+Reuse the slug built in step 2.
 
 **Standalone:**
 
