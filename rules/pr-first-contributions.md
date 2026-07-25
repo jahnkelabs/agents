@@ -1,6 +1,5 @@
 ---
-description: PR-first git workflow with conventional titles and squash-merge descriptions
-alwaysApply: true
+description: PR-first git workflow with conventional titles, draft PRs, and squash-merge descriptions
 ---
 
 # PR-first contributions
@@ -11,8 +10,9 @@ Contribute code through pull requests by default. Use conventional PR titles and
 
 - **Default:** All repository changes are delivered via a **PR** against the repo’s default branch (`main`, `master`, or whatever `origin/HEAD` points to).
 - **Exceptions:** Skip the PR workflow only when the user **clearly** instructs otherwise (e.g. “commit directly to main”, “no PR”, “push straight to default branch”). If ambiguous, ask once; otherwise follow this rule.
-- **Commits:** Only create commits when the user asks or when the PR workflow clearly requires it. Follow the user’s `committing-changes-with-git` rule (no secrets, no `--no-verify`, no amend unless allowed).
-- **Pushes:** Do not push unless the user asks or opening/updating a PR requires it.
+- **Commits:** Only create commits when the user asks or when the PR workflow clearly requires it. No secrets, no `--no-verify`, no amend unless allowed.
+- **Pushes:** Never push or open a PR without explicit approval. Approval for one push does not carry to the next.
+- **Draft by default:** Open PRs as drafts. Mark ready for review only when the user says so.
 
 ## Workflow
 
@@ -22,7 +22,9 @@ Task progress:
 - [ ] Run branch staleness check
 - [ ] Ensure on a feature branch (not default, not stale)
 - [ ] Implement changes
-- [ ] Commit (if appropriate)
+- [ ] Run quality gates; report any failures
+- [ ] Commit everything; leave a clean tree
+- [ ] Summarize what changed, then STOP for approval
 - [ ] Re-run staleness check before push
 - [ ] Push branch
 - [ ] Open or update PR with conventional title and description
@@ -71,17 +73,25 @@ MERGED="$(gh pr list --head "$BRANCH" --state merged --limit 1 --json number,tit
 
 Make changes on the feature branch. Branch commits can be informal; **the PR title and description are what matter** because the default merge strategy is **squash**, and those fields become the commit title and body on the default branch.
 
-### 4. Push and open PR
+### 4. Before presenting work
 
-Follow the user’s `creating-pull-requests` rule:
+Do all of this before asking for approval to push:
+
+- **Run the repo's quality gates** — tests, lint, type checks, whatever the project uses. Report failures with their output rather than hiding or working around them. If a failure is non-trivial and out of scope, say so plainly instead of leaving it silently broken.
+- **Commit everything.** `git status` should show a clean tree — no uncommitted changes, no stray untracked files.
+- **Summarize and stop.** State what changed, the quality gate results, and the diff summary (`git log --oneline <default>..HEAD`). Then wait. Do not push as part of "finishing".
+
+### 5. Push and open PR
+
+Only after explicit approval:
 
 1. In parallel: `git status`, `git diff` (staged and unstaged), remote tracking status, `git log`, `git diff <default>...HEAD`.
-2. Push: `git push -u origin HEAD` (request network permission).
+2. Push: `git push -u origin HEAD`.
 3. Draft the PR **title** (conventional; see below) and **description** (concise summary + relevant context; see below).
-4. Create or update:
+4. Create or update, **as a draft** unless told otherwise:
 
 ```bash
-gh pr create --title "<conventional-title>" --body "$(cat <<'EOF'
+gh pr create --draft --title "<conventional-title>" --body "$(cat <<'EOF'
 <Concise summary of what changed—1–3 short paragraphs or bullets.>
 
 <Optional: decisions, tradeoffs, migration notes, or other context worth preserving in git history. Omit if none.>

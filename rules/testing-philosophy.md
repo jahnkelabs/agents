@@ -1,7 +1,7 @@
 ---
 description: Contract-first tests through production entry points; refactor-resistant
-alwaysApply: true
 ---
+
 
 # Testing philosophy
 
