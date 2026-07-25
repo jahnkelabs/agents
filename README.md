@@ -9,16 +9,23 @@ the [Solo](https://soloterm.dev) MCP server.
 ./scripts/install.sh
 ```
 
-Symlinks three directories into `~/.claude/`:
-
 | Link | Contents |
 |---|---|
-| `~/.claude/rules` | always-on working agreements |
-| `~/.claude/commands` | slash commands |
-| `~/.claude/references` | tracker adapters used by `/stash` and `/recall` |
+| `~/.claude/rules/<name>.md` | always-on working agreements — **linked per file** |
+| `~/.claude/commands/<name>.md` | slash commands — **linked per file** |
+| `~/.claude/references` | tracker adapters for `/stash` and `/recall` — whole directory |
 
-Idempotent — existing symlinks are repointed, and anything real in the way is moved to
-`~/.claude/backups/` first. Override the repo root with `AGENTS_REPO=/path/to/agents`.
+Rules and commands are linked file by file so `~/.claude/rules` and `~/.claude/commands` stay
+real directories you own. Anything else you keep there is left alone, and nothing you create
+locally ends up in this repository — which matters, since it is public.
+
+`references/` is a whole-directory link because it is not a Claude Code directory. It exists
+only so commands can read tracker adapters from a stable path, and nothing else writes there.
+
+Re-run after **adding or renaming** a file; editing one takes effect immediately. Links into
+this repo whose source has gone are pruned, and nothing else is touched. Anything real in the
+way is moved to `~/.claude/backups/` first. Override the repo root with
+`AGENTS_REPO=/path/to/agents`.
 
 **This repository does not manage `~/.claude/settings.json` or `~/.claude/CLAUDE.md`.** Those
 are machine-local and yours.
