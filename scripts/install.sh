@@ -12,11 +12,11 @@ Usage: install.sh
 Symlinks this repository's Claude Code configuration into ~/.claude/:
 
   ~/.claude/rules/<name>.md     -> rules/<name>.md        (per file)
-  ~/.claude/commands/<name>.md  -> commands/<name>.md     (per file)
+  ~/.claude/skills/<name>       -> skills/<name>/         (per skill)
   ~/.claude/references          -> references/            (whole directory)
 
-Rules and commands are linked file by file, so ~/.claude/rules and
-~/.claude/commands stay real directories you own. Anything else you keep
+Rules and skills are linked one at a time, so ~/.claude/rules and
+~/.claude/skills stay real directories you own. Anything else you keep
 there is left alone, and nothing you create locally lands in this repo.
 
 Re-run after adding or renaming a file. Links pointing into this repo whose
@@ -61,9 +61,12 @@ link() {
   echo "  linked: ${dest##*/.claude/}"
 }
 
-# Link each *.md in src_dir individually into dest_dir, then prune our own
-# stale links. Files we did not create are never touched.
-link_files() {
+# Link each entry of src_dir individually into dest_dir, then prune our own
+# stale links. Entries we did not create are never touched.
+#   $1 = directory name under both the repo and ~/.claude
+#   $2 = "files" to link *.md, or "dirs" to link each subdirectory
+link_entries() {
+  local kind="$2"
   local src_dir="${REPO_ROOT}/$1" dest_dir="${DEST}/$1"
 
   if [[ ! -d "${src_dir}" ]]; then
@@ -85,9 +88,16 @@ link_files() {
 
   shopt -s nullglob
 
-  for src in "${src_dir}"/*.md; do
-    link "${src}" "${dest_dir}/$(basename "${src}")"
-  done
+  if [[ "${kind}" == "dirs" ]]; then
+    for src in "${src_dir}"/*/; do
+      src="${src%/}"
+      link "${src}" "${dest_dir}/$(basename "${src}")"
+    done
+  else
+    for src in "${src_dir}"/*.md; do
+      link "${src}" "${dest_dir}/$(basename "${src}")"
+    done
+  fi
 
   # Prune links into this repo whose source is gone (renamed or deleted).
   # Only symlinks resolving under src_dir qualify -- your own files and links
@@ -109,11 +119,30 @@ link_files() {
 mkdir -p "${DEST}"
 
 echo "Installing Claude Code configuration..."
-link_files rules
-link_files commands
+link_entries rules files
+link_entries skills dirs
 link "${REPO_ROOT}/references" "${DEST}/references"
 
+# Earlier versions installed these as commands. A skill and a command of the
+# same name both resolve to /name, and the skill wins -- so a leftover link
+# is shadowed rather than broken, but it is still stale. Remove ours only.
+if [[ -d "${DEST}/commands" && ! -L "${DEST}/commands" ]]; then
+  shopt -s nullglob
+  for old in "${DEST}"/commands/*.md; do
+    [[ -L "${old}" ]] || continue
+    target="$(readlink "${old}")"
+    [[ "${target}" == "${REPO_ROOT}/commands/"* ]] || continue
+    rm -f "${old}"
+    echo "  removed superseded command link: commands/$(basename "${old}")"
+  done
+  shopt -u nullglob
+  rmdir "${DEST}/commands" 2>/dev/null && echo "  removed empty commands/"
+elif [[ -L "${DEST}/commands" ]] && [[ "$(readlink "${DEST}/commands")" == "${REPO_ROOT}/commands" ]]; then
+  rm -f "${DEST}/commands"
+  echo "  removed superseded commands/ directory link"
+fi
+
 echo ""
-echo "Installed. Rules apply to every session; commands are available as slash commands."
+echo "Installed. Rules apply to every session; skills are available as slash commands."
 echo "/plan, /implement, /critique, /stash and /recall require the Solo MCP server."
 echo "/stash and /recall additionally require a tracker MCP (see references/)."

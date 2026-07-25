@@ -1,5 +1,11 @@
 ---
+name: grill
 description: Interview the user relentlessly about a plan, decision, or idea until you reach shared understanding
+when_to_use: >-
+  When the user wants their thinking stress-tested rather than accepted. Trigger phrases:
+  "grill me", "interrogate this", "poke holes in it", "challenge my assumptions", "pressure-
+  test this decision".
+argument-hint: "[topic]"
 model: opus
 ---
 

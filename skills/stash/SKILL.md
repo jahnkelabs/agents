@@ -1,5 +1,8 @@
 ---
+name: stash
 description: Move active work out of Solo and into a durable tracker
+argument-hint: '[plan/<slug> | "an idea"]'
+disable-model-invocation: true
 model: opus
 ---
 

@@ -12,15 +12,15 @@ the [Solo](https://soloterm.dev) MCP server.
 | Link | Contents |
 |---|---|
 | `~/.claude/rules/<name>.md` | always-on working agreements — **linked per file** |
-| `~/.claude/commands/<name>.md` | slash commands — **linked per file** |
+| `~/.claude/skills/<name>/` | slash commands — **linked per skill** |
 | `~/.claude/references` | tracker adapters for `/stash` and `/recall` — whole directory |
 
-Rules and commands are linked file by file so `~/.claude/rules` and `~/.claude/commands` stay
+Rules and skills are linked one at a time so `~/.claude/rules` and `~/.claude/skills` stay
 real directories you own. Anything else you keep there is left alone, and nothing you create
 locally ends up in this repository — which matters, since it is public.
 
 `references/` is a whole-directory link because it is not a Claude Code directory. It exists
-only so commands can read tracker adapters from a stable path, and nothing else writes there.
+only so skills can read tracker adapters from a stable path, and nothing else writes there.
 
 Re-run after **adding or renaming** a file; editing one takes effect immediately. Links into
 this repo whose source has gone are pruned, and nothing else is touched. Anything real in the
@@ -47,17 +47,23 @@ Loaded into every session.
 | [pr-first-contributions](rules/pr-first-contributions.md) | PR-first git workflow, conventional titles, draft PRs, quality gates before presenting, approval before pushing |
 | [testing-philosophy](rules/testing-philosophy.md) | Contract-first tests through production entry points; refactor-resistant |
 
-## Commands
+## Skills
 
-| Command | Purpose |
-|---|---|
-| [`/research`](commands/research.md) | Map a codebase with parallel agents → a Solo scratchpad |
-| [`/plan`](commands/plan.md) | Research, grill, plan → one scratchpad, then implement / stash / park |
-| [`/implement`](commands/implement.md) | Execute a plan as parallel waves, critique, present |
-| [`/critique`](commands/critique.md) | Adversarial multi-model review of a diff, plan, files, or PR |
-| [`/stash`](commands/stash.md) | Move active work into a durable tracker |
-| [`/recall`](commands/recall.md) | Pull tracker work back into planning |
-| [`/grill`](commands/grill.md) | Interrogate a decision one question at a time |
+| Skill | Purpose | Invocation |
+|---|---|---|
+| [`/research`](skills/research/SKILL.md) | Map a codebase with parallel agents → a Solo scratchpad | you or Claude |
+| [`/critique`](skills/critique/SKILL.md) | Adversarial multi-model review of a diff, plan, files, or PR | you or Claude |
+| [`/grill`](skills/grill/SKILL.md) | Interrogate a decision one question at a time | you or Claude |
+| [`/plan`](skills/plan/SKILL.md) | Research, grill, plan → one scratchpad, then implement / stash / park | **you only** |
+| [`/implement`](skills/implement/SKILL.md) | Execute a plan as parallel waves, critique, present | **you only** |
+| [`/stash`](skills/stash/SKILL.md) | Move active work into a durable tracker | **you only** |
+| [`/recall`](skills/recall/SKILL.md) | Pull tracker work back into planning | **you only** |
+
+Anything with side effects — writing code, committing, creating tracker objects — carries
+`disable-model-invocation: true`, so Claude cannot decide to run it. Those four don't appear
+in Claude's skill listing at all, which also means they cost no context until you invoke them.
+The three advisory ones stay model-invocable and carry `when_to_use` trigger phrases, so
+"grill me on this" or "tear this apart" work without remembering a command name.
 
 ```mermaid
 flowchart LR
@@ -101,7 +107,7 @@ Nothing in this repository stores your work. Research and plans live in Solo, no
 | Phase todos | — | `plan:<slug>`, `project:<repo>`, `phase:N` |
 | Orchestration | `plan:<slug>:{todos,branch:<repo>,escalation:<N>}` | — |
 
-Commands use whichever Solo project is currently selected, and say which one in their first
+Skills use whichever Solo project is currently selected, and say which one in their first
 confirmation.
 
 ## How the workflow behaves
@@ -132,4 +138,4 @@ is probably real.
 
 Drop an adapter in `references/` describing that tracker's object model and field mapping.
 `/stash` and `/recall` own the semantics and read the adapter for the specifics, so a new
-tracker is one file rather than two commands. See [`references/linear.md`](references/linear.md).
+tracker is one file rather than two skills. See [`references/linear.md`](references/linear.md).

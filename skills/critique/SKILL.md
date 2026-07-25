@@ -1,5 +1,11 @@
 ---
+name: critique
 description: Adversarially review a diff, plan, files, or PR using multiple models as independent critics
+when_to_use: >-
+  When the user wants work torn apart rather than surveyed. Trigger phrases: "what is wrong
+  with this", "review this adversarially", "find the bugs", "critique my plan". Also invoked
+  by the plan and implement skills.
+argument-hint: "[target]"
 model: opus
 ---
 

@@ -1,5 +1,11 @@
 ---
+name: research
 description: Investigate a codebase with parallel agents and write the findings to a Solo scratchpad
+when_to_use: >-
+  When the user wants to understand how something works across a codebase and wants the
+  findings written down rather than explained in chat. Trigger phrases: "how does X work",
+  "map the Y subsystem", "trace this flow". Read-only.
+argument-hint: "[question or area]"
 model: opus
 ---
 
