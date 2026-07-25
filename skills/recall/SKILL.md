@@ -68,7 +68,7 @@ Before I investigate — confirm or adjust:
   Repos in scope:
     <repo>  ─ named in the issue; N code refs in the parent document
 
-  I plan to investigate (2 parallel agents):
+  I plan to investigate (2 parallel Solo agents):
     1. what Phase 1 actually landed vs. what it planned
     2. current state of <the area this phase touches>
 ```

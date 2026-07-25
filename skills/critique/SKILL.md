@@ -60,7 +60,10 @@ nothing to check fidelity against.
 
 ## Step 4 — Run the critics
 
-One Solo worker per selected model, each running all applicable lenses over the whole target:
+One Solo worker per selected model, each running all applicable lenses over the whole target.
+Workers are **always** Solo agents — never the host runtime's own sub-agent mechanism (Claude's
+Task tool, Codex's, or any other vendor's), which cannot run a model other than the session's
+anyway:
 
 ```
 spawn_agent(agent_tool_id=<id>, name="critique-<model>")
