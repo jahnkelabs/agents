@@ -6,7 +6,6 @@ when_to_use: >-
   with this", "review this adversarially", "find the bugs", "critique my plan". Also invoked
   by the plan and implement skills.
 argument-hint: "[target]"
-model: opus
 ---
 
 # Critique

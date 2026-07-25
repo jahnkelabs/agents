@@ -6,7 +6,6 @@ when_to_use: >-
   findings written down rather than explained in chat. Trigger phrases: "how does X work",
   "map the Y subsystem", "trace this flow". Read-only.
 argument-hint: "[question or area]"
-model: opus
 ---
 
 # Research

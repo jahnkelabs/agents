@@ -6,7 +6,7 @@ when_to_use: >-
   "grill me", "interrogate this", "poke holes in it", "challenge my assumptions", "pressure-
   test this decision".
 argument-hint: "[topic]"
-model: opus
+effort: xhigh
 ---
 
 # Grill

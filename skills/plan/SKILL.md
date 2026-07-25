@@ -3,7 +3,6 @@ name: plan
 description: Research, grill, and produce an implementation plan in a Solo scratchpad
 argument-hint: "[topic | research/<slug> | paths]"
 disable-model-invocation: true
-model: opus
 ---
 
 # Plan

@@ -3,7 +3,6 @@ name: implement
 description: Execute an approved plan as Solo-orchestrated waves, critique the result, and present it
 argument-hint: "[plan/<slug>]"
 disable-model-invocation: true
-model: opus
 ---
 
 # Implement

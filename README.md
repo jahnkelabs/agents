@@ -65,6 +65,18 @@ in Claude's skill listing at all, which also means they cost no context until yo
 The three advisory ones stay model-invocable and carry `when_to_use` trigger phrases, so
 "grill me on this" or "tear this apart" work without remembering a command name.
 
+**No skill overrides the model.** Your session's choice — including a `[1m]` variant — is
+respected throughout. Effort is tuned only where the shape of the work justifies it:
+
+| Skill | `effort` | Why |
+|---|---|---|
+| `grill` | `xhigh` | pure judgment, no fan-out to multiply the cost |
+| `stash`, `recall` | `medium` | mechanical mapping against an explicit adapter |
+| the rest | inherits | raising them would multiply across their parallel agents |
+
+An effort override applies for the rest of the turn and resets on your next prompt. For
+one-off depth without changing anything, put `ultrathink` in the prompt.
+
 ```mermaid
 flowchart LR
     R["/research"]

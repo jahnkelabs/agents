@@ -3,7 +3,7 @@ name: recall
 description: Pull stashed work out of a tracker and back into active planning
 argument-hint: "[issue-ref]"
 disable-model-invocation: true
-model: opus
+effort: medium
 ---
 
 # Recall
