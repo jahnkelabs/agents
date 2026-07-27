@@ -37,10 +37,14 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what was just
    hardcoded default branch name:
    ```bash
    cd <repo path>
-   DEFAULT="$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')"
-   git checkout "$DEFAULT" && git pull --rebase
-   git checkout -b <type>/<slug>
+   DEFAULT="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')"
+   [ -z "$DEFAULT" ] && DEFAULT="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
+   [ -z "$DEFAULT" ] && { echo "cannot resolve the default branch"; exit 1; }
+   git checkout "$DEFAULT" && git pull --rebase && git checkout -b <type>/<slug>
    ```
+   The fallback and the abort are both load-bearing, and so is the `&&` chain — a resolution that
+   yields an empty string fails the checkout, and an unchained branch cut would then root the
+   branch on whatever happened to be checked out.
    `kv_set(key="plan:<slug>:branch:<repo>", value="<branch>")`
 4. **Create the todos** — one per phase, so the run is visible in Solo while it happens. The body
    points at the plan; it never copies it, which `/plan` forbids outright:
@@ -109,8 +113,9 @@ behavior here, not failure.
 4. Join the wave without polling — timers are the only wake-up mechanism for Solo agents:
    ```
    timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<guard>,
-     body="Wave <N> workers are idle. Read each worker's todo comments, then commit
-           completed phases and continue with wave <N+1>.")
+     body="Wave <N> workers are idle. Read each worker's todo comments. If any begins
+           with ESCALATION:, stop and present the wave. Otherwise commit completed
+           phases and continue with wave <N+1>.")
    ```
 5. On wake: read each phase's todo comments. An `ESCALATION:` comment is the durable record and
    the only signal — nothing is mirrored into KV, so there is no second place to check.
@@ -173,7 +178,7 @@ Implementation complete.
 
 <repo>  branch <name>
   Phases:  <N> committed
-  Commits: <git log --oneline origin/<default>..HEAD>
+  Commits: <git log --oneline "origin/${DEFAULT}"..HEAD>
   Quality gates: <results>
 
 <N> critique findings to triage (<models>).
@@ -194,6 +199,9 @@ Fix it, drop it, or something else?
 
 (● = models that independently flagged it)
 
+Severity and the `●` count are defined in `/critique` — `bug` for wrong behavior, `risk` for a
+plausible failure, `nit` for style or cleanup. Severity orders the triage, so it stays on the line.
+
 Apply each decision as it is made and wait for the next; never ask for all of them at once. When
 the last one is settled, `git commit -m "chore: address critique findings"`. Offer a re-critique
 or move to close.
@@ -201,7 +209,7 @@ or move to close.
 ## Close
 
 After approval — and only after — push and open the PR by following
-`rules/pr-first-contributions.md`. `/implement` adds nothing to that procedure and must not
+`pr-first-contributions`. `/implement` adds nothing to that procedure and must not
 paraphrase it: re-run the branch staleness check before pushing, confirm the quality gates passed
 and the tree is clean, then open a draft PR whose title and body meet that rule's spec. If a PR
 for the branch is already open, update it rather than opening a second.

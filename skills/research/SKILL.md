@@ -143,7 +143,7 @@ under `### Research` in the plan pad's `## Appendix`.
 # Research: <topic>
 
 **Date**: <YYYY-MM-DD>
-**Repos**: <repo> (<path>)
+**Repos**: `<name>` — <absolute path>
 
 ## Summary
 <the answer to the question asked>
@@ -181,7 +181,7 @@ Extend the same pad rather than creating another:
 
 - New material under an existing heading → `scratchpad_append_section`
 - Replacing a section → `scratchpad_edit` with
-  `target={"type":"section","section_heading":"## ..."}` and the current `expected_revision`
+  `target={"type":"section","section_heading":"## ..."` or `"### ..."}` and the current `expected_revision`
 - A dated addition at the end → `scratchpad_append`
 
 On a revision mismatch, re-read and retry — something else touched the pad.

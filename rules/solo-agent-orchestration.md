@@ -29,6 +29,10 @@ When work is delegated to a parallel worker, that worker is a **Solo agent**—s
 3. `send_input(process_id, input=<agent_instructions + your prompt>)` — the returned instructions must be prepended, or the worker does not know it is a Solo agent.
 4. `timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<guard>, body="<what to do on wake>")` — **timers are the only wake-up mechanism.** Never poll status in a loop.
 5. On wake, collect results from the **durable surface** the worker wrote: a scratchpad, a todo comment, or KV. Do not scrape process output.
+
+**Join on the artifact, not on idleness.** Idle detection watches terminal output, and a worker thinking hard emits none—so extended reasoning is indistinguishable from completion and the timer fires early. Treat idleness as a hint: on wake, check for the durable surface the worker was told to write. If it is absent the worker is still going, so re-arm and stop. `min_idle_ms` raises the bar but cannot settle the question, because there is no threshold a long enough thinking block will not cross.
+
+**The timer body is an instruction, not a note.** It arrives as a fresh turn and is acted on literally, so every branch the orchestrator must take on wake belongs inside it. Guidance that lives only in the surrounding prose will not be read.
 6. `close_process(process_id)` for every worker. A join that leaves processes open leaks them.
 
 Always give `max_wait_ms` a real guard value. A worker that hangs must surface as a slow join, not a dead session.
@@ -42,6 +46,8 @@ Always give `max_wait_ms` a real guard value. A worker that hangs must surface a
 - **What to do when stuck** — record what it found and stop. Improvising past the brief is the expensive failure, and stopping is correct behavior rather than giving up.
 
 Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, and the synthesized artifact.
+
+**Lock and KV keys are lowercase.** Solo rejects uppercase in both, so a key built from a path—`path:skills/plan/SKILL.md`—or from a timestamped slug fails outright. Normalize to lowercase when the key is generated, and pin that normalization in the worker prompt: two workers lowercasing the same path differently would hold non-colliding locks on one file, and the mutual exclusion would fail silently.
 
 ## Anti-patterns
 

@@ -19,7 +19,7 @@ Runs standalone, and is called by `/plan` (on a draft plan) and `/implement` (on
 
 | `$ARGUMENTS` | Target |
 |---|---|
-| *(empty)* | working tree diff; falls back to `main...HEAD` if the tree is clean |
+| *(empty)* | working tree diff; falls back to `<default>...HEAD` — resolved from `origin/HEAD`, never hardcoded — if the tree is clean |
 | `plan/<slug>` or a pad id | a draft plan |
 | one or more paths | those files |
 | `--pr <N>` | that pull request (`gh pr diff <N>`) |
@@ -126,7 +126,7 @@ agreement. There is no batch report and no user-facing pad: a list the user has 
 through is what this replaces.
 
 ```
-Finding 1 of 6   ●●●  bug   `src/token.php:88`
+Finding 1 of 6   ●  bug   `src/token.php:88`
 
 Refresh drops the retry budget.
 
@@ -148,8 +148,9 @@ When the last finding is decided, close with the counts and nothing else:
 6 findings triaged — 4 to fix, 2 dropped. 4 more were refuted before triage.
 ```
 
-Report the refuted count so the user knows filtering happened, but do not list what was refuted
-unless asked.
+When a refutation pass ran, report the refuted count so the user knows filtering happened, but do
+not list what was refuted unless asked. With more than one model there is no refutation pass, so
+the close is `<N> findings triaged — <N> to fix, <N> dropped.`
 
 `/critique` owns this presentation. `/plan` and `/implement` receive the resulting decisions
 rather than the raw findings, so nothing is triaged twice.

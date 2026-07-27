@@ -98,13 +98,15 @@ scratchpad_write(
 ```
 
 Record the `scratchpad_id`. Revise with `scratchpad_edit` using
-`target={"type":"section","section_heading":"## ..."}` and the current `expected_revision`; on
+`target={"type":"section","section_heading":"## ..."` or `"### ..."}` and the current `expected_revision`; on
 a mismatch, re-read and retry.
 
 ```
 # <Feature or task> Plan
 
 **Repos**: `<name>` — <absolute path>
+
+One line per repo when more than one is in scope.
 
 ## Overview
 <the outcome we're after, why, and how we will know it was achieved>

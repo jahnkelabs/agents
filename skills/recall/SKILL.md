@@ -89,7 +89,8 @@ The tracker is updated later:
 - `/stash` reconciles if the plan is parked again
 - Closing it happens when the PR merges, by whatever process you already use
 
-Note the recalled ref in the plan pad's `## References` so the connection survives.
+Note the recalled ref under `### References` in the plan pad's `## Appendix` so the connection
+survives.
 
 ## Notes
 
