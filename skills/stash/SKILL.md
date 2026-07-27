@@ -100,14 +100,12 @@ The work has left the active set.
 
 ## Step 6 — Report
 
-```
-Stashed to <tracker>:
-  project  <link>
-  <ID>     Phase 1: <name>
-  <ID>     Phase 2: <name>
+The pad already holds every ref. In chat, say what was written, where it went, and what the user
+can do next — not the per-phase list again:
 
-Solo: pad archived, <N> todos removed.
-Pull any of it back with /recall <ID>.
+```
+Stashed to <tracker> — project <link>, <N> phase issues, refs appended to the pad.
+Solo: pad archived, <N> todos removed. Recall any of it with /recall <ID>.
 ```
 
 ## Notes

@@ -39,14 +39,8 @@ Fetch more than the issue itself. A phase makes little sense alone:
 - Sibling issues and their dependencies — what must land first, what waits on this
 - Whether blocking issues are already done
 
-```
-Pulled from <tracker>:
-
-  project   <name>
-  issue     <ID> — <title>
-  context   parent document, blocked by <ID> (done)
-  siblings  <ID> Phase 3 — waits on this
-```
+Do not report the pull on its own — it lands in the gate in step 3, so the user sees what was
+pulled and what it implies for scope in one place.
 
 If blockers are still open, say so before going further. Recalling a phase whose prerequisite
 has not landed is usually a mistake, and the user may want a different item.
@@ -61,9 +55,15 @@ E approves and forks. The tracker content becomes context, not a substitute for 
 ```
 → starting /plan with this as input
 
+Pulled from <tracker>:
+  project   <name>
+  issue     <ID> — <title>
+  context   parent document, blocked by <ID> (done)
+  siblings  <ID> Phase 3 — waits on this
+
 Before I investigate — confirm or adjust:
 
-  Solo project: <name>
+  Solo project: <name>  (<path>)
 
   Repos in scope:
     <repo>  ─ named in the issue; N code refs in the parent document
@@ -71,6 +71,8 @@ Before I investigate — confirm or adjust:
   I plan to investigate (2 parallel Solo agents):
     1. what Phase 1 actually landed vs. what it planned
     2. current state of <the area this phase touches>
+
+Accept, or tell me what to add or cut.
 ```
 
 That first investigation item matters: when recalling a later phase, what earlier phases
