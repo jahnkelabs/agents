@@ -11,8 +11,9 @@ Produce an implementation plan grounded in research, shaped by interrogating the
 skeptical, thorough, and collaborative.
 
 Three gates: **scope**, **grilling**, **approval**. The output is exactly one artifact — a
-plan scratchpad containing the research above the plan it grounds. No Solo todos are created
-here; phases materialize when `/implement` starts, or as tracker issues if you `/stash`.
+plan scratchpad leading with the plan, with the research it rests on in an appendix. No Solo
+todos are created here; phases materialize when `/implement` starts, or as tracker issues if
+you `/stash`.
 
 ## Input
 
@@ -73,24 +74,16 @@ agent per area, joined with an idle timer, per `solo-agent-orchestration`. Worke
 exists and write only their own per-area scratchpad; you own the plan pad.
 
 **If a standalone research pad was supplied:** absorb its content into the plan pad under
-`## Research`, then `scratchpad_archive` the source. Archiving hides without deleting, so it
-stays recoverable. Add anything new your investigation turned up.
+`### Research` in the appendix, then `scratchpad_archive` the source. Archiving hides without
+deleting, so it stays recoverable. Add anything new your investigation turned up.
 
 ## Gate B — Grill the user
 
 Follow `/grill`. One question at a time, each with a recommended answer, waiting for a response
 before continuing. Do not batch.
 
-Look up anything discoverable — filesystem, git, APIs, tools. Only put genuine *decisions* to
-the user.
-
-Order questions by dependency: whichever answer changes the most other answers goes first.
-Design forks are simply nodes in this tree, not a separate gate. When an answer invalidates
-something already settled, say so and revisit it.
-
-Length scales with the work. A two-file change may need one question; a migration may need
-twenty. When the remaining questions are details the user would rather see than specify,
-propose defaults, flag them as proposals, and move to gate E.
+When the remaining questions are details the user would rather see than specify, propose
+defaults, flag them as proposals, and move to gate E.
 
 ## Write the pad
 
@@ -111,17 +104,10 @@ a mismatch, re-read and retry.
 ```
 # <Feature or task> Plan
 
-## Research
-<absorbed and newly gathered findings — Current State, Code References, Architecture>
+**Repos**: `<name>` — <absolute path>
 
 ## Overview
-<what we're doing and why, in a sentence or two>
-
-## Target Projects
-- `<repo>` — <absolute path>
-
-## Desired End State
-<the outcome, and how to tell it was achieved>
+<the outcome we're after, why, and how we will know it was achieved>
 
 ## What We're NOT Doing
 <explicit non-goals, to stop scope creep>
@@ -131,8 +117,8 @@ a mismatch, re-read and retry.
 **Files**: `path/one.ext`, `path/two.ext`
 
 ### Changes Required
-**File**: `path/one.ext`
-**Changes**: <what changes and why>
+`path/one.ext` — <what changes and why>
+`path/two.ext` — <what changes and why>
 
 ### Verification
 #### Automated:
@@ -146,13 +132,19 @@ a mismatch, re-read and retry.
 ## Phase 2: <name>
 <same structure>
 
-## Testing Strategy
-<unit, integration, manual>
+## Appendix
 
-## References
+### Research
+<absorbed and newly gathered findings — current state, architecture, each with `file:line`>
+
+### References
 - Research absorbed from: <pad name and id, if any>
-- Key files: <file:line>
 ```
+
+The plan leads and the evidence follows. One `**Repos**:` line carries the absolute path
+`/implement` needs to place its workers. Each phase verifies itself — there is no separate
+testing section, so unit, integration, and manual checks all go under that phase's
+`### Verification`.
 
 Rules the rest of the workflow depends on:
 

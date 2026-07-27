@@ -44,13 +44,13 @@ Before I investigate — confirm or adjust:
   Solo project: <name>  (<path>)
 
   Repos in scope:
-    <repo>  ─ <why: current repo / N code refs / named in request>
+    <repo>  ─ <evidence: current repo / N code refs / named in request>
+
+  Not included: <area> (<why>)
 
   I plan to investigate (<N> parallel Solo agents):
     1. <specific question>
     2. <specific question>
-
-  Skipping: <area> (<why>)
 
 Accept, or tell me what to add or cut.
 ```
@@ -137,7 +137,7 @@ scratchpad_write(
 One `project:<repo>` tag per repo in scope. Record the returned `scratchpad_id`.
 
 **Called from `/plan`:** do not create a pad. Return the same content for `/plan` to place
-under `## Research` in the plan pad.
+under `### Research` in the plan pad's `## Appendix`.
 
 ```
 # Research: <topic>
@@ -149,12 +149,8 @@ under `## Research` in the plan pad.
 <the answer to the question asked>
 
 ## Current State
-- <finding> (`file:line`)
-- <how it connects to the next thing>
-
-## Code References
-- `path/to/file.ext:123` — <what is there>
-- `other/file.ext:45-67` — <what is there>
+- <finding> (`path/to/file.ext:123`)
+- <how it connects to the next thing> (`other/file.ext:45-67`)
 
 ## Architecture
 <patterns, conventions, and design actually found — not recommended>
@@ -163,12 +159,21 @@ under `## Research` in the plan pad.
 <what the code could not answer; omit if none>
 ```
 
-Group by repo when more than one is in scope.
+Every Current State bullet carries an inline `file:line` — that is the only place references
+live. Group by repo when more than one is in scope.
 
 ## Step 5 — Report
 
-Give the user a short summary, the pad name and id, and note that `/plan` accepts either form
-as input. Suggest `/critique <path>` if they want the findings challenged.
+Report the action, the location, and the decision needed. Not the findings — the user reads the
+pad.
+
+```
+Researched <topic> — <N> areas, <N> Solo agents.
+
+  Pad: research/<slug>  (id <n>)
+
+Next: /plan research/<slug> to plan from it, or /critique research/<slug> to challenge it.
+```
 
 ## Follow-ups
 
