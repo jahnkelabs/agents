@@ -44,13 +44,13 @@ Before I investigate — confirm or adjust:
   Solo project: <name>  (<path>)
 
   Repos in scope:
-    <repo>  ─ <why: current repo / N code refs / named in request>
+    <repo>  ─ <evidence: current repo / N code refs / named in request>
+
+  Not included: <area> (<why>)
 
   I plan to investigate (<N> parallel Solo agents):
     1. <specific question>
     2. <specific question>
-
-  Skipping: <area> (<why>)
 
 Accept, or tell me what to add or cut.
 ```
@@ -68,13 +68,21 @@ Build the slug first — `date +%Y-%m-%dT%H%M` plus a short topic, e.g.
 `2026-04-05T1423-jwt-auth`. Workers name their pads under it, and step 4 reuses it.
 
 Resolve the runtime once with `list_agent_tools` and use the Claude entry unless the user named
-another. Then, per confirmed area:
+another. Call `whoami` and keep the returned `process_id` — every worker needs it to signal back.
+Then, per confirmed area:
 
 ```
-spawn_agent(agent_tool_id=<id>, name="research-<area-slug>")
+spawn_agent(agent_tool_id=<id>, name="research-<area-slug>", extra_args=[
+  "--model", "<tier for this area>", "--effort", "<tier for this area>",
+  "--settings", '{"permissions":{"deny":["Bash(git add:*)","Bash(git commit:*)",
+                  "Bash(git push:*)","Bash(git checkout:*)"]}}'])
   → process_id, agent_instructions
 send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
+
+Research is read-only, so the deny list costs nothing and removes the possibility of a worker
+mutating the tree it was sent to describe. Tier by area: tracing one call path is not the same
+job as mapping a subsystem's conventions.
 
 ```
 You are researching one area of: <topic>.
@@ -92,7 +100,10 @@ Document what IS, not what SHOULD BE. No improvements, no critique, no proposed 
 1. Read the files you need fully — no limit/offset
 2. Report file paths, line numbers, and factual descriptions of how the pieces connect
 3. Note which repo each finding belongs to when more than one is in scope
-4. Write your findings to a scratchpad named "research/<slug>/<area-slug>", then stop
+4. Write your findings to a scratchpad named "research/<slug>/<area-slug>"
+5. Signal completion as your last act:
+     timer_set(delay_ms=0, delivery_process_id=<orchestrator process_id>,
+               body="Area <area-slug> done. Findings in research/<slug>/<area-slug>.")
 
 ## Constraints
 - Read-only: no edits, no branches, no commits, no other git write command
@@ -101,12 +112,14 @@ Document what IS, not what SHOULD BE. No improvements, no critique, no proposed 
 - Stay inside <absolute repo path>
 ```
 
-Join without polling — timers are the only wake-up mechanism for Solo agents:
+Workers signal when they finish. Arm one idle timer per run as the dead-worker fallback only —
+it has no debounce and cannot distinguish a thinking worker from a finished one, per
+`solo-agent-orchestration`:
 
 ```
-timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<guard>,
-  body="Research workers are idle. Read each one's scratchpad, synthesize the findings,
-        and write the research pad.")
+timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
+  body="Research guard expired. Any area that has not signalled has died or hung —
+        check its scratchpad and process status before synthesizing without it.")
 ```
 
 Workers write only their own findings pad. You own the research pad.
@@ -137,24 +150,20 @@ scratchpad_write(
 One `project:<repo>` tag per repo in scope. Record the returned `scratchpad_id`.
 
 **Called from `/plan`:** do not create a pad. Return the same content for `/plan` to place
-under `## Research` in the plan pad.
+under `### Research` in the plan pad's `## Appendix`.
 
 ```
 # Research: <topic>
 
 **Date**: <YYYY-MM-DD>
-**Repos**: <repo> (<path>)
+**Repos**: `<name>` — <absolute path>
 
 ## Summary
 <the answer to the question asked>
 
 ## Current State
-- <finding> (`file:line`)
-- <how it connects to the next thing>
-
-## Code References
-- `path/to/file.ext:123` — <what is there>
-- `other/file.ext:45-67` — <what is there>
+- <finding> (`path/to/file.ext:123`)
+- <how it connects to the next thing> (`other/file.ext:45-67`)
 
 ## Architecture
 <patterns, conventions, and design actually found — not recommended>
@@ -163,12 +172,21 @@ under `## Research` in the plan pad.
 <what the code could not answer; omit if none>
 ```
 
-Group by repo when more than one is in scope.
+Every Current State bullet carries an inline `file:line` — that is the only place references
+live. Group by repo when more than one is in scope.
 
 ## Step 5 — Report
 
-Give the user a short summary, the pad name and id, and note that `/plan` accepts either form
-as input. Suggest `/critique <path>` if they want the findings challenged.
+Report the action, the location, and the decision needed. Not the findings — the user reads the
+pad.
+
+```
+Researched <topic> — <N> areas, <N> Solo agents.
+
+  Pad: research/<slug>  (id <n>)
+
+Next: /plan research/<slug> to plan from it, or /critique research/<slug> to challenge it.
+```
 
 ## Follow-ups
 
@@ -176,7 +194,7 @@ Extend the same pad rather than creating another:
 
 - New material under an existing heading → `scratchpad_append_section`
 - Replacing a section → `scratchpad_edit` with
-  `target={"type":"section","section_heading":"## ..."}` and the current `expected_revision`
+  `target={"type":"section","section_heading":"## ..."` or `"### ..."}` and the current `expected_revision`
 - A dated addition at the end → `scratchpad_append`
 
 On a revision mismatch, re-read and retry — something else touched the pad.

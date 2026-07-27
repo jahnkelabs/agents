@@ -44,9 +44,11 @@ Loaded into every session.
 
 | Rule | Description |
 |---|---|
+| [output-discipline](rules/output-discipline.md) | Lead with the answer, one shape per fact, stop when done — the standard is the reader's time and the signal density of what reaches them |
 | [pr-first-contributions](rules/pr-first-contributions.md) | PR-first git workflow, conventional titles, draft PRs, quality gates before presenting, approval before pushing |
 | [solo-agent-orchestration](rules/solo-agent-orchestration.md) | Fan out with Solo agents, never a vendor's native sub-agents; spawn, join on a timer, collect from a durable surface |
 | [testing-philosophy](rules/testing-philosophy.md) | Contract-first tests through production entry points; refactor-resistant |
+| [yagni](rules/yagni.md) | Build for the caller that exists; defer what is cheap to add later, decide up front what is expensive to retrofit |
 
 ## Skills
 
@@ -56,7 +58,7 @@ Loaded into every session.
 | [`/critique`](skills/critique/SKILL.md) | Adversarial multi-model review of a diff, plan, files, or PR | you or Claude |
 | [`/grill`](skills/grill/SKILL.md) | Interrogate a decision one question at a time | you or Claude |
 | [`/plan`](skills/plan/SKILL.md) | Research, grill, plan → one scratchpad, then implement / stash / park | **you only** |
-| [`/implement`](skills/implement/SKILL.md) | Execute a plan as parallel waves, critique, present | **you only** |
+| [`/implement`](skills/implement/SKILL.md) | Decompose a plan into workers, run them, critique, present | **you only** |
 | [`/stash`](skills/stash/SKILL.md) | Move active work into a durable tracker | **you only** |
 | [`/recall`](skills/recall/SKILL.md) | Pull tracker work back into planning | **you only** |
 
@@ -107,7 +109,7 @@ flowchart LR
 and archived once the work ships. Todos exist only while a plan is being implemented. KV holds
 small orchestration pointers.
 
-**A tracker is the durable backlog.** Ideas parked for later, and large plans whose phases each
+**A tracker is the durable backlog.** Ideas parked for later, and large plans whose work items each
 get their own research → plan → implement cycle. Nothing crosses that boundary automatically —
 `/stash` and `/recall` are always explicit.
 
@@ -117,8 +119,9 @@ Nothing in this repository stores your work. Research and plans live in Solo, no
 |---|---|---|
 | Research pad | `research/<YYYY-MM-DD>T<HHMM>-<topic>` | `research`, `project:<repo>` |
 | Plan pad | `plan/<YYYY-MM-DD>T<HHMM>-<topic>` | `plan`, `project:<repo>` |
-| Phase todos | — | `plan:<slug>`, `project:<repo>`, `phase:N` |
-| Orchestration | `plan:<slug>:{todos,branch:<repo>,escalation:<N>}` | — |
+| Task todos | — | `plan:<slug>`, `project:<repo>`, `task:<letter>` |
+| Worker reports | `<slug>/<task>` | — |
+| Orchestration | `plan:<slug>:branch:<repo>` | — |
 
 Skills use whichever Solo project is currently selected, and say which one in their first
 confirmation.
@@ -126,32 +129,59 @@ confirmation.
 ## How the workflow behaves
 
 **Every worker is a Solo agent.** `/research`, `/plan`, `/implement`, and `/critique` all fan out
-with `spawn_agent` and join on an idle timer, never with the host runtime's own sub-agent
-mechanism. The policy and its reasoning live in
-[solo-agent-orchestration](rules/solo-agent-orchestration.md), so it also holds for fan-out that
-no skill initiated; the skills carry only their own worker prompts and constraints.
+with `spawn_agent`, never with the host runtime's own sub-agent mechanism. The policy and its
+reasoning live in [solo-agent-orchestration](rules/solo-agent-orchestration.md), so it also holds
+for fan-out that no skill initiated; the skills carry only their own worker prompts and
+constraints.
 
-**Gates carry evidence.** Every confirmation shows why it inferred what it did — which repos,
-which files, which investigation — so a wrong guess is visible rather than buried.
+**Workers signal their own completion.** Each one wakes the orchestrator directly through a
+zero-delay timer as its last act, because the worker is the only thing that knows it has
+finished. Idle timers remain as the fallback that catches a worker which died or hung — they have
+no debounce, and a worker reasoning at length emits no output and reads as done.
+
+**Gates carry evidence for what they inferred.** A confirmation justifies the judgments it could
+have gotten wrong — why these repos, why these investigation areas, why this is out of scope — so
+a bad guess is visible rather than buried. Facts it merely looked up are printed without argument:
+the selected Solo project needs no justification, a repo list inferred from file references does.
 
 **`/plan` grills you.** Questions come one at a time, each with a recommended answer, ordered so
 the answer that changes the most other answers comes first. Anything discoverable from the
-filesystem or tools is looked up rather than asked. Length scales with the work: one question
-for a small change, twenty for a migration.
+filesystem or tools is looked up rather than asked. It ends when the questions left are details
+you would rather see than specify.
 
-**Phases run in parallel where their declared files are disjoint.** `/implement` computes waves
-from each phase's `**Files**:` list, spawns a Solo agent per phase, and joins on an idle timer.
-Workers hold per-path locks and never touch git — the orchestrator commits each phase's declared
-paths so history stays granular and nothing collides in the shared tree.
+**The plan says what changes; `/implement` decides how it runs.** A plan declares work items with
+their file scopes, plus the two constraints only it knows — which items must share a worker, and
+which must follow another. Grouping those items into workers, ordering them into waves, and
+choosing a model and effort for each is scheduling, and it is decided at execution time against
+facts that are current then.
+
+**You approve the roster before anything spawns.** `/implement` presents the worker count, what
+each will do, and the model and effort requested, with the summary written so the tier follows
+from it — a task described as "three localized edits against precise line references" argues for
+itself. Adjust any model, effort, or grouping, or approve as proposed. This is where cost and
+parallelism are decided.
+
+**Constraints are enforced, not requested.** Workers launch with git writes denied at the
+permission layer rather than prohibited in prose, because two workers staging in one shared tree
+cross-commit silently. They hold per-path locks, and the orchestrator commits each task's declared
+paths so history stays granular.
 
 **Workers escalate on deviation, not on failure.** A worker that cannot self-resolve, or that
 would need to depart meaningfully from the approved plan, records what it found and stops rather
-than improvising. Other workers in the wave finish, and everything surfaces together.
+than improvising. That record is its report scratchpad and its completion signal says it
+escalated, so there is one place to look. Other workers in the wave finish, and everything
+surfaces together at the join.
 
 **Critique is adversarial and multi-model.** `/critique` spawns a worker per model you select —
 Claude, Copilot, Kimi, or anything else enabled in Solo — each trying to break the target rather
-than survey it. Cross-model agreement ranks the findings; a defect two models independently find
-is probably real.
+than survey it. Cross-model agreement is the confidence signal — a defect two models independently
+find is probably real. With one model there is no such signal, so a refutation pass takes its
+place and what it refutes is dropped.
+
+**Findings are triaged one at a time.** Each surviving finding arrives with its evidence and the
+decision it needs, and the next one waits until you have made that decision — ordered by severity,
+then by agreement. There is no batch report to work back through. `/implement` hands its critique
+findings over in the same shape, so nothing is triaged twice.
 
 ## Adding a tracker
 

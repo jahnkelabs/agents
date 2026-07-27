@@ -11,8 +11,9 @@ Produce an implementation plan grounded in research, shaped by interrogating the
 skeptical, thorough, and collaborative.
 
 Three gates: **scope**, **grilling**, **approval**. The output is exactly one artifact — a
-plan scratchpad containing the research above the plan it grounds. No Solo todos are created
-here; phases materialize when `/implement` starts, or as tracker issues if you `/stash`.
+plan scratchpad leading with the plan, with the research it rests on in an appendix. No Solo
+todos are created here; work items are grouped into tasks when `/implement` starts, or become
+tracker issues if you `/stash`.
 
 ## Input
 
@@ -73,24 +74,16 @@ agent per area, joined with an idle timer, per `solo-agent-orchestration`. Worke
 exists and write only their own per-area scratchpad; you own the plan pad.
 
 **If a standalone research pad was supplied:** absorb its content into the plan pad under
-`## Research`, then `scratchpad_archive` the source. Archiving hides without deleting, so it
-stays recoverable. Add anything new your investigation turned up.
+`### Research` in the appendix, then `scratchpad_archive` the source. Archiving hides without
+deleting, so it stays recoverable. Add anything new your investigation turned up.
 
 ## Gate B — Grill the user
 
 Follow `/grill`. One question at a time, each with a recommended answer, waiting for a response
 before continuing. Do not batch.
 
-Look up anything discoverable — filesystem, git, APIs, tools. Only put genuine *decisions* to
-the user.
-
-Order questions by dependency: whichever answer changes the most other answers goes first.
-Design forks are simply nodes in this tree, not a separate gate. When an answer invalidates
-something already settled, say so and revisit it.
-
-Length scales with the work. A two-file change may need one question; a migration may need
-twenty. When the remaining questions are details the user would rather see than specify,
-propose defaults, flag them as proposals, and move to gate E.
+When the remaining questions are details the user would rather see than specify, propose
+defaults, flag them as proposals, and move to gate E.
 
 ## Write the pad
 
@@ -105,34 +98,27 @@ scratchpad_write(
 ```
 
 Record the `scratchpad_id`. Revise with `scratchpad_edit` using
-`target={"type":"section","section_heading":"## ..."}` and the current `expected_revision`; on
+`target={"type":"section","section_heading":"## ..."` or `"### ..."}` and the current `expected_revision`; on
 a mismatch, re-read and retry.
 
 ```
 # <Feature or task> Plan
 
-## Research
-<absorbed and newly gathered findings — Current State, Code References, Architecture>
+**Repos**: `<name>` — <absolute path>
+
+One line per repo when more than one is in scope.
 
 ## Overview
-<what we're doing and why, in a sentence or two>
-
-## Target Projects
-- `<repo>` — <absolute path>
-
-## Desired End State
-<the outcome, and how to tell it was achieved>
+<the outcome we're after, why, and how we will know it was achieved>
 
 ## What We're NOT Doing
 <explicit non-goals, to stop scope creep>
 
-## Phase 1: <name>
-**Project**: `<repo>`
+## Work item: <name>
 **Files**: `path/one.ext`, `path/two.ext`
 
-### Changes Required
-**File**: `path/one.ext`
-**Changes**: <what changes and why>
+`path/one.ext` — <what changes and why>
+`path/two.ext` — <what changes and why>
 
 ### Verification
 #### Automated:
@@ -143,47 +129,63 @@ a mismatch, re-read and retry.
 
 ---
 
-## Phase 2: <name>
+## Work item: <name>
+**Files**: `path/three.ext`
+**Constraint**: same-worker as <other item>
+
 <same structure>
 
-## Testing Strategy
-<unit, integration, manual>
+## Appendix
 
-## References
+### Research
+<absorbed and newly gathered findings — current state, architecture, each with `file:line`>
+
+### References
 - Research absorbed from: <pad name and id, if any>
-- Key files: <file:line>
 ```
+
+The plan leads and the evidence follows. One `**Repos**:` line carries the absolute path
+`/implement` needs to place its workers. Each item verifies itself — there is no separate testing
+section, so unit, integration, and manual checks all go under that item's `### Verification`.
+
+**A work item is a coherent change, not a unit of execution.** It says what changes and why.
+How many workers run it, in what order, on which model — that is scheduling, it depends on
+facts that only exist at execution time, and `/implement` decides it. Do not group items to
+suit a worker count, and do not number them to imply sequence.
 
 Rules the rest of the workflow depends on:
 
-- **Exactly one `**Project**:` line per phase.** A phase spanning two repos must be split.
-- **`**Files**:` must list every path the phase will touch.** `/implement` computes wave
-  parallelism from these, and a worker writing an undeclared path is treated as a deviation.
-- **Phases that can run independently must not be written as if sequential.** Ordering is
-  expressed by genuine dependency, not by numbering.
+- **`**Files**:` must list every path the item will touch.** `/implement` computes worker
+  grouping and wave parallelism from these, and a worker writing an undeclared path is treated
+  as a deviation. This is the one field that cannot be inferred later.
+- **`**Constraint**:` is optional and has exactly two forms.** `same-worker as <item>` when two
+  items must not drift apart — a shared clause that has to stay byte-identical, a rename and its
+  call sites. `after <item>` for a genuine dependency, such as documenting a result. Anything
+  else is scheduling and does not belong here.
+- **An item spanning two repos must be split.** Each item belongs to exactly one repo in the
+  `**Repos**:` list.
 
 ## Gate E — Approval and fork
 
 Optionally run `/critique plan/<slug>` first and fold in what survives.
 
-Present the plan together with how it would execute — parallelism is computable from the
-declared file scopes and phase dependencies:
+Present the design — the work, its file scopes, and any constraint that ties two items together:
 
 ```
 Plan: plan/<slug>  (id <n>)
 
-Execution shape:
-  wave 1 (parallel, 3 workers)
-    Phase 1  <repo>  rules/*.md
-    Phase 2  <repo>  commands/*.md
-    Phase 4  <repo>  README.md
-  wave 2 (after wave 1)
-    Phase 3  <repo>  — depends on Phase 1
+  <name>            rules/*.md
+  <name>            skills/*.md        same-worker as <name>
+  <name>            README.md          after everything above
 
-  Serialized: Phase 5 overlaps Phase 4 on README.md
+  Not included: <thing> (<why>)
 
-Approve the plan and this execution shape?
+Approve the plan?
 ```
+
+**No waves, no worker count, no models here.** Those are computed at decomposition from facts
+that are current at that moment, and `/implement` gates them separately. A plan that fixes the
+schedule forces an approval on evidence nobody has yet.
 
 Iterate on feedback, updating the pad each time. **Do not proceed past this gate without
 explicit approval.**
@@ -199,7 +201,7 @@ Plan approved. What next?
 ```
 
 - **Implement now** — ask which models should run the critique (see `/critique`), then hand to
-  `/implement` with the execution shape already confirmed. Do not re-ask what was just settled.
+  `/implement`, which decomposes the work items into workers and gates that roster separately.
 - **Stash for later** — hand to `/stash`, which proposes the tracker shape and confirms.
 - **Leave active** — do nothing. The pad stays in Solo.
 

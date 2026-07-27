@@ -41,12 +41,13 @@ Do not act on it until the user confirms you have reached a shared understanding
 - **Surface what you got wrong.** When research contradicts a recommendation you already made,
   correct it plainly and move on.
 - **Track the tree.** Keep a running map of what is settled, what is open, and what is blocked
-  behind an open question. Say where you are periodically.
+  behind an open question.
 - **Stop when it converges.** When remaining questions are implementation details the user
   would rather see than specify, propose defaults, flag them as proposals, and summarize for
   confirmation.
 
 ## Closing
 
-End with a summary of the shared understanding: what was decided, what you are assuming
-without having asked, and what remains open. Ask for explicit confirmation before acting.
+Close with the convergence summary and nothing after it: what was decided, what you are
+assuming without having asked, and what remains open. Then wait for explicit confirmation
+before acting.
