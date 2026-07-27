@@ -33,15 +33,19 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what was just
    parallel; overlapping ones serialize.
 2. **Ask which models should run the critique.** `list_agent_tools` returns the enabled
    runtimes; offer those. Never hardcode a roster.
-3. **Create the branch** in each target repo:
+3. **Create the branch** in each target repo, off whatever `origin/HEAD` points to — never a
+   hardcoded default branch name:
    ```bash
-   cd <repo path> && git checkout main && git pull --rebase
+   cd <repo path>
+   DEFAULT="$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')"
+   git checkout "$DEFAULT" && git pull --rebase
    git checkout -b <type>/<slug>
    ```
    `kv_set(key="plan:<slug>:branch:<repo>", value="<branch>")`
-4. **Create the todos** — one per phase, so the run is visible in Solo while it happens:
+4. **Create the todos** — one per phase, so the run is visible in Solo while it happens. The body
+   points at the plan; it never copies it, which `/plan` forbids outright:
    ```
-   todo_create(title="Phase N: <name>", body=<phase text>,
+   todo_create(title="Phase N: <name>", body="<phase name> — see plan/<slug> §Phase N",
                tags=["plan:<slug>", "project:<repo>", "phase:N"])
    todo_add_blocker(todo_id=<dependent>, blocker_id=<prerequisite>)
    kv_set(key="plan:<slug>:todos", value=[<ids>])
@@ -97,8 +101,7 @@ If you hit something you cannot resolve on your own, or that would require a mea
 departure from the plan above, then:
   1. todo_comment_create(todo_id=<id>, body="ESCALATION: <what you found, what the plan
      assumed, what you'd need to do differently>")
-  2. kv_set(key="plan:<slug>:escalation:<N>", value="<one-line summary>")
-  3. Release your locks and stop.
+  2. Release your locks and stop.
 Do NOT improvise a fix, expand scope, or proceed down an unapproved path. Stopping is correct
 behavior here, not failure.
 ```
@@ -106,11 +109,11 @@ behavior here, not failure.
 4. Join the wave without polling — timers are the only wake-up mechanism for Solo agents:
    ```
    timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<guard>,
-     body="Wave <N> workers are idle. Read each worker's todo comments and
-           kv_list for plan:<slug>:escalation:*, then commit completed phases
-           and continue with wave <N+1>.")
+     body="Wave <N> workers are idle. Read each worker's todo comments, then commit
+           completed phases and continue with wave <N+1>.")
    ```
-5. On wake: read each phase's todo comments and check for escalation keys.
+5. On wake: read each phase's todo comments. An `ESCALATION:` comment is the durable record and
+   the only signal — nothing is mirrored into KV, so there is no second place to check.
 6. **Commit each completed phase separately**, staging only its declared paths:
    ```bash
    cd <repo path>
@@ -129,7 +132,9 @@ meaningfully from what was approved. Writing an undeclared path counts as a devi
 **In-flight workers in the same wave finish.** They hold disjoint file scopes and have no
 dependencies on each other, so nothing is building on the problem.
 
-At the join, stop and present everything together:
+The worker's todo comment is the durable record. The wave join is where it surfaces, and the only
+place it surfaces — by the time you present, every escalation has been resolved or the run stopped
+here. At the join, stop and show the whole wave together:
 
 ```
 Wave <N> complete — one phase needs discussion.
@@ -159,36 +164,47 @@ Fold the surviving findings into what you present. Do not fix them unilaterally.
 
 ## Present
 
+State the run, then hand the findings over one at a time. `/critique` owns that presentation and
+this is the same shape — one finding, one decision, in severity order — so nothing is triaged
+twice.
+
 ```
-Implementation complete — ready for your review.
+Implementation complete.
 
 <repo>  branch <name>
-  Phases:  <N> committed, <N> escalated
-  Commits: <git log --oneline main..HEAD>
+  Phases:  <N> committed
+  Commits: <git log --oneline origin/<default>..HEAD>
   Quality gates: <results>
 
-Critique (<models>):
-  ●●● <finding> — `file:line` → <suggested fix>
-  ●●  <finding> — `file:line` → <suggested fix>
-  ●   <finding> — `file:line` → <suggested fix>
-  (● = one model flagged it independently)
-
-Which findings should I address? (all / none / specific)
+<N> critique findings to triage (<models>).
 ```
 
-Apply whatever the user selects, then `git commit -m "chore: address critique findings"`.
-Offer a re-critique or move to close.
+Then, for each in turn:
+
+```
+Finding 1 of <N>   ●●●  bug   `file:line`
+
+<what is wrong, in one sentence>
+
+  Evidence  <concrete inputs or state, and the wrong result they produce>
+  Fix       <the specific change>
+
+Fix it, drop it, or something else?
+```
+
+(● = models that independently flagged it)
+
+Apply each decision as it is made and wait for the next; never ask for all of them at once. When
+the last one is settled, `git commit -m "chore: address critique findings"`. Offer a re-critique
+or move to close.
 
 ## Close
 
-After approval — and only after:
-
-```bash
-cd <repo path>
-git push -u origin HEAD && git remote prune origin
-gh pr create --draft --title "<conventional-title>" --body "<summary>" \
-  || gh pr view --json url -q .url
-```
+After approval — and only after — push and open the PR by following
+`rules/pr-first-contributions.md`. `/implement` adds nothing to that procedure and must not
+paraphrase it: re-run the branch staleness check before pushing, confirm the quality gates passed
+and the tree is clean, then open a draft PR whose title and body meet that rule's spec. If a PR
+for the branch is already open, update it rather than opening a second.
 
 Then:
 
@@ -199,7 +215,7 @@ Then:
 
 ## Notes
 
-- Never commit to `main`; never push or open a PR without explicit approval
+- Never commit to the default branch; never push or open a PR without explicit approval
 - Workers write code; the orchestrator owns git, todos, and KV
 - Todo status is `open` | `in_progress` | `backlog` | `completed`; priority is `high` | `medium` | `low`
 - If the plan turns out to be wrong, fix the plan and re-approve — do not let implementation

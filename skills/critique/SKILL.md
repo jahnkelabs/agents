@@ -118,26 +118,51 @@ a separate verification stage.
 instead: spawn one more worker per finding, tasked with arguing the finding is *not* real,
 defaulting to refuted when uncertain. Drop what it refutes.
 
-## Step 6 — Report
+## Step 6 — Triage serially
+
+Present findings **one at a time**, `/grill`-style — the finding, its evidence, the decision you
+need — and wait for that decision before moving to the next. Order by severity, then by
+agreement. There is no batch report and no user-facing pad: a list the user has to work back
+through is what this replaces.
 
 ```
-Critique of <target>  (<models>)
+Finding 1 of 6   ●●●  bug   `src/token.php:88`
 
-●●● bug   `src/token.php:88` — refresh drops the retry budget
-          → 3 consecutive 401s exhaust it; pass the budget through
-●●  risk  `src/kernel.php:41` — error path swallows the cause
-          → wrap rather than replace
-●   nit   `src/resolver.php:12` — name says "get", the method writes
+Refresh drops the retry budget.
+
+  Evidence  `refresh()` resets `$attempts` to 0 on entry, so three consecutive
+            401s never reach the ceiling and the caller retries forever.
+  Fix       thread the budget through the call instead of resetting it.
+
+Fix it, drop it, or something else?
+```
 
 (● = models that independently flagged it)
 
-Refuted and dropped: 4 findings
+Severity rides on every finding — `bug` (wrong behavior), `risk` (plausible failure), `nit`
+(style, naming, cleanup). It is half of the ordering, so it cannot be dropped from the line.
+
+When the last finding is decided, close with the counts and nothing else:
+
+```
+6 findings triaged — 4 to fix, 2 dropped. 4 more were refuted before triage.
 ```
 
-Order by severity, then by agreement. Report the dropped count so the user knows filtering
-happened, but do not list what was refuted unless asked.
+Report the refuted count so the user knows filtering happened, but do not list what was refuted
+unless asked.
 
-`close_process` every worker, and archive the per-model scratchpads.
+`/critique` owns this presentation. `/plan` and `/implement` receive the resulting decisions
+rather than the raw findings, so nothing is triaged twice.
 
-If nothing survives, say so plainly. A clean critique is a real outcome, not a failure to
-try hard enough.
+`close_process` every worker, and archive the per-model scratchpads. Those pads are the
+worker-to-orchestrator channel `solo-agent-orchestration` requires; archiving them costs nothing
+once the findings have been merged.
+
+If nothing survives there is no decision to request, and the shape degrades to the action alone —
+one line, no findings block, no closing question:
+
+```
+Critique of <target> (<models>) — nothing survived. 4 findings raised, all refuted.
+```
+
+A clean critique is a real outcome, not a failure to try hard enough.
