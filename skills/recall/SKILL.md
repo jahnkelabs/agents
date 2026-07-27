@@ -14,7 +14,7 @@ Recall **always seeds planning** — it never restores something ready to implem
 item is input, not a finished plan:
 
 - A plan parked weeks ago rests on research the codebase has since invalidated
-- A phase of a large plan was always meant to get its own research and planning cycle
+- A work item of a large plan was always meant to get its own research and planning cycle
 - A loose idea was never planned at all
 
 The grounding is re-derived. When nothing has changed, gate A's investigation step makes that
@@ -32,7 +32,7 @@ Pick the adapter in `~/.claude/references/` matching the reference's tracker.
 
 ## Step 2 — Pull the item and its context
 
-Fetch more than the issue itself. A phase makes little sense alone:
+Fetch more than the issue itself. One work item makes little sense alone:
 
 - The issue: title, description, state, labels
 - Its parent project or epic, and any attached plan document
@@ -42,8 +42,8 @@ Fetch more than the issue itself. A phase makes little sense alone:
 Do not report the pull on its own — it lands in the gate in step 3, so the user sees what was
 pulled and what it implies for scope in one place.
 
-If blockers are still open, say so before going further. Recalling a phase whose prerequisite
-has not landed is usually a mistake, and the user may want a different item.
+If blockers are still open, say so before going further. Recalling an item whose prerequisite
+has not landed is usually a mistake, and the user may want a different one.
 
 ## Step 3 — Hand to /plan
 
@@ -59,7 +59,7 @@ Pulled from <tracker>:
   project   <name>
   issue     <ID> — <title>
   context   parent document, blocked by <ID> (done)
-  siblings  <ID> Phase 3 — waits on this
+  siblings  <ID> <work item> — waits on this
 
 Before I investigate — confirm or adjust:
 
@@ -69,13 +69,13 @@ Before I investigate — confirm or adjust:
     <repo>  ─ named in the issue; N code refs in the parent document
 
   I plan to investigate (2 parallel Solo agents):
-    1. what Phase 1 actually landed vs. what it planned
-    2. current state of <the area this phase touches>
+    1. what <the prerequisite item> actually landed vs. what it planned
+    2. current state of <the area this item touches>
 
 Accept, or tell me what to add or cut.
 ```
 
-That first investigation item matters: when recalling a later phase, what earlier phases
+That first investigation item matters: when recalling a later work item, what earlier ones
 *actually did* may differ from what they said they would.
 
 ## Step 4 — Leave the tracker alone

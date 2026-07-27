@@ -21,12 +21,17 @@ Runs standalone, and is called by `/plan` (on a draft plan) and `/implement` (on
 |---|---|
 | *(empty)* | working tree diff; falls back to `<default>...HEAD` — resolved from `origin/HEAD`, never hardcoded — if the tree is clean |
 | `plan/<slug>` or a pad id | a draft plan |
+| `--roster` | `/implement`'s proposed decomposition — grouping, waves, and tiers, before anything spawns |
 | one or more paths | those files |
 | `--pr <N>` | that pull request (`gh pr diff <N>`) |
 | `--base <ref>` | diff against that ref instead |
 
 State what you resolved before proceeding. If the target is empty — clean tree, no changes —
 say so and stop rather than reviewing nothing.
+
+A roster is a real target because it is an approved artifact with its own failure modes: two
+tasks that overlap on a file and would race, a `same-worker` constraint the grouping dropped, a
+tier that does not match the work it was assigned.
 
 ## Step 2 — Choose the models
 
@@ -64,12 +69,26 @@ One Solo worker per selected model, each running all applicable lenses over the 
 Per `solo-agent-orchestration` — and note that a vendor sub-agent could not run a model other
 than the session's anyway, which would defeat the point of this skill:
 
+Call `whoami` first and keep the returned `process_id` — every critic needs it to signal back.
+
 ```
-spawn_agent(agent_tool_id=<id>, name="critique-<model>")
+spawn_agent(agent_tool_id=<id>, name="critique-<model>", extra_args=[
+  "--effort", "<high or above — this is judgment work>",
+  "--settings", '{"permissions":{"deny":["Bash(git add:*)","Bash(git commit:*)",
+                  "Bash(git push:*)","Bash(git checkout:*)"]}}'])
 send_input(process_id, input=<agent_instructions + the prompt below>)
-timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<guard>,
-  body="Critique workers are idle. Collect each one's findings from its scratchpad,
-        merge by agreement, and report.")
+```
+
+Do not pass `--model`: the roster *is* the model choice, and overriding it would collapse the
+independence the skill depends on. Effort is a separate axis and finding real defects rewards
+raising it. The deny list keeps a critic from mutating the thing it is reviewing.
+
+Each critic signals when it finishes; arm one idle timer as the dead-worker fallback only:
+
+```
+timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
+  body="Critique guard expired. Any critic that has not signalled has died or hung —
+        check its scratchpad and process status before merging without it.")
 ```
 
 Give each worker only the target and the approved plan — not the reasoning that produced them.
@@ -100,7 +119,10 @@ Work through each of these separately:
 - Do not suggest features, refactors, or improvements beyond the target's scope
 - Do not report "consider adding tests" without naming the specific untested path
 - A finding you cannot demonstrate is a nit at best. Say which it is.
-- Write your findings to a scratchpad named "critique/<target-slug>/<your model>", then stop
+- Write your findings to a scratchpad named "critique/<target-slug>/<your model>"
+- Signal completion as your last act:
+    timer_set(delay_ms=0, delivery_process_id=<orchestrator process_id>,
+              body="Critique <model> done. Findings in critique/<target-slug>/<model>.")
 
 Be specific and be harsh. Vague concerns are noise.
 ```

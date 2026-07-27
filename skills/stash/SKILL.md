@@ -9,7 +9,7 @@ effort: medium
 # Stash
 
 Solo holds what you are actively working on. A tracker holds what outlives the session — an
-idea to return to, or a large plan whose phases each get their own cycle later.
+idea to return to, or a large plan whose work items each get their own cycle later.
 
 `/stash` moves work across that boundary. It is always explicit; nothing stashes on its own.
 
@@ -47,8 +47,8 @@ Stash to <tracker>:
 Confirm?
 ```
 
-**A phased plan** → a project, a document holding the plan body, and one issue per phase with
-dependencies preserved.
+**A plan with work items** → a project, a document holding the plan body, and one issue per work
+item with `after` constraints preserved as dependencies.
 
 ```
 Stash to <tracker>:
@@ -56,15 +56,16 @@ Stash to <tracker>:
   project   "<plan title>"
   document  plan body (research + plan)
   issues
-    ☐ Phase 1: <name>          <repo>
-    ☐ Phase 2: <name>          <repo>   blocked by Phase 1
-    ☐ Phase 3: <name>          <repo>   blocked by Phase 2
+    ☐ <work item>              <repo>
+    ☐ <work item>              <repo>   blocked by <item>
+    ☐ <work item>              <repo>   blocked by <item>
 
 Confirm?
 ```
 
-Read phases **from the pad**, not from Solo todos — an approved plan that was never implemented
-has no todos.
+Read work items **from the pad**, not from Solo todos — an approved plan that was never
+implemented has no todos, and a plan mid-implementation has todos holding a task grouping that
+is an execution detail rather than the work itself.
 
 Nothing is written before the user confirms. These are real objects in a shared system;
 cleaning them up is more work than declining a proposal.
@@ -87,11 +88,11 @@ The work has left the active set.
    ## Stashed
    <date> → <tracker>
    project  <ref or name>
-   <ID>     Phase 1: <name>
-   <ID>     Phase 2: <name>
+   <ID>     <work item>
+   <ID>     <work item>
    ```
 2. `scratchpad_archive(scratchpad_id=<pad>)` — hidden, not deleted, recoverable
-3. **Delete phase todos only if they exist.** A freshly approved plan has none. A plan stashed
+3. **Delete task todos only if they exist.** A freshly approved plan has none. A plan stashed
    mid-implementation does — `todo_delete` each one. Do not mark them complete; the work did
    not get done, it moved.
 4. `kv_delete` every `plan:<slug>:*` key
@@ -101,16 +102,16 @@ The work has left the active set.
 ## Step 6 — Report
 
 The pad already holds every ref. In chat, say what was written, where it went, and what the user
-can do next — not the per-phase list again:
+can do next — not the per-item list again:
 
 ```
-Stashed to <tracker> — project <link>, <N> phase issues, refs appended to the pad.
+Stashed to <tracker> — project <link>, <N> issues, refs appended to the pad.
 Solo: pad archived, <N> todos removed. Recall any of it with /recall <ID>.
 ```
 
 ## Notes
 
 - Never stash without confirming the shape first
-- Phases come from the pad, todos are incidental
+- Work items come from the pad, todos are incidental
 - Archiving is reversible; deleting todos is not, which is why todos are the smaller loss
 - A stash is not a commit — code already committed to a branch stays there
