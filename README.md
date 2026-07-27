@@ -44,9 +44,11 @@ Loaded into every session.
 
 | Rule | Description |
 |---|---|
+| [output-discipline](rules/output-discipline.md) | Lead with the answer, one shape per fact, stop when done — the standard is the reader's time and the signal density of what reaches them |
 | [pr-first-contributions](rules/pr-first-contributions.md) | PR-first git workflow, conventional titles, draft PRs, quality gates before presenting, approval before pushing |
 | [solo-agent-orchestration](rules/solo-agent-orchestration.md) | Fan out with Solo agents, never a vendor's native sub-agents; spawn, join on a timer, collect from a durable surface |
 | [testing-philosophy](rules/testing-philosophy.md) | Contract-first tests through production entry points; refactor-resistant |
+| [yagni](rules/yagni.md) | Build for the caller that exists; defer what is cheap to add later, decide up front what is expensive to retrofit |
 
 ## Skills
 
@@ -118,7 +120,7 @@ Nothing in this repository stores your work. Research and plans live in Solo, no
 | Research pad | `research/<YYYY-MM-DD>T<HHMM>-<topic>` | `research`, `project:<repo>` |
 | Plan pad | `plan/<YYYY-MM-DD>T<HHMM>-<topic>` | `plan`, `project:<repo>` |
 | Phase todos | — | `plan:<slug>`, `project:<repo>`, `phase:N` |
-| Orchestration | `plan:<slug>:{todos,branch:<repo>,escalation:<N>}` | — |
+| Orchestration | `plan:<slug>:{todos,branch:<repo>}` | — |
 
 Skills use whichever Solo project is currently selected, and say which one in their first
 confirmation.
@@ -131,13 +133,15 @@ mechanism. The policy and its reasoning live in
 [solo-agent-orchestration](rules/solo-agent-orchestration.md), so it also holds for fan-out that
 no skill initiated; the skills carry only their own worker prompts and constraints.
 
-**Gates carry evidence.** Every confirmation shows why it inferred what it did — which repos,
-which files, which investigation — so a wrong guess is visible rather than buried.
+**Gates carry evidence for what they inferred.** A confirmation justifies the judgments it could
+have gotten wrong — why these repos, why these investigation areas, why this is out of scope — so
+a bad guess is visible rather than buried. Facts it merely looked up are printed without argument:
+the selected Solo project needs no justification, a repo list inferred from file references does.
 
 **`/plan` grills you.** Questions come one at a time, each with a recommended answer, ordered so
 the answer that changes the most other answers comes first. Anything discoverable from the
-filesystem or tools is looked up rather than asked. Length scales with the work: one question
-for a small change, twenty for a migration.
+filesystem or tools is looked up rather than asked. It ends when the questions left are details
+you would rather see than specify.
 
 **Phases run in parallel where their declared files are disjoint.** `/implement` computes waves
 from each phase's `**Files**:` list, spawns a Solo agent per phase, and joins on an idle timer.
@@ -146,12 +150,20 @@ paths so history stays granular and nothing collides in the shared tree.
 
 **Workers escalate on deviation, not on failure.** A worker that cannot self-resolve, or that
 would need to depart meaningfully from the approved plan, records what it found and stops rather
-than improvising. Other workers in the wave finish, and everything surfaces together.
+than improvising. That record is a comment on the phase's todo and nothing is mirrored elsewhere,
+so there is one place to look. Other workers in the wave finish, and everything surfaces together
+at the join.
 
 **Critique is adversarial and multi-model.** `/critique` spawns a worker per model you select —
 Claude, Copilot, Kimi, or anything else enabled in Solo — each trying to break the target rather
-than survey it. Cross-model agreement ranks the findings; a defect two models independently find
-is probably real.
+than survey it. Cross-model agreement is the confidence signal — a defect two models independently
+find is probably real. With one model there is no such signal, so a refutation pass takes its
+place and what it refutes is dropped.
+
+**Findings are triaged one at a time.** Each surviving finding arrives with its evidence and the
+decision it needs, and the next one waits until you have made that decision — ordered by severity,
+then by agreement. There is no batch report to work back through. `/implement` hands its critique
+findings over in the same shape, so nothing is triaged twice.
 
 ## Adding a tracker
 
