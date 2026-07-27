@@ -2,21 +2,16 @@
 description: Fan out with Solo agents, never a vendor's native sub-agent mechanism; spawn, join on an idle timer, collect from a durable surface
 ---
 
-
 # Solo agent orchestration
 
 When work is delegated to a parallel worker, that worker is a **Solo agent**—spawned through the Solo MCP server. Never the host runtime's own sub-agent mechanism: Claude's Task tool, Codex's sub-agents, or any other vendor's in-process worker.
 
-This applies whether the fan-out comes from a skill, from an explicit request ("check these five services in parallel"), or from your own judgment that a job splits.
-
 ## Default policy
 
-- **Default:** every spawned worker is a Solo agent via `spawn_agent`.
-- **Never:** a vendor's native sub-agent mechanism for fan-out, even for a quick read-only lookup.
+- **Default:** every spawned worker is a Solo agent via `spawn_agent`, even for a quick read-only lookup.
 - **Exceptions:** only when the user explicitly asks for the vendor mechanism.
-- **Solo unavailable:** say so and either do the work inline or stop. Do **not** silently fall back to vendor sub-agents—a fan-out that quietly changed mechanism is the failure this rule exists to prevent.
-
-Reading a few files yourself is not fan-out. This governs delegation, not every tool call.
+- **Solo unavailable:** say so and either do the work inline or stop. A fan-out that quietly changed mechanism is the failure this rule exists to prevent.
+- **Scope:** this governs delegation, not every tool call. It applies whether the fan-out comes from a skill, from an explicit request ("check these five services in parallel"), or from your own judgment that a job splits—but reading a few files yourself is not fan-out.
 
 ## Why
 
@@ -54,7 +49,4 @@ Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, an
 |---|---|
 | Vendor sub-agent for fan-out | Invisible, unaddressable, single-vendor, no locks or todos |
 | "Spawn N parallel agents" with no mechanism named | Falls through to the vendor default—name `spawn_agent` explicitly |
-| Polling process status in a loop | Timers are the wake-up mechanism; polling burns the turn |
-| Reading results from process output | Ephemeral and lossy; workers write to a scratchpad or todo |
-| Leaving processes open after the join | Leaks workers that outlive the work |
 | Workers running git writes in a shared tree | `git add` from two workers cross-commits their work |
