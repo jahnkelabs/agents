@@ -58,11 +58,20 @@ Idle detection cannot carry more weight than that, for three reasons:
 
 ## Capability, not compliance
 
-`spawn_agent` takes `extra_args`—per-launch arguments appended to the resolved command without mutating the agent tool's saved defaults. Two uses matter.
+`spawn_agent` takes `extra_args`—per-launch arguments appended to the resolved command without mutating the agent tool's saved defaults. Three uses matter.
 
 **Match the worker to the job.** `--model` and `--effort` are set per worker, not inherited from the session. A mechanical edit against precise line references and a rewrite that must preserve a behavioral contract are not the same job and should not cost the same.
 
-**Enforce what would otherwise be a request.** `--permission-mode` makes the git prohibition structural. A worker that cannot run `git add` is safer than one asked not to, and cross-commits between workers sharing a tree are silent when they happen and expensive to untangle afterward.
+**Launch every worker in auto-approval mode.** This is fixed per runtime and is not a per-wave judgment call:
+
+| Runtime | Required `extra_args` | Never |
+|---|---|---|
+| Claude | `"--permission-mode", "auto"` | `bypassPermissions`, `dontAsk`, `acceptEdits` |
+| Codex | `"--full-auto"` | `--dangerously-bypass-approvals-and-sandbox` |
+
+Both let a worker proceed through ordinary work without stalling on a prompt while a reviewer still sees the requests that matter. The bypass modes remove that review from a process running unattended, which is exactly the situation the review exists for; `acceptEdits` is the older Claude setting and is no longer used. Read-only assignments are not an exception—a worker's brief says what it intends to do, not what it is able to do.
+
+**Enforce what would otherwise be a request.** A `--settings` deny list makes the git prohibition structural: `'{"permissions":{"deny":["Bash(git add:*)","Bash(git commit:*)","Bash(git push:*)","Bash(git checkout:*)"]}}'`. A worker that cannot run `git add` is safer than one asked not to, and cross-commits between workers sharing a tree are silent when they happen and expensive to untangle afterward. This is the mechanism that constrains a worker—never a downgraded permission mode, and never a raised one.
 
 **Carry the invariant preamble in `--append-system-prompt`.** Working directory, what must not be touched, and what to do when stuck are identical across every worker in a wave; only the assignment differs. Putting the constant half in the system prompt shortens each `send_input` and makes the constraints harder to drop by accident.
 
@@ -89,3 +98,5 @@ Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, an
 | Scheduling an idle timer before workers produce output | An all-idle watch list returns `already_satisfied` and creates no timer |
 | Reading a worker's result from process output | Rendered rows, capped and wrapped—fine for a sentinel, lossy for a report |
 | Every worker at the session's model and effort | A one-line edit and a contract-preserving rewrite are not the same job |
+| Spawning without an explicit approval mode | The runtime default is a prompt nobody is watching, and the worker stalls unattended |
+| Reaching for `bypassPermissions` or `--dangerously-bypass-approvals-and-sandbox` | Strips review from the one process running with nobody watching it |

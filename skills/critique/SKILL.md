@@ -74,10 +74,16 @@ Call `whoami` first and keep the returned `process_id` — every critic needs it
 ```
 spawn_agent(agent_tool_id=<id>, name="critique-<model>", extra_args=[
   "--effort", "<high or above — this is judgment work>",
+  <auto-approval flag for this runtime — see below>,
   "--settings", '{"permissions":{"deny":["Bash(git add:*)","Bash(git commit:*)",
                   "Bash(git push:*)","Bash(git checkout:*)"]}}'])
 send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
+
+The roster spans runtimes, so the auto-approval flag is the one argument that varies by runtime
+rather than by critic: `"--permission-mode", "auto"` on Claude, `"--full-auto"` on Codex. It is
+required on every critic, per `solo-agent-orchestration`, and the bypass modes are never used
+even though a critic only reads.
 
 Do not pass `--model`: the roster *is* the model choice, and overriding it would collapse the
 independence the skill depends on. Effort is a separate axis and finding real defects rewards
