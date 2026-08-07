@@ -110,15 +110,19 @@ For each wave, for each task in it:
    spawn_agent(agent_tool_id=<runtime>, name="<task>-<slug>", extra_args=[
      "--model", "<approved model>",
      "--effort", "<approved effort>",
-     "--permission-mode", "acceptEdits",
+     "--permission-mode", "auto",
      "--settings", '{"permissions":{"deny":["Bash(git add:*)","Bash(git commit:*)",
                      "Bash(git push:*)","Bash(git checkout:*)","Bash(git switch:*)",
                      "Bash(git reset:*)","Bash(git stash:*)"]}}',
      "--append-system-prompt", "<the preamble below>"])
    ```
-   `acceptEdits` keeps the worker from stalling on its actual job; the deny list makes the git
-   prohibition structural. A worker that *cannot* stage is safer than one asked not to, and
-   cross-commits between workers sharing a tree are silent when they happen.
+   `auto` keeps the worker from stalling on its actual job while leaving the requests that matter
+   reviewable — required on every Claude worker per `solo-agent-orchestration`, where a Codex
+   runtime takes `--full-auto` instead. Never `bypassPermissions`, and never `acceptEdits`.
+
+   The deny list, not the permission mode, makes the git prohibition structural. A worker that
+   *cannot* stage is safer than one asked not to, and cross-commits between workers sharing a tree
+   are silent when they happen.
 3. `send_input(process_id, input=<agent_instructions + the assignment below>)`
 
 The **preamble**, passed once via `--append-system-prompt` and identical for every worker in the

@@ -74,11 +74,16 @@ Then, per confirmed area:
 ```
 spawn_agent(agent_tool_id=<id>, name="research-<area-slug>", extra_args=[
   "--model", "<tier for this area>", "--effort", "<tier for this area>",
+  "--permission-mode", "auto",
   "--settings", '{"permissions":{"deny":["Bash(git add:*)","Bash(git commit:*)",
                   "Bash(git push:*)","Bash(git checkout:*)"]}}'])
   → process_id, agent_instructions
 send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
+
+`auto` is required on every Claude worker, per `solo-agent-orchestration` — a read-only
+assignment is not a reason to drop it, and never a reason to raise it to `bypassPermissions`. On
+a Codex runtime the equivalent is `--full-auto`.
 
 Research is read-only, so the deny list costs nothing and removes the possibility of a worker
 mutating the tree it was sent to describe. Tier by area: tracing one call path is not the same
