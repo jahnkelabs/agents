@@ -83,7 +83,7 @@ send_input(process_id, input=<agent_instructions + the prompt below>)
 
 `auto` is required on every Claude worker, per `solo-agent-orchestration` — a read-only
 assignment is not a reason to drop it, and never a reason to raise it to `bypassPermissions`. On
-a Codex runtime the equivalent is `--full-auto`.
+a Codex runtime the equivalent is `--approve-for-me --no-alt-screen`.
 
 Research is read-only, so the deny list costs nothing and removes the possibility of a worker
 mutating the tree it was sent to describe. Tier by area: tracing one call path is not the same

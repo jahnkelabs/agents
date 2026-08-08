@@ -118,7 +118,8 @@ For each wave, for each task in it:
    ```
    `auto` keeps the worker from stalling on its actual job while leaving the requests that matter
    reviewable — required on every Claude worker per `solo-agent-orchestration`, where a Codex
-   runtime takes `--full-auto` instead. Never `bypassPermissions`, and never `acceptEdits`.
+   runtime takes `--approve-for-me --no-alt-screen` instead. Never `bypassPermissions`, and never
+   `acceptEdits`.
 
    The deny list, not the permission mode, makes the git prohibition structural. A worker that
    *cannot* stage is safer than one asked not to, and cross-commits between workers sharing a tree

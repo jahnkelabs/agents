@@ -81,9 +81,10 @@ send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
 
 The roster spans runtimes, so the auto-approval flag is the one argument that varies by runtime
-rather than by critic: `"--permission-mode", "auto"` on Claude, `"--full-auto"` on Codex. It is
-required on every critic, per `solo-agent-orchestration`, and the bypass modes are never used
-even though a critic only reads.
+rather than by critic: `"--permission-mode", "auto"` on Claude, `"--approve-for-me",
+"--no-alt-screen"` on Codex. It is required on every critic, per `solo-agent-orchestration` —
+which also covers the trust prompt that eats a Codex worker's first input — and the bypass modes
+are never used even though a critic only reads.
 
 Do not pass `--model`: the roster *is* the model choice, and overriding it would collapse the
 independence the skill depends on. Effort is a separate axis and finding real defects rewards
