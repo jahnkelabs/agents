@@ -135,9 +135,9 @@ for fan-out that no skill initiated; the skills carry only their own worker prom
 constraints.
 
 **Every worker launches in auto-approval mode** — `--permission-mode auto` on Claude,
-`--full-auto` on Codex — read-only assignments included. The bypass modes are never used, and
-what a worker must not do is enforced by a `--settings` deny list rather than by a permission
-mode.
+`--approve-for-me --no-alt-screen` on Codex — read-only assignments included. The bypass modes
+are never used, and what a worker must not do is enforced by a `--settings` deny list rather than
+by a permission mode.
 
 **Workers signal their own completion.** Each one wakes the orchestrator directly through a
 zero-delay timer as its last act, because the worker is the only thing that knows it has
