@@ -74,20 +74,17 @@ Call `whoami` first and keep the returned `process_id` — every critic needs it
 
 ```
 spawn_agent(agent_tool_id=<id>, name="critique-<model>", extra_args=[
-  "--effort", "<high or above — this is judgment work>",
-  <auto-approval flag for this runtime — see below>,
-  "--settings", '{"permissions":{"deny":["Bash(git add:*)","Bash(git commit:*)",
-                  "Bash(git push:*)","Bash(git checkout:*)"]}}'])
+  <the effort argument, at high or above — this is judgment work>,
+  <the auto-approval and git-denial arguments from the adapter>])
 send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
 
-The roster spans runtimes, so the auto-approval flag varies by runtime rather than by critic.
-Pass `"--permission-mode", "auto"` on Claude, and `"--approve-for-me", "--no-alt-screen"` on
-Codex. Every critic needs the flag, per `solo-agent-orchestration`. That rule also covers the
-trust prompt that consumes a Codex worker's first input. Never use the bypass modes, even
-though a critic only reads.
+The roster spans runtimes, so read an adapter per critic rather than once. `list_agent_tools`
+returns a `tool_type` for each. Read `references/<tool_type>.md` and use the arguments it lists.
+Each adapter also names the startup behavior that eats a worker's first input, and what its
+runtime cannot enforce. Never use a bypass mode, even though a critic only reads.
 
-Do not pass `--model`: the roster *is* the model choice. An override would remove the
+Do not pass a model argument: the roster *is* the model choice. An override would remove the
 independence this skill depends on. Raise the effort: it is a separate setting, and a higher
 effort finds more real defects. The deny list stops a critic from mutating the target it reviews.
 

@@ -37,7 +37,7 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what the user
 2. **Assign each task a model and effort tier.** A task does not inherit these from the session.
    Judge by what the task actually demands. Mechanical edits against precise line references are
    not the same work as a rewrite that must preserve a behavioral contract. The two should not
-   cost the same. `list_agent_tools` resolves the runtime; `--model` and `--effort` vary within it.
+   cost the same. `list_agent_tools` resolves the runtime, and model and effort vary within it.
 3. **Gate the roster.** This is an approval stop, not an announcement.
    ```
    5 workers, 2 waves.
@@ -108,28 +108,25 @@ For each wave, for each task in it:
 2. Spawn at the approved tier, with the constraints enforced rather than requested:
    ```
    spawn_agent(agent_tool_id=<runtime>, name="<task>-<slug>", extra_args=[
-     "--model", "<approved model>",
-     "--effort", "<approved effort>",
-     "--permission-mode", "auto",
-     "--settings", '{"permissions":{"deny":["Bash(git add:*)","Bash(git commit:*)",
-                     "Bash(git push:*)","Bash(git checkout:*)","Bash(git switch:*)",
-                     "Bash(git reset:*)","Bash(git stash:*)"]}}',
-     "--append-system-prompt", "<the preamble below>"])
+     <the model and effort arguments, at the approved tier>,
+     <the auto-approval and git-denial arguments from the adapter>,
+     <the system-prompt argument carrying the preamble below, if the runtime has one>])
    ```
-   The block above is the Claude form. Read `references/<runtime>.md` before you spawn any other
-   runtime: the auto-approval argument differs, and so does what the runtime can enforce.
+   `list_agent_tools` returns a `tool_type` for each runtime. Read `references/<tool_type>.md`
+   and use the arguments it lists. Never write a launch argument from memory: a runtime renames
+   its flags between releases, and the adapter is the only current record.
 
-   `auto` keeps the worker from stalling on its actual job. It still leaves the requests that
-   matter reviewable. Never `bypassPermissions`, and never `acceptEdits`.
+   Auto-approval keeps the worker from stalling on its actual job. It still leaves the requests
+   that matter reviewable. Never use a bypass mode.
 
-   The deny list, not the permission mode, makes the git prohibition structural. A worker that
+   Denying git writes, not the approval mode, makes the prohibition structural. A worker that
    *cannot* stage is safer than one asked not to. Cross-commits between workers that share a tree
-   are silent when they happen. Codex has no per-command deny list, so a Codex worker can stage:
-   give each one its own tree, or accept the risk knowingly.
+   are silent when they happen. A runtime that cannot deny per command cannot give you this. The
+   adapter says so, and then each worker needs its own tree, or a knowing acceptance of the risk.
 3. `send_input(process_id, input=<agent_instructions + the assignment below>)`
 
-The **preamble**, passed once via `--append-system-prompt` and identical for every worker in the
-wave:
+The **preamble**, identical for every worker in the wave. Pass it once through the runtime's
+system-prompt argument, or in every prompt where the runtime has none:
 
 ```
 You are a Solo agent implementing one task of an approved plan.

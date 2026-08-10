@@ -67,28 +67,26 @@ sub-agent mechanism.
 Build the slug first — `date +%Y-%m-%dT%H%M` plus a short topic, e.g.
 `2026-04-05T1423-jwt-auth`. Workers name their pads under it, and step 4 reuses it.
 
-Resolve the runtime once with `list_agent_tools` and use the Claude entry unless the user named
-another. Call `whoami` and keep the returned `process_id` — every worker needs it to signal back.
+Resolve the runtime once with `list_agent_tools`. Use the entry the user named, or the only
+enabled entry. Ask when more than one is enabled and the user named none. Call `whoami` and keep the returned `process_id` — every worker needs it to signal back.
 Then, per confirmed area:
 
 ```
 spawn_agent(agent_tool_id=<id>, name="research-<area-slug>", extra_args=[
-  "--model", "<tier for this area>", "--effort", "<tier for this area>",
-  "--permission-mode", "auto",
-  "--settings", '{"permissions":{"deny":["Bash(git add:*)","Bash(git commit:*)",
-                  "Bash(git push:*)","Bash(git checkout:*)"]}}'])
+  <the model and effort arguments, at the tier this area needs>,
+  <the auto-approval and git-denial arguments from the adapter>])
   → process_id, agent_instructions
 send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
 
-Pass `auto` on every Claude worker, per `solo-agent-orchestration`. A read-only assignment is
-not a reason to drop it, and never a reason to raise it to `bypassPermissions`. On a Codex
-runtime the equivalent is `--approve-for-me --no-alt-screen`.
+`list_agent_tools` returns a `tool_type` for each runtime. Read `references/<tool_type>.md` and
+use the arguments it lists. Never write a launch argument from memory: a runtime renames its
+flags between releases, and the adapter is the only current record.
 
-The block above is the Claude form. For another runtime, read `references/<runtime>.md` before
-you spawn: the auto-approval argument differs, and Codex has no per-command deny list at all.
+A read-only assignment is not a reason to drop auto-approval, and never a reason to raise it to
+a bypass mode.
 
-Research is read-only, so the deny list costs nothing. It also stops a worker from mutating the
+Research is read-only, so denying git writes costs nothing. It also stops a worker from mutating the
 tree it must describe. Tier by area: tracing one call path is not the same job as mapping a
 subsystem's conventions.
 

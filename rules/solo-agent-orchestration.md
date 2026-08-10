@@ -66,9 +66,9 @@ Idle detection cannot do more than that, for three reasons:
 
 **Launch every worker in auto-approval mode.** Each runtime fixes the mode. It is not a per-wave judgment call. Auto-approval lets a worker work through ordinary steps without stalling on a prompt. A reviewer still sees the requests that matter. A bypass mode removes that review from a process that runs unattended, which is the exact situation review exists for. A read-only assignment is not an exception. A worker's brief says what it intends to do, not what it is able to do.
 
-**Read the runtime's adapter in `references/` before you spawn it.** Each runtime names its own flags, and those change between releases. `references/claude.md` and `references/codex.md` map each policy in this rule to the flag that implements it.
+**Read the runtime's adapter before you spawn it.** `list_agent_tools` returns a `tool_type` for each runtime. Read `references/<tool_type>.md`, which maps every policy in this rule to the argument that implements it. Each runtime names its own flags and renames them between releases, so never write a launch argument from memory.
 
-**An adapter also records what its runtime cannot do.** A policy here is a requirement, not a promise that every runtime can meet it. Codex has no per-command deny list and no system-prompt append, so on that runtime two of the policies below degrade. Read the adapter before you rely on a guarantee.
+**An adapter also records what its runtime cannot do.** A policy here is a requirement, not a promise that every runtime can meet it. A runtime may have no way to express one of them, and the adapter says so. Read it before you rely on a guarantee.
 
 **Deny git writes at the permission layer.** A worker that cannot run `git add` is safer than a worker you asked not to. Two workers that share a tree can cross-commit each other's work. That failure is silent, and it costs a lot of time to undo. Where a runtime denies per command, deny the git write commands and nothing broader. A runtime that offers only a coarse sandbox cannot make this structural. Give each worker its own tree, or accept the risk knowingly and say so.
 
@@ -82,7 +82,7 @@ Pass the **preamble** once through the runtime's system-prompt argument, or in e
 
 Pass the **assignment** via `send_input`. It carries the one job this worker owns and where to write its report. It also carries the orchestrator's `process_id`, which the worker signals on completion. A todo or a work item may already state the job. The assignment then points at it rather than restating it.
 
-**Check whether the worker already has the rules.** A Claude worker loads `~/.claude/rules/` the same way the parent session does, so restating a rule in its prompt wastes tokens. A Codex worker loads `AGENTS.md` from the working directory and never sees these rules, so a rule it must follow reaches it only through its prompt. The runtime's adapter says which. Assume nothing: a worker that silently lacks a constraint you believe it has is the failure this check prevents.
+**Check whether the worker already has the rules.** A runtime that loads these rules on its own makes restating them in a prompt a waste. A runtime that does not means every rule the worker must follow reaches it only through its prompt. The adapter says which, and it names the path that runtime reads. Assume nothing here: a worker that silently lacks a constraint you believe it has is the failure this check prevents.
 
 Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, and the synthesized artifact.
 
@@ -102,4 +102,4 @@ Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, an
 | Reading a worker's result from process output | Rendered rows, capped and wrapped: fine for a sentinel, incomplete for a report |
 | Every worker at the session's model and effort | A one-line edit and a contract-preserving rewrite are not the same job |
 | Spawning without an explicit approval mode | The runtime default is a prompt nobody watches, and the worker stalls unattended |
-| Using `bypassPermissions` or `--dangerously-bypass-approvals-and-sandbox` | Removes review from the one process nobody watches |
+| Reaching for a runtime's bypass mode | Removes review from the one process nobody watches |
