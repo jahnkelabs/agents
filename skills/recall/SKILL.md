@@ -27,7 +27,8 @@ name.
 
 With no arguments, list parked issues — open ones you own or that `/stash` created — and ask.
 
-Pick the adapter in `~/.claude/references/` matching the reference's tracker.
+Pick the adapter matching the reference's tracker. The installer puts them in
+`~/.claude/references/` and `~/.agents/references/`; read whichever exists.
 
 ## Step 2 — Pull the item and its context
 

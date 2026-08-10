@@ -9,15 +9,31 @@ on the [Solo](https://soloterm.dev) MCP server.
 ./scripts/install.sh
 ```
 
-| Link | Contents |
-|---|---|
-| `~/.claude/rules/<name>.md` | always-on working agreements — **linked per file** |
-| `~/.claude/skills/<name>/` | slash commands — **linked per skill** |
-| `~/.claude/references` | tracker adapters for `/stash` and `/recall` — whole directory |
+One run installs both runtimes.
 
-The script links rules and skills one at a time, so `~/.claude/rules` and `~/.claude/skills`
-stay real directories you own. It leaves anything else you keep there alone. Nothing you create
-locally reaches this repository, which matters because the repository is public.
+| Destination | Contents | Runtime |
+|---|---|---|
+| `~/.claude/rules/<name>.md` | always-on working agreements — **linked per file** | Claude |
+| `~/.claude/skills/<name>/` | slash commands — **linked per skill** | Claude |
+| `~/.claude/references` | adapters — whole directory | Claude |
+| `~/.agents/skills/<name>/` | the same skills — **linked per skill** | Codex |
+| `~/.agents/references` | the same adapters — whole directory | Codex |
+| `~/.codex/AGENTS.md` | every rule concatenated — **generated** | Codex |
+
+The script links one entry at a time, so each destination directory stays a real one you own.
+It leaves anything else you keep there alone. Nothing you create locally reaches this
+repository, which matters because the repository is public.
+
+**`~/.codex/AGENTS.md` is the one file this repository writes rather than links.** Codex reads
+its instructions from a single file and resolves no includes, so a directory of rules cannot
+reach it any other way. A file you wrote yourself is backed up before the first generation. Git
+hooks regenerate it after a commit, a checkout, and a merge, so a rule edit you commit reaches
+Codex without a re-run. `./scripts/install.sh --rules-only` does that regeneration alone.
+
+**Codex has no `disable-model-invocation`.** On Claude, `/plan`, `/implement`, `/stash`, and
+`/recall` cannot be invoked by the model. On Codex it can invoke all four itself. Each still
+gates on your approval before anything lands, so the guarantee weakens from "you start it" to
+"you approve it".
 
 `references/` is a whole-directory link because it is not a Claude Code directory. It exists so
 a skill or a rule can read an adapter from a stable path, and nothing else writes there. It

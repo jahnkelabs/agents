@@ -24,7 +24,8 @@ idea to return to, or a large plan whose work items each get their own cycle lat
 ## Step 2 — Resolve the tracker
 
 Check which tracker MCPs are available, and read the matching adapter in
-`~/.claude/references/` — `linear.md`, `jira.md`, and so on. The adapter defines that tracker's
+`~/.claude/references/` or `~/.agents/references/`, whichever exists — `linear.md`, `jira.md`,
+and so on. The adapter defines that tracker's
 object model and field mapping; this command owns the semantics.
 
 One tracker available: use it, and say which. Several: ask. None: stop and say so — there is
