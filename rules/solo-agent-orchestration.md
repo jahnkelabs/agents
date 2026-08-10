@@ -89,6 +89,8 @@ Pass the **preamble** once via `--append-system-prompt`. It carries the working 
 
 Pass the **assignment** via `send_input`. It carries the one job this worker owns and where to write its report. It also carries the orchestrator's `process_id`, which the worker signals on completion. A todo or a work item may already state the job. The assignment then points at it rather than restating it.
 
+**A worker already has the rules.** A spawned Claude worker loads `~/.claude/rules/` the same way the parent session does, before it reads either the preamble or the assignment. Never restate a rule in a worker prompt. State the job, the constraints specific to this task, and nothing the worker can already read.
+
 Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, and the synthesized artifact.
 
 **Lock and KV keys are lowercase.** Solo rejects uppercase in both. A key from `path:skills/plan/SKILL.md` or from a timestamped slug fails outright. Normalize the key to lowercase when you generate it, and pin that normalization in the preamble. Two workers could lowercase one path differently and hold two locks on one file. The mutual exclusion would then fail silently.
