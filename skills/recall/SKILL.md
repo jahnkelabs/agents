@@ -18,15 +18,14 @@ item is input, not a finished plan:
 - A loose idea was never planned at all
 
 The grounding is re-derived. When nothing has changed, gate A's investigation step makes that
-cheap — say so and it will look at very little.
+cheap. Say so, and it will look at very little.
 
 ## Step 1 — Resolve the reference
 
 `$ARGUMENTS` is a tracker reference: an issue key (`ENG-142`, `PROJ-88`), a URL, or a project
 name.
 
-With no arguments, list what is parked — open issues you own or that were created by `/stash`
-— and ask.
+With no arguments, list parked issues — ones you own or that `/stash` created — and ask.
 
 Pick the adapter in `~/.claude/references/` matching the reference's tracker.
 
@@ -39,11 +38,11 @@ Fetch more than the issue itself. One work item makes little sense alone:
 - Sibling issues and their dependencies — what must land first, what waits on this
 - Whether blocking issues are already done
 
-Do not report the pull on its own — it lands in the gate in step 3, so the user sees what was
-pulled and what it implies for scope in one place.
+Do not report the pull on its own. It lands in the gate in step 3, so the user sees in one place
+what you pulled and what it implies for scope.
 
-If blockers are still open, say so before going further. Recalling an item whose prerequisite
-has not landed is usually a mistake, and the user may want a different one.
+If blockers are still open, say so before going further. An item whose prerequisite has not
+landed is usually a mistake to recall, and the user may want a different one.
 
 ## Step 3 — Hand to /plan
 
@@ -81,13 +80,13 @@ That first investigation item matters: when recalling a later work item, what ea
 ## Step 4 — Leave the tracker alone
 
 Do not modify the tracker item during recall. Nothing has happened to it yet — planning may
-conclude the work should change shape or be dropped.
+decide to change the work's shape or to drop it entirely.
 
-The tracker is updated later:
+One of three things updates the tracker later:
 
 - `/implement` moves it to in-progress when work starts
-- `/stash` reconciles if the plan is parked again
-- Closing it happens when the PR merges, by whatever process you already use
+- `/stash` reconciles if you park the plan again
+- The PR merge closes it, by whatever process you already use
 
 Note the recalled ref under `### References` in the plan pad's `## Appendix` so the connection
 survives.
