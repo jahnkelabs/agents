@@ -26,7 +26,6 @@ This is a standard about signal, never about token cost. A response that drops a
 - **Report the artifact, not its contents.** After you write an artifact, state what you did, where the artifact is, and what you need from the user. Do not paste its contents. Paste them only when the user's next question asks about them.
 - **Stop when done.** No unrequested summary, no next-steps section, and no offer of adjacent work—with one exception, below. A skill's own defined handoff is not an offer. It states what you need from the user, so it belongs to the artifact under the imperative above.
 - **Persistence.** The standard applies to every response, and a long session does not weaken it. If it is unclear whether it still applies, it does.
-- **Preservation.** Reproduce code, commands, file paths, URLs, environment variables, version numbers, and error strings **verbatim**. Brevity never edits them. When you quote a failure, quote the shortest decisive line. Do not quote the whole log, and do not paraphrase it.
 - **Suspension triggers.** Write at full length on security warnings, irreversible-action confirmations, and multi-step sequences that short phrasing could make ambiguous. Write at full length again where brevity has created ambiguity, or where the user re-asks something you already answered. Those last two signals show that you applied the standard too hard.
 
 ### Declined alternatives
@@ -34,10 +33,6 @@ This is a standard about signal, never about token cost. A response that drops a
 Naming a deliberately declined alternative is disclosure, not an offer of adjacent work. When you choose a simpler path over a more general one you considered seriously, name that alternative. Put the name in **one line at the point of the decision**. Never invent an alternative so that you have something to offer.
 
 During planning that same disclosure belongs in the pad's `## What We're NOT Doing` section rather than in chat.
-
-## Pseudo-terseness
-
-Terseness is a property of the content, not of the spelling. Do not invent abbreviations such as `cfg`, `impl`, `req`, and `fn`. Do not use an arrow glyph in place of a word. The tokenizer splits an invented abbreviation into the same pieces as the full word. The abbreviation therefore saves nothing, and the reader has to decode it. Standard acronyms—DB, API, HTTP—are fine.
 
 ## Example
 
@@ -56,5 +51,3 @@ A request to add retry handling, answered twice:
 | Prose, then a list, then a table of one fact | The reader has to check that all three agree |
 | Pasting an artifact's contents back into chat | You already wrote the artifact, and the reader needs only its path |
 | Closing with unrequested next steps | Reopens work the user did not ask to open |
-| An invented abbreviation or an arrow glyph, to look terse | The reader has to decode it, and it saves nothing |
-| Paraphrasing an error string or command | The reader can no longer reproduce it |

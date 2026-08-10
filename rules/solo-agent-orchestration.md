@@ -110,5 +110,5 @@ Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, an
 | Scheduling an idle timer before workers produce output | An all-idle watch list returns `already_satisfied` and creates no timer |
 | Reading a worker's result from process output | Rendered rows, capped and wrapped: fine for a sentinel, incomplete for a report |
 | Every worker at the session's model and effort | A one-line edit and a contract-preserving rewrite are not the same job |
-| Spawning without an explicit approval mode | The runtime default is a prompt nobody is watching, and the worker stalls unattended |
-| Using `bypassPermissions` or `--dangerously-bypass-approvals-and-sandbox` | Removes review from the one process that nobody is watching |
+| Spawning without an explicit approval mode | The runtime default is a prompt nobody watches, and the worker stalls unattended |
+| Using `bypassPermissions` or `--dangerously-bypass-approvals-and-sandbox` | Removes review from the one process nobody watches |

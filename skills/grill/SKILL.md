@@ -11,7 +11,7 @@ effort: xhigh
 
 # Grill
 
-Stress-test the user's thinking on `$ARGUMENTS`. If no topic is given, ask what they want
+Stress-test the user's thinking on `$ARGUMENTS`. If the user names no topic, ask what they want
 grilled.
 
 Interview the user relentlessly about every aspect of this until you reach a shared
@@ -21,7 +21,7 @@ decisions one-by-one. For each question, provide your recommended answer.
 Ask the questions one at a time, waiting for feedback on each question before continuing.
 Multiple questions at once bewilder the user.
 
-If a *fact* can be found by exploring the environment (filesystem, tools, etc.), look it up
+If you can find a *fact* by exploring the environment (filesystem, tools, etc.), look it up
 rather than asking. The *decisions*, though, are the user's — put each one to them and wait
 for their answer.
 

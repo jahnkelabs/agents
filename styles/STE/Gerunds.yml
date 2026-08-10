@@ -1,7 +1,7 @@
-extends: existence
+extends: sequence
 message: "'%s' uses an -ing form as a verb. Use the simple tense instead."
 level: warning
 ignorecase: true
-scope: sentence
-raw:
-  - '\b(am|is|are|was|were|be|been|being)\s+\w+ing\b'
+tokens:
+  - pattern: '\b(am|is|are|was|were|be|been|being)\b'
+  - tag: VBG

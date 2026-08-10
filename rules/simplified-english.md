@@ -16,8 +16,14 @@ A long sentence, a passive, and a metaphor make prose hardest to read. All three
 
 - **Default:** Every sentence follows the rules below.
 - **Scope:** All prose you write—chat, markdown, rule and skill files, PR bodies, commit messages, and code comments.
-- **Verbatim content:** Do not simplify it. The Preservation bullet in `rules/output-discipline.md` names what qualifies, and that list governs here too. A fenced block in a skill file is also verbatim, because it is a string the agent emits or sends to a worker. Only prose inside a fenced worker prompt is in scope.
+- **Verbatim content:** Do not simplify it. `## Preservation` below names what qualifies.
 - **Exceptions:** Text you quote from another source, and any style the user asks for directly.
+
+## Preservation
+
+Reproduce code, commands, file paths, URLs, environment variables, version numbers, and error strings **verbatim**. Brevity never edits them. When you quote a failure, quote the shortest decisive line. Do not quote the whole log, and do not paraphrase it.
+
+A fenced block in a skill file is also verbatim, because it is a string the agent emits or sends to a worker. Only prose inside a fenced worker prompt is in scope.
 
 ## Sentence and paragraph limits
 
@@ -44,6 +50,10 @@ Use a gerund as a noun—`planning`, `linting`—but never as the verb of a sent
 ## One term per concept
 
 Pick one word for each concept and reuse it in every sentence. A near-synonym makes the reader ask whether you mean something new. This repository already fixes its own terms: `worker`, `orchestrator`, `scratchpad`, `todo`, and `lock`. Use the fixed term every time, even where the repetition reads as dull.
+
+## Pseudo-terseness
+
+Terseness is a property of the content, not of the spelling. Do not invent abbreviations such as `cfg`, `impl`, `req`, and `fn`. Do not use an arrow glyph in place of a word. The tokenizer splits an invented abbreviation into the same pieces as the full word. The abbreviation therefore saves nothing, and the reader has to decode it. Standard acronyms—DB, API, HTTP—are fine.
 
 ## No metaphor, no idiom
 
@@ -77,3 +87,5 @@ One instruction, written twice:
 | `has been updated`, `had already run` | A perfect tense adds a timeline the reader does not need |
 | An article dropped to reach 20 words | The count improves and the ambiguity is new |
 | A ten-sentence paragraph covering three topics | Nothing marks where one topic ends and the next starts |
+| An invented abbreviation or an arrow glyph, to look terse | The reader has to decode it, and it saves nothing |
+| Paraphrasing an error string or command | The reader can no longer reproduce it |

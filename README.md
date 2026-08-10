@@ -68,12 +68,13 @@ vale --minAlertLevel=warning <file>.md
 The 25-word sentence cap and the contraction check are errors. The 20-word cap, the
 passive-voice check, and the gerund check are warnings, because each one needs your judgment.
 
-The passive-voice check matches a `be` form followed by a regular `-ed` participle or one of
-about thirty common irregular participles. A rarer irregular form still passes, so the check
-narrows the problem rather than settling it.
+The passive-voice and gerund checks use Vale's `sequence` extension, which reads part-of-speech
+tags. They match a `be` form followed by a past participle or a present participle. Vale 3.17.0
+or later is required, because earlier versions read sentences from paragraphs only.
 
-The gerund check flags an `-ing` form used as a verb, such as `is releasing`. A gerund used as a
-noun is correct, so `Planning takes an hour` does not alert.
+A tagger reads word forms, not meaning, so both checks report some sentences that are correct.
+`The waves are done` tags `done` as a past participle even though it acts as an adjective here.
+Both checks are warnings for that reason: read each one and decide.
 
 ## Skills
 
@@ -129,7 +130,7 @@ flowchart LR
     I --> PR
 ```
 
-## How state is divided
+## How the system divides state
 
 **Solo is the active working set.** Scratchpads hold research and plans. They are short-lived,
 and you archive them once the work ships. Todos exist only while `/implement` runs a plan. KV
@@ -193,7 +194,7 @@ the tier follows from it. A task described as "three localized edits against pre
 references" argues for its own tier. Adjust any model, effort, or grouping, or approve the
 roster as proposed. You decide cost and parallelism here.
 
-**Constraints are enforced, not requested.** Every worker launches with git writes denied at the
+**The permission layer enforces the constraints rather than requesting them.** Every worker launches with git writes denied at the
 permission layer, rather than prohibited in prose. Two workers that stage in one shared tree
 cross-commit silently. Workers hold per-path locks, and the orchestrator commits each task's
 declared paths, so history stays granular.

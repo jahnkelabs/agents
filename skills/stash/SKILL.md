@@ -67,7 +67,7 @@ Read work items **from the pad**, not from Solo todos. An approved plan that was
 implemented has no todos. A plan mid-implementation has todos that hold a task grouping, an
 execution detail rather than the work itself.
 
-Nothing is written before the user confirms. These are real objects in a shared system;
+Write nothing before the user confirms. These are real objects in a shared system;
 cleaning them up is more work than declining a proposal.
 
 ## Step 4 — Write
@@ -101,7 +101,7 @@ The work has left the active set.
 
 ## Step 6 — Report
 
-The pad already holds every ref. In chat, say what was written, where it went, and what the user
+The pad already holds every ref. In chat, say what you wrote, where it went, and what the user
 can do next. Do not repeat the per-item list:
 
 ```

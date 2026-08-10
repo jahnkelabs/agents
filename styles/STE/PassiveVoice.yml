@@ -1,6 +1,7 @@
-extends: existence
-message: "'%s' looks like passive voice. Use active voice when the actor is known."
+extends: sequence
+message: "'%s' is passive voice. Name the actor and use the active voice."
 level: warning
 ignorecase: true
-raw:
-  - '\b(am|is|are|was|were|be|being|been)\s+(\w+ed|written|taken|given|known|done|made|held|kept|left|lost|met|paid|put|read|run|seen|sent|shown|told|thrown|understood|found|gone|grown|drawn|chosen|broken|spoken|driven|forgotten|hidden|built|split|spread|cut|set|let|shut|cost)\b'
+tokens:
+  - pattern: '\b(am|is|are|was|were|be|been|being)\b'
+  - tag: VBN
