@@ -23,8 +23,9 @@ idea to return to, or a large plan whose work items each get their own cycle lat
 
 ## Step 2 — Resolve the tracker
 
-Check which tracker MCPs are connected and read the matching adapter in
-`~/.claude/references/` — `linear.md`, `jira.md`, and so on. The adapter defines that tracker's
+Check which tracker MCPs are available, and read the matching adapter in
+`~/.claude/references/` or `~/.agents/references/`, whichever exists — `linear.md`, `jira.md`,
+and so on. The adapter defines that tracker's
 object model and field mapping; this command owns the semantics.
 
 One tracker available: use it, and say which. Several: ask. None: stop and say so — there is
@@ -63,11 +64,11 @@ Stash to <tracker>:
 Confirm?
 ```
 
-Read work items **from the pad**, not from Solo todos — an approved plan that was never
-implemented has no todos, and a plan mid-implementation has todos holding a task grouping that
-is an execution detail rather than the work itself.
+Read work items **from the pad**, not from Solo todos. An approved plan that was never
+implemented has no todos. A plan mid-implementation has todos that hold a task grouping, an
+execution detail rather than the work itself.
 
-Nothing is written before the user confirms. These are real objects in a shared system;
+Write nothing before the user confirms. These are real objects in a shared system;
 cleaning them up is more work than declining a proposal.
 
 ## Step 4 — Write
@@ -76,7 +77,7 @@ Follow the adapter. Create parents before children, then set dependencies once e
 an id. Verify the dependency graph after writing — most trackers model these as directed
 relations that are easy to set backwards.
 
-If a write fails partway, stop and report exactly what was created. Do not retry blindly and do
+If a write fails partway, stop and report exactly what you created. Do not retry blindly and do
 not roll back silently.
 
 ## Step 5 — Clean up Solo
@@ -96,13 +97,13 @@ The work has left the active set.
    mid-implementation does — `todo_delete` each one. Do not mark them complete; the work did
    not get done, it moved.
 4. `kv_delete` every `plan:<slug>:*` key
-5. If a branch exists with committed work, say so and leave it alone. Stashing the plan does
+5. If a branch exists with committed work, say so and leave it alone. A stash does
    not discard code.
 
 ## Step 6 — Report
 
-The pad already holds every ref. In chat, say what was written, where it went, and what the user
-can do next — not the per-item list again:
+The pad already holds every ref. In chat, say what you wrote, where it went, and what the user
+can do next. Do not repeat the per-item list:
 
 ```
 Stashed to <tracker> — project <link>, <N> issues, refs appended to the pad.
@@ -113,5 +114,5 @@ Solo: pad archived, <N> todos removed. Recall any of it with /recall <ID>.
 
 - Never stash without confirming the shape first
 - Work items come from the pad, todos are incidental
-- Archiving is reversible; deleting todos is not, which is why todos are the smaller loss
+- An archive is reversible; deleting todos is not, which is why todos are the smaller loss
 - A stash is not a commit — code already committed to a branch stays there

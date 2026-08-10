@@ -11,7 +11,7 @@ Orchestrate execution of an approved plan. You own git, todo lifecycle, and work
 coordination. Workers write code and nothing else.
 
 The plan declares **work items**. This skill groups them into **tasks** — one worker, one todo,
-one scratchpad, one model tier — and gates that roster before anything spawns. Tasks then run to
+one scratchpad, one model tier. It gates that roster before anything spawns. Tasks then run to
 completion without per-task review gates. Workers escalate on **deviation**, not on completion —
 see [Escalation](#escalation).
 
@@ -28,16 +28,16 @@ Use whichever Solo project is currently selected, consistent with `/plan`.
 
 ## Setup
 
-Skip anything the `/plan` fork already confirmed — do not re-ask what was just settled.
+Skip anything the `/plan` fork already confirmed — do not re-ask what the user just settled.
 
 1. **Decompose the work items into tasks.** Items marked `same-worker` share a task. Items marked
    `after` land in a later wave. Items whose `**Files**:` overlap never run concurrently.
-   Everything else is free, so group for coherence rather than for a worker count — a task that
-   spans one subsystem is easier to brief and easier to verify than one assembled to fill a slot.
-2. **Assign each task a model and effort tier.** These are not inherited from the session. Judge
-   by what the task actually demands: mechanical edits against precise line references are not the
-   same work as a rewrite that must preserve a behavioral contract, and should not cost the same.
-   `list_agent_tools` resolves the runtime; `--model` and `--effort` vary within it.
+   Everything else is free. Group for coherence rather than for a worker count. A task that spans
+   one subsystem is easier to brief and verify than one assembled to fill a slot.
+2. **Assign each task a model and effort tier.** A task does not inherit these from the session.
+   Judge by what the task actually demands. Mechanical edits against precise line references are
+   not the same work as a rewrite that must preserve a behavioral contract. The two should not
+   cost the same. `list_agent_tools` resolves the runtime, and model and effort vary within it.
 3. **Gate the roster.** This is an approval stop, not an announcement.
    ```
    5 workers, 2 waves.
@@ -59,13 +59,13 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what was just
 
    Adjust any model, effort, or grouping, or approve as proposed.
    ```
-   **The summary is the justification.** A task described as "three localized edits against
-   precise line references" argues for its tier on its face; one described as "preserve fifteen
-   imperatives while cutting 46% of the file" argues for a different one. Write the summary so the
-   tier follows from it, and never add a separate rationale field.
+   **The summary is the justification.** One task reads "three localized edits against precise
+   line references". Another reads "preserve fifteen imperatives while cutting 46% of the file".
+   Each summary argues for a different tier by itself. Write the summary so the tier follows from
+   it, and never add a separate rationale field.
 
-   Grouping is adjustable, not just tiers — seeing the roster is exactly when it becomes obvious
-   that two tasks should be one, or that one is doing too much.
+   The user can adjust grouping, not just tiers. The roster is where two tasks that should be one
+   become obvious. It is also where a task that does too much becomes obvious.
 
    Offer the enabled runtimes for the end-of-run critique in the same gate. One stop, not two.
    Never hardcode a roster.
@@ -78,15 +78,15 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what was just
    [ -z "$DEFAULT" ] && { echo "cannot resolve the default branch"; exit 1; }
    git checkout "$DEFAULT" && git pull --rebase && git checkout -b <type>/<slug>
    ```
-   The fallback and the abort are both load-bearing, and so is the `&&` chain — a resolution that
-   yields an empty string fails the checkout, and an unchained branch cut would then root the
-   branch on whatever happened to be checked out.
-   `kv_set(key="plan:<slug>:branch:<repo>", value="<branch>")` — keys are lowercase, so a slug
-   carrying an uppercase timestamp must be normalized before use.
+   The fallback, the abort, and the `&&` chain all matter. A resolution that yields an empty
+   string fails the checkout. Without the chain, the branch cut would root the new branch on
+   whatever branch is currently in use.
+   `kv_set(key="plan:<slug>:branch:<repo>", value="<branch>")` — keys are lowercase. Lowercase
+   any slug that carries an uppercase timestamp.
 5. **Create the todos** — one per approved task. The body carries the **task spec**: the work
-   items it covers, their files, and their verification. This is not a copy of the plan; the plan
-   holds work items and the todo holds the grouping, which exists nowhere else. The worker reads
-   its own todo, so this is the only place the spec needs to be written.
+   items it covers, their files, and their verification. This is not a copy of the plan. The plan
+   holds work items; the todo holds the grouping, which exists nowhere else. The worker reads its
+   own todo, so this is the only place the spec belongs.
    ```
    todo_create(title="<task>: <name>", body=<task spec>,
                tags=["plan:<slug>", "project:<repo>", "task:<letter>"])
@@ -97,8 +97,8 @@ Then run unattended through every wave.
 
 ## Wave execution
 
-Workers are Solo agents, per `solo-agent-orchestration`. Nothing below works otherwise — a
-vendor sub-agent cannot hold a lock, own a todo, or wake this session when it finishes.
+Workers are Solo agents, per `solo-agent-orchestration`. Nothing below works otherwise. A vendor
+sub-agent cannot hold a lock, own a todo, or wake this session when it finishes.
 
 Call `whoami` once and keep the returned `process_id`. Every worker needs it to signal back.
 
@@ -108,26 +108,26 @@ For each wave, for each task in it:
 2. Spawn at the approved tier, with the constraints enforced rather than requested:
    ```
    spawn_agent(agent_tool_id=<runtime>, name="<task>-<slug>", extra_args=[
-     "--model", "<approved model>",
-     "--effort", "<approved effort>",
-     "--permission-mode", "auto",
-     "--settings", '{"permissions":{"deny":["Bash(git add:*)","Bash(git commit:*)",
-                     "Bash(git push:*)","Bash(git checkout:*)","Bash(git switch:*)",
-                     "Bash(git reset:*)","Bash(git stash:*)"]}}',
-     "--append-system-prompt", "<the preamble below>"])
+     <the model and effort arguments, at the approved tier>,
+     <the auto-approval and git-denial arguments from the adapter>,
+     <the system-prompt argument carrying the preamble below, if the runtime has one>])
    ```
-   `auto` keeps the worker from stalling on its actual job while leaving the requests that matter
-   reviewable — required on every Claude worker per `solo-agent-orchestration`, where a Codex
-   runtime takes `--approve-for-me --no-alt-screen` instead. Never `bypassPermissions`, and never
-   `acceptEdits`.
+   `list_agent_tools` returns a `tool_type` for each runtime. Read `references/runtime-<tool_type>.md`
+   and use the arguments it lists. Never write a launch argument from memory: a runtime renames
+   its flags between releases, and the adapter is the only current record.
 
-   The deny list, not the permission mode, makes the git prohibition structural. A worker that
-   *cannot* stage is safer than one asked not to, and cross-commits between workers sharing a tree
-   are silent when they happen.
+   Auto-approval keeps the worker from stalling on its actual job. It still leaves the requests
+   that matter reviewable. Never use a bypass mode.
+
+   Denying git writes, not the approval mode, makes the prohibition structural. A worker that
+   *cannot* stage is safer than one asked not to. Cross-commits between workers that share a tree
+   are silent when they happen. A runtime that cannot scope a denial to one worker cannot give
+   you this. The adapter says so, and each worker then needs its own tree, or a knowing
+   acceptance of the risk.
 3. `send_input(process_id, input=<agent_instructions + the assignment below>)`
 
-The **preamble**, passed once via `--append-system-prompt` and identical for every worker in the
-wave:
+The **preamble**, identical for every worker in the wave. Pass it once through the runtime's
+system-prompt argument, or in every prompt where the runtime has none:
 
 ```
 You are a Solo agent implementing one task of an approved plan.
@@ -136,7 +136,7 @@ Working directory: <absolute repo path>. Stay inside it.
 
 Do not write any file outside your task's declared paths — needing to is a deviation.
 Do not create or complete todos, or write KV. Write only your own report scratchpad.
-Git writes are denied at the permission layer; the orchestrator owns git.
+The permission layer denies git writes; the orchestrator owns git.
 
 When stuck, or when finishing would mean departing meaningfully from the task as written:
 record what you found and stop. Do not improvise a fix, expand scope, or proceed down an
@@ -154,15 +154,19 @@ verification. The full plan is scratchpad <id> if you need surrounding context.
 Prior waves: <what already landed, or "this is the first wave">
 
 Before you touch anything, lock each file you will modify:
-  lock_acquire(key="path:<lowercased declared path>", lease_ttl_seconds=3600)
-If a lock is unavailable, stop and escalate — do not wait or work around it.
+  lock_acquire(lock_key="path:<lowercased absolute path>", lease_ttl_seconds=3600)
+The key is the absolute path, not the declared relative one. Solo scopes a lock to the project,
+and one project can hold many repositories, so a relative key collides with every repository
+that has a file of that name.
+If a lock is unavailable, report which actor holds it, then stop and escalate — do not wait or
+work around it.
 
 1. Read every file your task names, fully, before changing anything
 2. Make the changes
 3. Run the task's automated verification
-4. Write your report to scratchpad "<slug>/<task>" — what you did, verification output, and
-   anything you found that the task did not anticipate. Begin the report with "ESCALATION:" if
-   you are stopping rather than finishing.
+4. Write your report to scratchpad "<slug>/<task>". Record what you did, the verification
+   output, and anything you found that the task did not anticipate. Begin the report with
+   "ESCALATION:" if you stop rather than finish.
 5. Release your locks
 6. Signal completion as your last act:
      timer_set(delay_ms=0, delivery_process_id=<orchestrator process_id>,
@@ -176,11 +180,16 @@ If a lock is unavailable, stop and escalate — do not wait or work around it.
      body="Wave <N> guard expired. Any worker that has not signalled has died, hung, or
            failed to finish — investigate before treating it as complete. Check each
            task's scratchpad and process status.")
+     → timer_id
    ```
    Do not treat that timer as the completion signal. It has no debounce, and a worker thinking at
    length is indistinguishable from a finished one — see `solo-agent-orchestration`.
-5. When every task in the wave has signalled, `scratchpad_find` for `ESCALATION` across the
-   wave's report pads before reading any of them in full. If none matched, read only what you
+
+   Keep the returned `timer_id`. One guard per wave means one id to hold.
+5. When every task in the wave signals, `timer_cancel(timer_id=<id>)` for that wave's guard.
+   Cancel before you commit: a guard left armed fires during a later wave and arrives as an
+   instruction about workers that finished long ago. Then run `scratchpad_find` for `ESCALATION`
+   across the wave's report pads. Do this before you read any pad in full. If nothing matches, read only what you
    need to write the commit messages.
 6. **Commit each completed task separately**, staging only its declared paths:
    ```bash
@@ -194,16 +203,17 @@ If a lock is unavailable, stop and escalate — do not wait or work around it.
 
 ## Escalation
 
-A worker escalates when it cannot self-resolve, or when finishing would mean deviating
-meaningfully from what was approved. Writing an undeclared path counts as a deviation.
+A worker escalates when it cannot self-resolve. It also escalates when finishing would mean
+deviating meaningfully from what the user approved. A worker that writes an undeclared path
+deviates from the task.
 
 **In-flight workers in the same wave finish.** They hold disjoint file scopes and have no
-dependencies on each other, so nothing is building on the problem.
+dependencies on each other, so no other work depends on the problem.
 
 The worker's report scratchpad is the durable record, and its completion signal says whether it
-escalated. The wave join is where it surfaces, and the only place it surfaces — by the time you
-present, every escalation has been resolved or the run stopped here. At the join, stop and show
-the whole wave together:
+escalated. The wave join is the only place an escalation appears. Before you present, you
+resolve every escalation or the run stops here. At the join, stop and show the whole wave
+together:
 
 ```
 Wave <N> complete — one task needs discussion.
@@ -217,8 +227,8 @@ The plan assumed <X>; the code actually does <Y>.
 Options: <adjust the plan / different approach / drop the work item>
 ```
 
-Do not start the next wave until this is resolved. If the plan needs changing, update the pad
-so it stays the record of what was actually agreed.
+Do not start the next wave until you resolve this. If the plan needs a change, update the pad
+so it stays the record of what the user actually agreed.
 
 Automated verification failing is not automatically an escalation — a worker that can fix it
 within the plan's intent should. It escalates when the fix would require departing from the
@@ -226,16 +236,16 @@ plan.
 
 ## Critique
 
-Once all waves are done, run `/critique` over the full diff with the models chosen at setup,
-passing the approved plan so the plan-fidelity lens has something to check against.
+Once all waves are done, run `/critique` over the full diff with the models chosen at setup.
+Pass the approved plan, so the plan-fidelity lens has something to check against.
 
 Fold the surviving findings into what you present. Do not fix them unilaterally.
 
 ## Present
 
 State the run, then hand the findings over one at a time. `/critique` owns that presentation and
-this is the same shape — one finding, one decision, in severity order — so nothing is triaged
-twice.
+this is the same shape: one finding, one decision, in severity order. You triage each finding
+once.
 
 ```
 Implementation complete.
@@ -263,20 +273,20 @@ Fix it, drop it, or something else?
 
 (● = models that independently flagged it)
 
-Severity and the `●` count are defined in `/critique` — `bug` for wrong behavior, `risk` for a
-plausible failure, `nit` for style or cleanup. Severity orders the triage, so it stays on the line.
+`/critique` defines severity and the `●` count: `bug` for wrong behavior, `risk` for a plausible
+failure, `nit` for style or cleanup. Severity orders the triage, so it stays on the line.
 
-Apply each decision as it is made and wait for the next; never ask for all of them at once. When
-the last one is settled, `git commit -m "chore: address critique findings"`. Offer a re-critique
-or move to close.
+Apply each decision as the user makes it, then wait for the next. Never ask for all of them at
+once. When the user settles the last one, run `git commit -m "chore: address critique findings"`.
+Offer a re-critique or move to close.
 
 ## Close
 
 After approval — and only after — push and open the PR by following
 `pr-first-contributions`. `/implement` adds nothing to that procedure and must not
-paraphrase it: re-run the branch staleness check before pushing, confirm the quality gates passed
-and the tree is clean, then open a draft PR whose title and body meet that rule's spec. If a PR
-for the branch is already open, update it rather than opening a second.
+paraphrase it. Re-run the branch staleness check before you push. Confirm the quality gates
+passed and the tree is clean. Then open a draft PR whose title and body meet that rule's spec.
+If a PR for the branch is already open, update it rather than opening a second.
 
 Then:
 
@@ -290,5 +300,5 @@ Then:
 - Never commit to the default branch; never push or open a PR without explicit approval
 - Workers write code; the orchestrator owns git, todos, and KV
 - Todo status is `open` | `in_progress` | `backlog` | `completed`; priority is `high` | `medium` | `low`
-- If the plan turns out to be wrong, fix the plan and re-approve — do not let implementation
+- If the plan turns out to be wrong, fix the plan and re-approve. Never let implementation
   quietly diverge from the approved record

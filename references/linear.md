@@ -27,8 +27,8 @@ Never assume a team, project, or state name — read them first.
 | Existing labels | `list_issue_labels` |
 | Parked work for `/recall` | `list_issues` filtered by assignee and open state |
 
-A workspace with one team can use it without asking. Several teams means asking which — the
-issue cannot be created without one.
+A workspace with one team can use it without asking. With several teams, ask which one. Linear
+cannot create the issue without a team.
 
 ## Writing a loose idea
 
@@ -42,14 +42,14 @@ save_issue(
 )
 ```
 
-`priority` is numeric, and the scale is inverted relative to intuition — `1` is the most
-urgent, `4` the least, `0` means unset.
+`priority` is numeric, and the scale runs opposite to intuition — `1` is the most urgent, `4`
+the least, `0` means unset.
 
 ## Writing a phased plan
 
 Order matters: parents before children, dependencies last.
 
-**1. Project** — `name` and at least one team are required on create.
+**1. Project** — Linear requires `name` and at least one team on create.
 
 ```
 save_project(
@@ -60,7 +60,7 @@ save_project(
 )
 ```
 
-**2. Document** — carries the full plan body. Exactly one parent must be specified.
+**2. Document** — carries the full plan body. Specify exactly one parent.
 
 ```
 save_document(
@@ -99,7 +99,7 @@ graph.
 
 **5. Verify.** Re-read the issues with `get_issue` and confirm the dependency chain matches the
 plan's phase ordering. Directed relations are easy to set backwards, and a reversed chain looks
-plausible until someone tries to work it.
+plausible until someone tries to implement it.
 
 ## Reading for `/recall`
 
@@ -111,11 +111,11 @@ get_document(id=...)                    → its content
 list_issues(project=...)                → siblings, to see what blocks what
 ```
 
-Pull the parent project and its document, not just the issue — a phase read alone is missing
-the plan it belongs to.
+Pull the parent project and its document, not just the issue. A phase on its own is missing the
+plan it belongs to.
 
-Check whether blocking issues are resolved before handing to `/plan`. An unmet blocker usually
-means the wrong item was recalled.
+Check that every blocking issue is already done before you hand off to `/plan`. An unmet blocker
+usually means you recalled the wrong item.
 
 ## Gotchas
 
@@ -126,5 +126,5 @@ means the wrong item was recalled.
 - **`state` is a name or type**, and valid values differ per team.
 - **Identifiers vs ids.** `ENG-142` is the identifier; most tools accept either, and the
   identifier is what to show the user.
-- **Partial failures are real.** A project can be created and its issues fail. Report exactly
-  what exists rather than retrying blindly.
+- **Partial failures are real.** The project write can succeed while the issue writes fail.
+  Report exactly what exists rather than retrying blindly.

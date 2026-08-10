@@ -11,9 +11,9 @@ Produce an implementation plan grounded in research, shaped by interrogating the
 skeptical, thorough, and collaborative.
 
 Three gates: **scope**, **grilling**, **approval**. The output is exactly one artifact — a
-plan scratchpad leading with the plan, with the research it rests on in an appendix. No Solo
-todos are created here; work items are grouped into tasks when `/implement` starts, or become
-tracker issues if you `/stash`.
+plan scratchpad. It leads with the plan and keeps the research in an appendix. This skill
+creates no Solo todos. `/implement` groups the work items into tasks when it starts, or
+`/stash` turns them into tracker issues.
 
 ## Input
 
@@ -30,22 +30,22 @@ With no arguments:
 
 ## Gate A — Scope and investigation
 
-Do a cheap first pass before proposing anything: read mentioned files fully, run
+Do a cheap first pass before you propose anything. Read mentioned files fully, run
 `git rev-parse --show-toplevel`, and skim enough to form a real proposal.
 
 **Solo project:** run `list_projects` and use **whichever project is currently selected**. No
 path matching, no assumed name. State it in the gate.
 
-**Target repos:** infer, and show your evidence for each. Draw on the current repo, repos named
-in a research pad's target list, repos implied by `file:line` references in findings, and the
-`path` of each known Solo project. Say what you excluded and why.
+**Target repos:** infer, and show your evidence for each. Draw on the current repo and on the
+repos a research pad's target list names. Draw on repos implied by `file:line` references in
+findings, and on the `path` of each known Solo project. Say what you excluded and why.
 
-**Investigation:** describe what you intend to look into, not a tier. If a research pad was
-supplied, read it fully first and scope the investigation to the gaps — do not re-derive what
-is already known.
+**Investigation:** describe what you intend to look into, not a tier. If the user supplied a
+research pad, read it fully first. Scope the investigation to the gaps, and do not re-derive
+what you already know.
 
-**Question count:** estimate how many questions gate B will ask, so the user knows what they
-are in for.
+**Question count:** estimate how many questions gate B will ask. The user needs that number
+before agreeing.
 
 ```
 Before I investigate — confirm or adjust:
@@ -69,21 +69,21 @@ Accept, or tell me what to add or cut.
 
 ## Research phase
 
-Run the confirmed investigation following `/research`, including its worker protocol: one Solo
-agent per area, joined with an idle timer, per `solo-agent-orchestration`. Workers document what
-exists and write only their own per-area scratchpad; you own the plan pad.
+Run the confirmed investigation following `/research`, including its worker protocol. Spawn one
+Solo agent per area and join them with an idle timer, per `solo-agent-orchestration`. Workers
+document what exists and write only their own per-area scratchpad; you own the plan pad.
 
-**If a standalone research pad was supplied:** absorb its content into the plan pad under
-`### Research` in the appendix, then `scratchpad_archive` the source. Archiving hides without
-deleting, so it stays recoverable. Add anything new your investigation turned up.
+**If the user supplied a standalone research pad:** absorb its content into the plan pad under
+`### Research` in the appendix. Then `scratchpad_archive` the source. The archive hides the pad
+without deleting it, so the pad stays recoverable. Add anything new your investigation found.
 
 ## Gate B — Grill the user
 
-Follow `/grill`. One question at a time, each with a recommended answer, waiting for a response
-before continuing. Do not batch.
+Follow `/grill`. Ask one question at a time, each with a recommended answer. Wait for a response
+before you ask the next. Do not batch.
 
-When the remaining questions are details the user would rather see than specify, propose
-defaults, flag them as proposals, and move to gate E.
+The remaining questions may turn out to be details the user would rather see than specify. In
+that case, propose defaults, flag them as proposals, and move to gate E.
 
 ## Write the pad
 
@@ -145,24 +145,24 @@ One line per repo when more than one is in scope.
 ```
 
 The plan leads and the evidence follows. One `**Repos**:` line carries the absolute path
-`/implement` needs to place its workers. Each item verifies itself — there is no separate testing
+`/implement` needs to place its workers. Each item verifies itself. There is no separate testing
 section, so unit, integration, and manual checks all go under that item's `### Verification`.
 
 **A work item is a coherent change, not a unit of execution.** It says what changes and why.
-How many workers run it, in what order, on which model — that is scheduling, it depends on
-facts that only exist at execution time, and `/implement` decides it. Do not group items to
-suit a worker count, and do not number them to imply sequence.
+Worker count, order, and model are scheduling. That schedule depends on facts that only exist
+at execution time, so `/implement` decides it. Do not group items to suit a worker count, and
+do not number them to imply sequence.
 
 Rules the rest of the workflow depends on:
 
 - **`**Files**:` must list every path the item will touch.** `/implement` computes worker
-  grouping and wave parallelism from these, and a worker writing an undeclared path is treated
-  as a deviation. This is the one field that cannot be inferred later.
-- **`**Constraint**:` is optional and has exactly two forms.** `same-worker as <item>` when two
-  items must not drift apart — a shared clause that has to stay byte-identical, a rename and its
-  call sites. `after <item>` for a genuine dependency, such as documenting a result. Anything
-  else is scheduling and does not belong here.
-- **An item spanning two repos must be split.** Each item belongs to exactly one repo in the
+  grouping and wave parallelism from these. A worker that writes an undeclared path deviates
+  from the task. This is the one field nobody can infer later.
+- **`**Constraint**:` is optional and has exactly two forms.** Use `same-worker as <item>` when
+  two items must not drift apart. Two examples: a shared clause that has to stay byte-identical,
+  and a rename and its call sites. Use `after <item>` for a genuine dependency, such as
+  documenting a result. Anything else is scheduling and does not belong here.
+- **Split any item that spans two repos.** Each item belongs to exactly one repo in the
   `**Repos**:` list.
 
 ## Gate E — Approval and fork
@@ -183,14 +183,14 @@ Plan: plan/<slug>  (id <n>)
 Approve the plan?
 ```
 
-**No waves, no worker count, no models here.** Those are computed at decomposition from facts
-that are current at that moment, and `/implement` gates them separately. A plan that fixes the
+**No waves, no worker count, no models here.** `/implement` computes those at decomposition,
+from facts that are current at that moment, and gates them separately. A plan that fixes the
 schedule forces an approval on evidence nobody has yet.
 
-Iterate on feedback, updating the pad each time. **Do not proceed past this gate without
+Iterate on feedback and update the pad each time. **Do not proceed past this gate without
 explicit approval.**
 
-Once approved:
+Once the user approves:
 
 ```
 Plan approved. What next?
@@ -201,7 +201,8 @@ Plan approved. What next?
 ```
 
 - **Implement now** — ask which models should run the critique (see `/critique`), then hand to
-  `/implement`, which decomposes the work items into workers and gates that roster separately.
+  `/implement`. That skill decomposes the work items into workers and gates that roster
+  separately.
 - **Stash for later** — hand to `/stash`, which proposes the tracker shape and confirms.
 - **Leave active** — do nothing. The pad stays in Solo.
 
