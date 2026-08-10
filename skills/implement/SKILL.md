@@ -153,8 +153,12 @@ verification. The full plan is scratchpad <id> if you need surrounding context.
 Prior waves: <what already landed, or "this is the first wave">
 
 Before you touch anything, lock each file you will modify:
-  lock_acquire(key="path:<lowercased declared path>", lease_ttl_seconds=3600)
-If a lock is unavailable, stop and escalate — do not wait or work around it.
+  lock_acquire(lock_key="path:<lowercased absolute path>", lease_ttl_seconds=3600)
+The key is the absolute path, not the declared relative one. Solo scopes a lock to the project,
+and one project can hold many repositories, so a relative key collides with every repository
+that has a file of that name.
+If a lock is unavailable, report which actor holds it, then stop and escalate — do not wait or
+work around it.
 
 1. Read every file your task names, fully, before changing anything
 2. Make the changes

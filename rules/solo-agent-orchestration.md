@@ -86,7 +86,11 @@ Pass the **assignment** via `send_input`. It carries the one job this worker own
 
 Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, and the synthesized artifact.
 
-**Lock and KV keys are lowercase.** Solo rejects uppercase in both. A key from `path:skills/plan/SKILL.md` or from a timestamped slug fails outright. Normalize the key to lowercase when you generate it, and pin that normalization in the preamble. Two workers could lowercase one path differently and hold two locks on one file. The mutual exclusion would then fail silently.
+**A lock key carries the absolute path.** Solo scopes a lock to the project, and one project can hold many repositories. A key built from a repository-relative path such as `path:readme.md` therefore names one lock that every repository in the project shares. Two unrelated runs then collide on a file neither one touches, and the loser escalates over nothing. Build the key from the absolute path: `path:/absolute/path/to/the/file`. It needs no lookup, because the worker already knows its working directory.
+
+**Lock and KV keys are lowercase.** Solo rejects uppercase in both. A key from `path:/Users/you/Code/repo/SKILL.md` or from a timestamped slug fails outright. Normalize the key to lowercase when you generate it, and pin that normalization in the preamble. Two workers could lowercase one path differently and hold two locks on one file. The mutual exclusion would then fail silently.
+
+**A lock catches the writer the schedule does not know about.** Decomposition already gives every worker in a wave a disjoint file scope, so workers in one wave never contend. The lock earns its place against a second orchestration run, or a person editing the same tree. It converts a silent overwrite into a loud stop, which is why a worker that cannot acquire one escalates rather than waiting.
 
 **Reports go to scratchpads.** Solo splits the two surfaces. Todos carry ownership, blockers, locks, and state. Scratchpads carry findings and reports. Give each worker one scratchpad. Run `scratchpad_find` for the escalation marker across all of them before you read any in full.
 
