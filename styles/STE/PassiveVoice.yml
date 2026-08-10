@@ -1,0 +1,6 @@
+extends: existence
+message: "'%s' looks like passive voice. Use active voice when the actor is known."
+level: warning
+ignorecase: true
+raw:
+  - '\b(am|is|are|was|were|be|being|been)\s+\w+ed\b'

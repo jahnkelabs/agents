@@ -1,0 +1,6 @@
+extends: existence
+message: "Sentence starts with a gerund ('%s'). Lead with the subject instead."
+level: warning
+scope: sentence
+raw:
+  - '^(?!(?:[Nn]othing|[Ss]omething|[Aa]nything|[Ee]verything|[Dd]uring|[Ss]tring|[Tt]hing|[Kk]ing|[Rr]ing|[Ss]pring|[Bb]ring|[Ss]ing|[Ww]ing)\b)\w+ing\b'

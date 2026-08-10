@@ -1,0 +1,6 @@
+extends: occurrence
+message: "Sentence exceeds the 25-word limit (found %d words)."
+level: error
+scope: sentence
+token: '\b\w+\b'
+max: 25
