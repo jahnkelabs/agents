@@ -1,20 +1,41 @@
 # Codex runtime adapter
 
 Launch arguments and startup behavior for a Codex worker spawned through Solo's `spawn_agent`.
-`rules/solo-agent-orchestration.md` carries the policy. This file carries the flags.
+`rules/solo-agent-orchestration.md` carries the policy. This file carries the flags that
+implement it, and the three policies Codex cannot implement.
 
 Read this before you spawn a Codex worker. A wrong flag fails the launch immediately, so the
 cost of not reading it is a visible error rather than a silent one.
 
-## Required arguments
+## Policy to flag
 
-| Argument | Why |
+| Policy in the rule | Codex flag |
 |---|---|
-| `--approve-for-me` | Auto-approval. Routes approval requests through automatic review |
-| `--no-alt-screen` | Makes the worker visible to `get_process_output` |
+| Launch in auto-approval mode | `--approve-for-me`, or `-a never` before 0.147 |
+| Never use a bypass mode | never `--dangerously-bypass-approvals-and-sandbox` |
+| Deny git writes structurally | **no equivalent** — see below |
+| Match the worker to the job | `-m/--model`; reasoning effort through `-c` |
+| Carry the invariant preamble | **no equivalent** — see below |
+| Make the worker visible | `--no-alt-screen` |
 
-Never pass `--dangerously-bypass-approvals-and-sandbox`. It removes review from a process that
-runs unattended, which is the exact situation the review exists for.
+## Three policies Codex cannot implement
+
+**No per-command deny list.** Codex controls writes with `-s/--sandbox`, which takes
+`read-only`, `workspace-write`, or `danger-full-access`. All three are coarse. `read-only` blocks
+a worker that must edit files, and `workspace-write` permits `git add`. Two Codex workers that
+share a tree can therefore cross-commit, and no flag prevents it. On this runtime the git
+prohibition is a request rather than a structure. Keep each worker in its own tree, or accept
+the risk knowingly.
+
+**No system-prompt append.** Codex has no `--append-system-prompt`. Instructions arrive as the
+prompt argument or on stdin. The preamble and the assignment therefore travel together in
+`send_input`, and the preamble cannot be set once per wave.
+
+**No inheritance of `~/.claude/rules/`.** Codex reads `AGENTS.md` from the working directory. It
+does not read this repository's rules, so a Codex worker knows none of them unless something puts
+them in front of it. The point above removes the other channel. Every rule a Codex worker must
+follow therefore reaches it through its `send_input` prompt, or through an `AGENTS.md` the worker
+finds in the working directory.
 
 ## Flag notes
 

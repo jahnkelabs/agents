@@ -85,6 +85,9 @@ Pass `auto` on every Claude worker, per `solo-agent-orchestration`. A read-only 
 not a reason to drop it, and never a reason to raise it to `bypassPermissions`. On a Codex
 runtime the equivalent is `--approve-for-me --no-alt-screen`.
 
+The block above is the Claude form. For another runtime, read `references/<runtime>.md` before
+you spawn: the auto-approval argument differs, and Codex has no per-command deny list at all.
+
 Research is read-only, so the deny list costs nothing. It also stops a worker from mutating the
 tree it must describe. Tier by area: tracing one call path is not the same job as mapping a
 subsystem's conventions.

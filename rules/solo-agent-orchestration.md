@@ -62,34 +62,27 @@ Idle detection cannot do more than that, for three reasons:
 
 `spawn_agent` takes `extra_args`. Solo appends these per-launch arguments to the resolved command. They do not change the agent tool's saved defaults. Three uses matter.
 
-**Match the worker to the job.** Set `--model` and `--effort` per worker. A worker does not inherit them from the session. A mechanical edit against precise line references is one job. A rewrite that must preserve a behavioral contract is another. The two should not cost the same.
+**Match the worker to the job.** Set the model and the reasoning effort per worker. A worker does not inherit them from the session. A mechanical edit against precise line references is one job. A rewrite that must preserve a behavioral contract is another. The two should not cost the same.
 
-**Launch every worker in auto-approval mode.** Each runtime fixes the mode. It is not a per-wave judgment call:
+**Launch every worker in auto-approval mode.** Each runtime fixes the mode. It is not a per-wave judgment call. Auto-approval lets a worker work through ordinary steps without stalling on a prompt. A reviewer still sees the requests that matter. A bypass mode removes that review from a process that runs unattended, which is the exact situation review exists for. A read-only assignment is not an exception. A worker's brief says what it intends to do, not what it is able to do.
 
-| Runtime | Required `extra_args` | Never |
-|---|---|---|
-| Claude | `"--permission-mode", "auto"` | `bypassPermissions`, `dontAsk`, `acceptEdits` |
-| Codex | see `references/codex.md` | `--dangerously-bypass-approvals-and-sandbox` |
+**Read the runtime's adapter in `references/` before you spawn it.** Each runtime names its own flags, and those change between releases. `references/claude.md` and `references/codex.md` map each policy in this rule to the flag that implements it.
 
-Auto-approval lets a worker work through ordinary steps without stalling on a prompt. A reviewer still sees the requests that matter.
+**An adapter also records what its runtime cannot do.** A policy here is a requirement, not a promise that every runtime can meet it. Codex has no per-command deny list and no system-prompt append, so on that runtime two of the policies below degrade. Read the adapter before you rely on a guarantee.
 
-The bypass modes remove that review from a process that runs unattended. That is the exact situation the review exists for. `acceptEdits` is the older Claude setting, and nobody uses it now. A read-only assignment is not an exception. A worker's brief says what it intends to do, not what it is able to do.
+**Deny git writes at the permission layer.** A worker that cannot run `git add` is safer than a worker you asked not to. Two workers that share a tree can cross-commit each other's work. That failure is silent, and it costs a lot of time to undo. Where a runtime denies per command, deny the git write commands and nothing broader. A runtime that offers only a coarse sandbox cannot make this structural. Give each worker its own tree, or accept the risk knowingly and say so.
 
-**Read the runtime's adapter in `references/` before you spawn it.** A runtime fixes its own flags, its startup prompts, and its output behavior, and those change between releases. `references/codex.md` carries Codex's. A wrong flag fails the launch with a visible error, so the adapter is a lookup rather than something to memorize.
-
-**Enforce what would otherwise be a request.** A `--settings` deny list makes the git prohibition structural: `'{"permissions":{"deny":["Bash(git add:*)","Bash(git commit:*)","Bash(git push:*)","Bash(git checkout:*)"]}}'`. A worker that cannot run `git add` is safer than a worker you asked not to. Two workers that share a tree can cross-commit each other's work. That failure is silent, and it costs a lot of time to undo. This deny list is the mechanism that constrains a worker. Never use a downgraded permission mode, and never use a raised one.
-
-**Carry the invariant preamble in `--append-system-prompt`.** Three things are identical across every worker in a wave. They are the working directory, what a worker must not touch, and what to do when stuck. Only the assignment differs. The constant half in the system prompt shortens each `send_input`, and it makes the constraints harder to drop by accident.
+**Carry the invariant preamble once, where the runtime allows it.** Three things are identical across every worker in a wave. They are the working directory, what a worker must not touch, and what to do when stuck. Only the assignment differs. A runtime with a system-prompt argument takes the constant half there, which shortens each `send_input` and makes the constraints harder to drop by accident. A runtime without one carries the preamble in every prompt.
 
 ## Every worker prompt carries
 
 Split the prompt by what varies.
 
-Pass the **preamble** once via `--append-system-prompt`. It carries the working directory as an absolute path, with an instruction to stay inside it. It names what the worker must not touch: git writes, undeclared paths, todos it does not own, and KV. It also says what to do when stuck, which is to record what it found and stop. A worker that improvises past its brief is the expensive failure. A worker that stops behaves correctly.
+Pass the **preamble** once through the runtime's system-prompt argument, or in every prompt where the runtime has none. It carries the working directory as an absolute path, with an instruction to stay inside it. It names what the worker must not touch: git writes, undeclared paths, todos it does not own, and KV. It also says what to do when stuck, which is to record what it found and stop. A worker that improvises past its brief is the expensive failure. A worker that stops behaves correctly.
 
 Pass the **assignment** via `send_input`. It carries the one job this worker owns and where to write its report. It also carries the orchestrator's `process_id`, which the worker signals on completion. A todo or a work item may already state the job. The assignment then points at it rather than restating it.
 
-**A worker already has the rules.** A spawned Claude worker loads `~/.claude/rules/` the same way the parent session does, before it reads either the preamble or the assignment. Never restate a rule in a worker prompt. State the job, the constraints specific to this task, and nothing the worker can already read.
+**Check whether the worker already has the rules.** A Claude worker loads `~/.claude/rules/` the same way the parent session does, so restating a rule in its prompt wastes tokens. A Codex worker loads `AGENTS.md` from the working directory and never sees these rules, so a rule it must follow reaches it only through its prompt. The runtime's adapter says which. Assume nothing: a worker that silently lacks a constraint you believe it has is the failure this check prevents.
 
 Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, and the synthesized artifact.
 

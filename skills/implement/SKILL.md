@@ -116,14 +116,16 @@ For each wave, for each task in it:
                      "Bash(git reset:*)","Bash(git stash:*)"]}}',
      "--append-system-prompt", "<the preamble below>"])
    ```
+   The block above is the Claude form. Read `references/<runtime>.md` before you spawn any other
+   runtime: the auto-approval argument differs, and so does what the runtime can enforce.
+
    `auto` keeps the worker from stalling on its actual job. It still leaves the requests that
-   matter reviewable. `solo-agent-orchestration` requires `auto` on every Claude worker. A Codex
-   runtime takes `--approve-for-me --no-alt-screen` instead. Never `bypassPermissions`, and never
-   `acceptEdits`.
+   matter reviewable. Never `bypassPermissions`, and never `acceptEdits`.
 
    The deny list, not the permission mode, makes the git prohibition structural. A worker that
    *cannot* stage is safer than one asked not to. Cross-commits between workers that share a tree
-   are silent when they happen.
+   are silent when they happen. Codex has no per-command deny list, so a Codex worker can stage:
+   give each one its own tree, or accept the risk knowingly.
 3. `send_input(process_id, input=<agent_instructions + the assignment below>)`
 
 The **preamble**, passed once via `--append-system-prompt` and identical for every worker in the
