@@ -10,28 +10,28 @@ argument-hint: "[target]"
 
 # Critique
 
-Try to break something. This is not a survey — each worker's job is to find what is wrong,
-and findings must survive scrutiny before they reach the user.
+Try to break something. This is not a survey — each worker must find what is wrong. A finding
+must survive scrutiny before it reaches the user.
 
-Runs standalone, and is called by `/plan` (on a draft plan) and `/implement` (on a diff).
+This skill runs standalone. `/plan` calls it on a draft plan, and `/implement` calls it on a diff.
 
 ## Step 1 — Resolve the target
 
 | `$ARGUMENTS` | Target |
 |---|---|
-| *(empty)* | working tree diff; falls back to `<default>...HEAD` — resolved from `origin/HEAD`, never hardcoded — if the tree is clean |
+| *(empty)* | the working tree diff; falls back to `<default>...HEAD` — resolved from `origin/HEAD`, never hardcoded — if the tree is clean |
 | `plan/<slug>` or a pad id | a draft plan |
 | `--roster` | `/implement`'s proposed decomposition — grouping, waves, and tiers, before anything spawns |
 | one or more paths | those files |
 | `--pr <N>` | that pull request (`gh pr diff <N>`) |
 | `--base <ref>` | diff against that ref instead |
 
-State what you resolved before proceeding. If the target is empty — clean tree, no changes —
+State what you resolved before you proceed. If the target is empty — clean tree, no changes —
 say so and stop rather than reviewing nothing.
 
-A roster is a real target because it is an approved artifact with its own failure modes: two
-tasks that overlap on a file and would race, a `same-worker` constraint the grouping dropped, a
-tier that does not match the work it was assigned.
+A roster is a real target, because an approved artifact has its own failure modes. Two tasks
+may overlap on a file and race. The grouping may drop a `same-worker` constraint. A tier may
+not match the work it carries.
 
 ## Step 2 — Choose the models
 
@@ -46,28 +46,29 @@ Which models should critique this?
   <name>, <name>, <name> available.
 ```
 
-Use only enabled runtimes — never assume a fixed set. Different models have different blind
-spots, which is the point: independent critics beat one critic run repeatedly.
+Use only enabled runtimes — never assume a fixed set. Each model misses different defects,
+which is the point. Independent critics find more defects than one critic that you run repeatedly.
 
-When called by `/implement`, the roster was chosen at its setup; use it without asking again.
+When `/implement` calls this skill, it already chose the roster at setup. Use that roster, and
+do not ask again.
 
 ## Step 3 — Pick the lenses
 
 | Lens | Applies when | Question |
 |---|---|---|
-| **Plan fidelity** | an approved plan exists | Does this do what was approved — and nothing more? Was anything quietly skipped, expanded, or substituted? |
+| **Plan fidelity** | an approved plan exists | Does this do what the plan approved — and nothing more? Did the work quietly skip, expand, or substitute anything? |
 | **Correctness** | always | Where does this produce a wrong result? Give concrete inputs and the wrong output. |
-| **Edge cases** | always | Empty, null, concurrent, oversized, malformed. What is unhandled? What error path is untested? |
+| **Edge cases** | always | Empty, null, concurrent, oversized, malformed. What does the code not handle? Which error path has no test? |
 | **Security** | the target touches auth, input handling, secrets, permissions, or shells out | What is exploitable? |
 
-Plan fidelity drops silently when there is no plan — a standalone `/critique src/foo.php` has
-nothing to check fidelity against.
+Drop the plan fidelity lens silently when there is no plan. A standalone `/critique src/foo.php`
+has nothing to check fidelity against.
 
 ## Step 4 — Run the critics
 
-One Solo worker per selected model, each running all applicable lenses over the whole target.
-Per `solo-agent-orchestration` — and note that a vendor sub-agent could not run a model other
-than the session's anyway, which would defeat the point of this skill:
+Spawn one Solo worker per selected model. Each worker runs all applicable lenses over the whole
+target. Use `spawn_agent`, per `solo-agent-orchestration`. A vendor sub-agent can run only the
+session's model, and this skill needs more than one.
 
 Call `whoami` first and keep the returned `process_id` — every critic needs it to signal back.
 
@@ -80,15 +81,15 @@ spawn_agent(agent_tool_id=<id>, name="critique-<model>", extra_args=[
 send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
 
-The roster spans runtimes, so the auto-approval flag is the one argument that varies by runtime
-rather than by critic: `"--permission-mode", "auto"` on Claude, `"--approve-for-me",
-"--no-alt-screen"` on Codex. It is required on every critic, per `solo-agent-orchestration` —
-which also covers the trust prompt that eats a Codex worker's first input — and the bypass modes
-are never used even though a critic only reads.
+The roster spans runtimes, so the auto-approval flag varies by runtime rather than by critic.
+Pass `"--permission-mode", "auto"` on Claude, and `"--approve-for-me", "--no-alt-screen"` on
+Codex. Every critic needs the flag, per `solo-agent-orchestration`. That rule also covers the
+trust prompt that consumes a Codex worker's first input. Never use the bypass modes, even
+though a critic only reads.
 
-Do not pass `--model`: the roster *is* the model choice, and overriding it would collapse the
-independence the skill depends on. Effort is a separate axis and finding real defects rewards
-raising it. The deny list keeps a critic from mutating the thing it is reviewing.
+Do not pass `--model`: the roster *is* the model choice. An override would remove the
+independence this skill depends on. Raise the effort: it is a separate setting, and a higher
+effort finds more real defects. The deny list stops a critic from mutating the target it reviews.
 
 Each critic signals when it finishes; arm one idle timer as the dead-worker fallback only:
 
@@ -99,10 +100,10 @@ timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
 ```
 
 Give each worker only the target and the approved plan — not the reasoning that produced them.
-A critic that has been told why the code is good is not a critic.
+A critic that already knows why the code is good is no longer a critic.
 
 ```
-You are reviewing <target> adversarially. Your job is to find what is wrong with it.
+Review <target> adversarially. Your job is to find what is wrong with it.
 
 ## Target
 <diff, plan text, or file contents>
@@ -137,22 +138,22 @@ Be specific and be harsh. Vague concerns are noise.
 ## Step 5 — Merge and rank
 
 Read each worker's scratchpad. Match findings that describe the same defect at the same
-location, even when worded differently.
+location, even when the wording differs.
 
-**Cross-model agreement is the confidence signal.** A defect two independent models find is
-probably real; one only a single model raises deserves attention but ranks lower. This replaces
-a separate verification stage.
+**Cross-model agreement is the confidence signal.** A defect that two independent models find
+is probably real. A defect that one model raises deserves attention, but it ranks lower. This
+replaces a separate verification stage.
 
-**When only one model was selected**, that signal does not exist. Run a refutation pass
-instead: spawn one more worker per finding, tasked with arguing the finding is *not* real,
-defaulting to refuted when uncertain. Drop what it refutes.
+**When you select only one model**, that signal does not exist. Run a refutation pass instead.
+Spawn one more worker per finding, and tell it to argue that the finding is *not* real. It
+defaults to refuted when it is uncertain. Drop what it refutes.
 
 ## Step 6 — Triage serially
 
 Present findings **one at a time**, `/grill`-style — the finding, its evidence, the decision you
-need — and wait for that decision before moving to the next. Order by severity, then by
-agreement. There is no batch report and no user-facing pad: a list the user has to work back
-through is what this replaces.
+need. Wait for that decision before you present the next finding. Order by severity, then by
+agreement. There is no batch report and no user-facing pad. This skill replaces the batch list
+that the user must then read through.
 
 ```
 Finding 1 of 6   ●  bug   `src/token.php:88`
@@ -168,28 +169,28 @@ Fix it, drop it, or something else?
 
 (● = models that independently flagged it)
 
-Severity rides on every finding — `bug` (wrong behavior), `risk` (plausible failure), `nit`
-(style, naming, cleanup). It is half of the ordering, so it cannot be dropped from the line.
+Every finding carries a severity — `bug` (wrong behavior), `risk` (plausible failure), `nit`
+(style, naming, cleanup). Severity is half of the ordering, so never drop it from the line.
 
-When the last finding is decided, close with the counts and nothing else:
+When the user decides the last finding, close with the counts and nothing else:
 
 ```
 6 findings triaged — 4 to fix, 2 dropped. 4 more were refuted before triage.
 ```
 
-When a refutation pass ran, report the refuted count so the user knows filtering happened, but do
-not list what was refuted unless asked. With more than one model there is no refutation pass, so
-the close is `<N> findings triaged — <N> to fix, <N> dropped.`
+When a refutation pass ran, report the refuted count, so the user knows that you filtered
+findings. Do not list the refuted findings unless the user asks. With more than one model there
+is no refutation pass. Then the close is `<N> findings triaged — <N> to fix, <N> dropped.`
 
 `/critique` owns this presentation. `/plan` and `/implement` receive the resulting decisions
-rather than the raw findings, so nothing is triaged twice.
+rather than the raw findings, so nobody triages a finding twice.
 
 `close_process` every worker, and archive the per-model scratchpads. Those pads are the
-worker-to-orchestrator channel `solo-agent-orchestration` requires; archiving them costs nothing
-once the findings have been merged.
+worker-to-orchestrator channel that `solo-agent-orchestration` requires. They cost nothing to
+archive after you merge the findings.
 
-If nothing survives there is no decision to request, and the shape degrades to the action alone —
-one line, no findings block, no closing question:
+If nothing survives, there is no decision to request. Report the action alone — one line, no
+findings block, no closing question:
 
 ```
 Critique of <target> (<models>) — nothing survived. 4 findings raised, all refuted.

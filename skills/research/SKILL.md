@@ -10,31 +10,31 @@ argument-hint: "[question or area]"
 
 # Research
 
-Investigate a codebase and produce a factual map of what exists. Runs standalone, and is also
-the research phase inside `/plan`.
+Investigate a codebase and produce a factual map of what exists. This skill runs standalone, and
+it is also the research phase inside `/plan`.
 
 ## Your only job is to document what exists
 
 - Do NOT suggest improvements, critique the implementation, or propose future work
 - Describe what exists, where it lives, how it works, and how the pieces connect
-- You are drawing a map, not reviewing the territory
+- Your output is a description, not a review
 
-If invoked with no arguments:
+If the user invokes it with no arguments:
 
 > What would you like me to research? Give me a question or an area of the codebase.
 
 ## Step 1 — Establish scope, and confirm it
 
-Before spending anything, do a cheap first pass: read any files the user mentioned (fully — no
-limit/offset), run `git rev-parse --show-toplevel`, and skim enough structure to form a
+Do one cheap first pass before you spawn any worker. Read any files the user mentioned fully —
+no limit/offset. Run `git rev-parse --show-toplevel`, and skim enough structure to form a
 proposal.
 
 Determine the Solo project with `list_projects`, then use **whichever project is currently
-selected** — do not match paths or assume a name. Confirm it as part of the gate so a wrong
-scope is caught before anything is written.
+selected**. Do not match paths or assume a name. Confirm it in the gate, so the user catches a
+wrong scope before you write anything.
 
-Check for prior work before investigating: `scratchpad_list(query="<topic keywords>")`. If an
-existing research pad covers this, read it and extend rather than duplicating.
+Check for prior work before you investigate: `scratchpad_list(query="<topic keywords>")`. If an
+existing research pad covers this, read it and extend it. Do not duplicate it.
 
 Then present the gate:
 
@@ -56,12 +56,12 @@ Accept, or tell me what to add or cut.
 ```
 
 Scale the investigation to the question. A narrow lookup deserves one agent; mapping a
-subsystem deserves several. State what you are *not* looking at and why — a wrong omission is
+subsystem deserves several. State what you are *not* looking at, and why. A wrong omission is
 easier to catch than a wrong inclusion.
 
 ## Step 2 — Investigate
 
-Fan out with Solo agents, per `solo-agent-orchestration`. Never the host runtime's own
+Fan out with Solo agents, per `solo-agent-orchestration`. Never use the host runtime's own
 sub-agent mechanism.
 
 Build the slug first — `date +%Y-%m-%dT%H%M` plus a short topic, e.g.
@@ -81,16 +81,16 @@ spawn_agent(agent_tool_id=<id>, name="research-<area-slug>", extra_args=[
 send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
 
-`auto` is required on every Claude worker, per `solo-agent-orchestration` — a read-only
-assignment is not a reason to drop it, and never a reason to raise it to `bypassPermissions`. On
-a Codex runtime the equivalent is `--approve-for-me --no-alt-screen`.
+Pass `auto` on every Claude worker, per `solo-agent-orchestration`. A read-only assignment is
+not a reason to drop it, and never a reason to raise it to `bypassPermissions`. On a Codex
+runtime the equivalent is `--approve-for-me --no-alt-screen`.
 
-Research is read-only, so the deny list costs nothing and removes the possibility of a worker
-mutating the tree it was sent to describe. Tier by area: tracing one call path is not the same
-job as mapping a subsystem's conventions.
+Research is read-only, so the deny list costs nothing. It also stops a worker from mutating the
+tree it must describe. Tier by area: tracing one call path is not the same job as mapping a
+subsystem's conventions.
 
 ```
-You are researching one area of: <topic>.
+Research one area of: <topic>.
 
 ## Working directory
 <absolute repo path>
@@ -117,8 +117,8 @@ Document what IS, not what SHOULD BE. No improvements, no critique, no proposed 
 - Stay inside <absolute repo path>
 ```
 
-Workers signal when they finish. Arm one idle timer per run as the dead-worker fallback only —
-it has no debounce and cannot distinguish a thinking worker from a finished one, per
+Workers signal when they finish. Arm one idle timer per run as the dead-worker fallback only.
+The timer has no debounce. It cannot distinguish a thinking worker from a finished one, per
 `solo-agent-orchestration`:
 
 ```
@@ -131,9 +131,9 @@ Workers write only their own findings pad. You own the research pad.
 
 ## Step 3 — Synthesize
 
-On wake, read every worker's scratchpad. Connect findings across components, keep every
-`file:line` reference, and resolve contradictions by going back to the code rather than picking
-one.
+On wake, read every worker's scratchpad. Connect findings across components, and keep every
+`file:line` reference. Resolve a contradiction by reading the code again rather than by picking
+one report.
 
 Then `close_process` each worker and archive its per-area scratchpad — the synthesized pad
 replaces them.
@@ -182,8 +182,8 @@ live. Group by repo when more than one is in scope.
 
 ## Step 5 — Report
 
-Report the action, the location, and the decision needed. Not the findings — the user reads the
-pad.
+Report the action, the location, and the decision needed. Do not report the findings — the user
+reads the pad.
 
 ```
 Researched <topic> — <N> areas, <N> Solo agents.
@@ -198,7 +198,7 @@ Next: /plan research/<slug> to plan from it, or /critique research/<slug> to cha
 Extend the same pad rather than creating another:
 
 - New material under an existing heading → `scratchpad_append_section`
-- Replacing a section → `scratchpad_edit` with
+- A section replacement → `scratchpad_edit` with
   `target={"type":"section","section_heading":"## ..."` or `"### ..."}` and the current `expected_revision`
 - A dated addition at the end → `scratchpad_append`
 
