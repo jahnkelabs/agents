@@ -19,8 +19,14 @@ The script links rules and skills one at a time, so `~/.claude/rules` and `~/.cl
 stay real directories you own. It leaves anything else you keep there alone. Nothing you create
 locally reaches this repository, which matters because the repository is public.
 
-`references/` is a whole-directory link because it is not a Claude Code directory. It exists
-only so skills can read tracker adapters from a stable path, and nothing else writes there.
+`references/` is a whole-directory link because it is not a Claude Code directory. It exists so
+a skill or a rule can read an adapter from a stable path, and nothing else writes there. It
+holds two kinds: a tracker adapter that `/stash` and `/recall` read, and a runtime adapter that
+`solo-agent-orchestration` points at before you spawn that runtime.
+
+An adapter is content you need at one moment rather than in every session. Runtime launch flags
+belong here because a wrong flag fails the launch with a visible error. A rule keeps anything
+whose absence fails silently.
 
 Re-run the script after you **add or rename** a file. An edit to an existing file takes effect
 immediately. The script prunes links into this repository whose source is gone, and it touches

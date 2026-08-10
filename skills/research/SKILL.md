@@ -125,7 +125,12 @@ The timer has no debounce. It cannot distinguish a thinking worker from a finish
 timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
   body="Research guard expired. Any area that has not signalled has died or hung —
         check its scratchpad and process status before synthesizing without it.")
+  → timer_id
 ```
+
+Keep the returned `timer_id`. When the last area signals, `timer_cancel(timer_id=<id>)` before
+you synthesize. A guard you leave armed fires later and arrives as an instruction about areas
+that finished long ago.
 
 Workers write only their own findings pad. You own the research pad.
 

@@ -176,11 +176,16 @@ If a lock is unavailable, stop and escalate — do not wait or work around it.
      body="Wave <N> guard expired. Any worker that has not signalled has died, hung, or
            failed to finish — investigate before treating it as complete. Check each
            task's scratchpad and process status.")
+     → timer_id
    ```
    Do not treat that timer as the completion signal. It has no debounce, and a worker thinking at
    length is indistinguishable from a finished one — see `solo-agent-orchestration`.
-5. When every task in the wave signals, run `scratchpad_find` for `ESCALATION` across the wave's
-   report pads. Do this before you read any pad in full. If nothing matches, read only what you
+
+   Keep the returned `timer_id`. One guard per wave means one id to hold.
+5. When every task in the wave signals, `timer_cancel(timer_id=<id>)` for that wave's guard.
+   Cancel before you commit: a guard left armed fires during a later wave and arrives as an
+   instruction about workers that finished long ago. Then run `scratchpad_find` for `ESCALATION`
+   across the wave's report pads. Do this before you read any pad in full. If nothing matches, read only what you
    need to write the commit messages.
 6. **Commit each completed task separately**, staging only its declared paths:
    ```bash

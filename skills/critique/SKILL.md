@@ -97,7 +97,12 @@ Each critic signals when it finishes; arm one idle timer as the dead-worker fall
 timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
   body="Critique guard expired. Any critic that has not signalled has died or hung —
         check its scratchpad and process status before merging without it.")
+  → timer_id
 ```
+
+Keep the returned `timer_id`. When the last critic signals, `timer_cancel(timer_id=<id>)` before
+you merge findings. A guard you leave armed fires later and arrives as an instruction about
+critics that finished long ago.
 
 Give each worker only the target and the approved plan — not the reasoning that produced them.
 A critic that already knows why the code is good is no longer a critic.

@@ -56,6 +56,8 @@ Idle detection cannot do more than that, for three reasons:
 
 **The timer body is an instruction, not a note.** It arrives as a fresh turn, and the orchestrator acts on it literally. Every branch the orchestrator must take on wake belongs inside the body. The orchestrator never reads guidance that lives only in the surrounding prose.
 
+**Cancel the guard the moment the last worker signals.** `timer_fire_when_idle_all` returns a `timer_id`. Keep it, and call `timer_cancel(timer_id=<id>)` at the join, before you commit anything. A guard you leave armed still fires. It arrives as a fresh turn carrying an instruction about workers that finished long ago, and the orchestrator then acts on a stale premise. Arm one guard, hold its id, cancel it at the join: that is the whole lifecycle.
+
 ## Capability, not compliance
 
 `spawn_agent` takes `extra_args`. Solo appends these per-launch arguments to the resolved command. They do not change the agent tool's saved defaults. Three uses matter.
@@ -67,19 +69,13 @@ Idle detection cannot do more than that, for three reasons:
 | Runtime | Required `extra_args` | Never |
 |---|---|---|
 | Claude | `"--permission-mode", "auto"` | `bypassPermissions`, `dontAsk`, `acceptEdits` |
-| Codex (interactive `codex`—what `spawn_agent` launches) | `"--approve-for-me", "--no-alt-screen"` | `--dangerously-bypass-approvals-and-sandbox` |
+| Codex | see `references/codex.md` | `--dangerously-bypass-approvals-and-sandbox` |
 
-Both modes let a worker work through ordinary steps without stalling on a prompt. A reviewer still sees the requests that matter.
-
-`--approve-for-me` routes approval requests through automatic review. It already implies the `workspace-write` sandbox. Codex rejects it outright alongside `-s/--sandbox`, so pass it alone. `--full-auto` no longer exists on `codex` or on `codex exec`. That is true as of codex-cli 0.147.0, verified 2026-08-08. It fails the launch immediately with `error: unexpected argument '--full-auto' found`, and `codex exec` has no `-a/--ask-for-approval` at all.
+Auto-approval lets a worker work through ordinary steps without stalling on a prompt. A reviewer still sees the requests that matter.
 
 The bypass modes remove that review from a process that runs unattended. That is the exact situation the review exists for. `acceptEdits` is the older Claude setting, and nobody uses it now. A read-only assignment is not an exception. A worker's brief says what it intends to do, not what it is able to do.
 
-**A Codex worker's first launch in an untrusted directory consumes its first input.** `codex` asks *Do you trust the contents of this directory?* before it accepts anything else. No approval flag dismisses that question, because `--approve-for-me` governs command approvals rather than workspace trust.
-
-Pre-trust the directory instead. Add `[projects."<absolute path>"]` with `trust_level = "trusted"` to `~/.codex/config.toml`. You can also pass `-c 'projects."<absolute path>".trust_level="trusted"'` per launch. If you cannot pre-trust the directory, answer `1` with `send_input` before you send the assignment.
-
-`--no-alt-screen` is what makes the worker visible at all. Without it the TUI writes to the alternate screen, and `get_process_output` returns nothing. The worker then exits on its own after about thirty seconds, and that exit looks like a silent crash.
+**Read the runtime's adapter in `references/` before you spawn it.** A runtime fixes its own flags, its startup prompts, and its output behavior, and those change between releases. `references/codex.md` carries Codex's. A wrong flag fails the launch with a visible error, so the adapter is a lookup rather than something to memorize.
 
 **Enforce what would otherwise be a request.** A `--settings` deny list makes the git prohibition structural: `'{"permissions":{"deny":["Bash(git add:*)","Bash(git commit:*)","Bash(git push:*)","Bash(git checkout:*)"]}}'`. A worker that cannot run `git add` is safer than a worker you asked not to. Two workers that share a tree can cross-commit each other's work. That failure is silent, and it costs a lot of time to undo. This deny list is the mechanism that constrains a worker. Never use a downgraded permission mode, and never use a raised one.
 
