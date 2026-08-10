@@ -4,7 +4,7 @@ description: Admit a comment only when it says something the code cannot
 
 # Comment discipline
 
-Code states what it does. A comment is for **what the code cannot say**. Three things qualify: an outside constraint, a deliberate deviation, and a value that looks wrong. Every other comment goes out of date and then misleads the next reader. `rules/output-discipline.md` puts artifact length out of scope, so this rule governs artifact existence instead.
+Code states what it does. A comment is for **what the code cannot say**. Three things qualify: a non-obvious constraint, a deliberate deviation, and a value that looks wrong. Every other comment goes out of date and then misleads the next reader. `rules/output-discipline.md` puts artifact length out of scope, so this rule governs artifact existence instead.
 
 ## Rule of thumb
 
@@ -16,7 +16,7 @@ The test is what the code can express, not what a new reader wants explained. A 
 
 - **Default:** Write no comment. The code states the meaning.
 - **Scope:** Comments and docstrings in code you write or change, and the documentation that describes that code.
-- **Admissible:** The three cases below, and nothing else.
+- **Admissible:** The three cases below, plus a comment a tool reads — a pragma, a directive, or a license header.
 - **Exceptions:** Documentation the user asked for, and documentation that is itself the deliverable.
 
 ## The three admissible comments

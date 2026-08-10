@@ -10,13 +10,13 @@ This rule applies the ASD-STE100 writing rules to every sentence an agent writes
 
 **A sentence passes when it has 20 words or fewer, uses the active voice, and contains no metaphor.**
 
-These three failures make prose hardest to read, and all three are visible in a single sentence. A word count is mechanical, so run it on every sentence you write. The limit rises to 25 words for a description, and the next section defines the difference. Voice and metaphor need your judgment, so the sections below define each one and give the plain replacement.
+A long sentence, a passive, and a metaphor make prose hardest to read. All three are visible in one sentence. A word count is mechanical, so run it on every sentence you write. The limit rises to 25 words for a description, and `## Sentence and paragraph limits` defines the difference. Voice and metaphor need your judgment, so the sections below define each one and give the plain replacement.
 
 ## Default policy
 
 - **Default:** Every sentence follows the rules below.
 - **Scope:** All prose you write—chat, markdown, rule and skill files, PR bodies, commit messages, and code comments.
-- **Verbatim content:** Do not simplify it. The Preservation bullet in `rules/output-discipline.md` names what qualifies, and that list governs here too.
+- **Verbatim content:** Do not simplify it. The Preservation bullet in `rules/output-discipline.md` names what qualifies, and that list governs here too. A fenced block in a skill file is also verbatim, because it is a string the agent emits or sends to a worker. Only prose inside a fenced worker prompt is in scope.
 - **Exceptions:** Text you quote from another source, and any style the user asks for directly.
 
 ## Sentence and paragraph limits

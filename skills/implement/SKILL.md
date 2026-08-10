@@ -198,7 +198,7 @@ A worker escalates when it cannot self-resolve. It also escalates when finishing
 deviating meaningfully from what the user approved. A worker that writes an undeclared path
 deviates from the task.
 
-**In-flight workers in the same wave finish.** They hold disjoint file scopes and no
+**In-flight workers in the same wave finish.** They hold disjoint file scopes and have no
 dependencies on each other, so no other work depends on the problem.
 
 The worker's report scratchpad is the durable record, and its completion signal says whether it

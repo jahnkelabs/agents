@@ -36,7 +36,7 @@ are machine-local and yours.
 |---|---|
 | Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/stash`, `/recall` |
 | A tracker MCP | `/stash`, `/recall` — Linear adapter included |
-| Vale 3.17.1 | checking prose against `simplified-english` — `brew install vale` |
+| Vale 3.0 or later | checking prose against `simplified-english` — `brew install vale`. CI pins 3.17.1 |
 | Nothing | `/grill` and the rules |
 
 ## Rules
@@ -62,15 +62,18 @@ Vale checks `simplified-english` mechanically. `.vale.ini` and the hand-authored
 style live in this repository. Run it over the markdown you changed:
 
 ```bash
-vale --minAlertLevel=error <file>.md
+vale --minAlertLevel=warning <file>.md
 ```
 
-The 25-word sentence cap and the contraction list are errors. The 20-word cap, the
+The 25-word sentence cap and the contraction check are errors. The 20-word cap, the
 passive-voice check, and the gerund check are warnings, because each one needs your judgment.
 
-The passive-voice check matches a `be` form followed by a regular `-ed` participle. It does not
-match an irregular participle such as `written`, `taken`, `given`, or `known`. Coverage is
-partial by design.
+The passive-voice check matches a `be` form followed by a regular `-ed` participle or one of
+about thirty common irregular participles. A rarer irregular form still passes, so the check
+narrows the problem rather than settling it.
+
+The gerund check flags an `-ing` form used as a verb, such as `is releasing`. A gerund used as a
+noun is correct, so `Planning takes an hour` does not alert.
 
 ## Skills
 

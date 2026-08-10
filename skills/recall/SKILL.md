@@ -25,7 +25,7 @@ cheap. Say so, and it will look at very little.
 `$ARGUMENTS` is a tracker reference: an issue key (`ENG-142`, `PROJ-88`), a URL, or a project
 name.
 
-With no arguments, list parked issues — ones you own or that `/stash` created — and ask.
+With no arguments, list parked issues — open ones you own or that `/stash` created — and ask.
 
 Pick the adapter in `~/.claude/references/` matching the reference's tracker.
 
@@ -82,7 +82,7 @@ That first investigation item matters: when recalling a later work item, what ea
 Do not modify the tracker item during recall. Nothing has happened to it yet — planning may
 decide to change the work's shape or to drop it entirely.
 
-One of three things updates the tracker later:
+Three things update the tracker later:
 
 - `/implement` moves it to in-progress when work starts
 - `/stash` reconciles if you park the plan again
