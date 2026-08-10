@@ -80,7 +80,7 @@ send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
 
 The roster spans runtimes, so read an adapter per critic rather than once. `list_agent_tools`
-returns a `tool_type` for each. Read `references/<tool_type>.md` and use the arguments it lists.
+returns a `tool_type` for each. Read `references/runtime-<tool_type>.md` and use the arguments it lists.
 Each adapter also names the startup behavior that eats a worker's first input, and what its
 runtime cannot enforce. Never use a bypass mode, even though a critic only reads.
 

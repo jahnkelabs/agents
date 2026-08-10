@@ -79,7 +79,7 @@ spawn_agent(agent_tool_id=<id>, name="research-<area-slug>", extra_args=[
 send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
 
-`list_agent_tools` returns a `tool_type` for each runtime. Read `references/<tool_type>.md` and
+`list_agent_tools` returns a `tool_type` for each runtime. Read `references/runtime-<tool_type>.md` and
 use the arguments it lists. Never write a launch argument from memory: a runtime renames its
 flags between releases, and the adapter is the only current record.
 

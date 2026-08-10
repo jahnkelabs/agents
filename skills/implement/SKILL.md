@@ -112,7 +112,7 @@ For each wave, for each task in it:
      <the auto-approval and git-denial arguments from the adapter>,
      <the system-prompt argument carrying the preamble below, if the runtime has one>])
    ```
-   `list_agent_tools` returns a `tool_type` for each runtime. Read `references/<tool_type>.md`
+   `list_agent_tools` returns a `tool_type` for each runtime. Read `references/runtime-<tool_type>.md`
    and use the arguments it lists. Never write a launch argument from memory: a runtime renames
    its flags between releases, and the adapter is the only current record.
 
@@ -121,8 +121,9 @@ For each wave, for each task in it:
 
    Denying git writes, not the approval mode, makes the prohibition structural. A worker that
    *cannot* stage is safer than one asked not to. Cross-commits between workers that share a tree
-   are silent when they happen. A runtime that cannot deny per command cannot give you this. The
-   adapter says so, and then each worker needs its own tree, or a knowing acceptance of the risk.
+   are silent when they happen. A runtime that cannot scope a denial to one worker cannot give
+   you this. The adapter says so, and each worker then needs its own tree, or a knowing
+   acceptance of the risk.
 3. `send_input(process_id, input=<agent_instructions + the assignment below>)`
 
 The **preamble**, identical for every worker in the wave. Pass it once through the runtime's

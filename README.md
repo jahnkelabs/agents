@@ -38,9 +38,13 @@ gates on your approval before anything lands, so the guarantee weakens from "you
 `references/` is a whole-directory link because it is not a Claude Code directory. It exists so
 a skill or a rule can read an adapter from a stable path, and nothing else writes there. It
 holds two kinds: a tracker adapter that `/stash` and `/recall` read, and a runtime adapter that
-`solo-agent-orchestration` points at before you spawn that runtime. `claude.md` and `codex.md`
-are the runtime adapters. Each maps every policy in that rule to the flag that implements it,
-and records the policies its runtime cannot implement at all.
+`solo-agent-orchestration` points at before you spawn that runtime. `runtime-claude.md` and
+`runtime-codex.md` are the runtime adapters. Each maps every policy in that rule to the flag
+that implements it, and records the policies its runtime cannot implement at all.
+
+The `runtime-` prefix is load-bearing. A file named `claude.md` collides with `CLAUDE.md` on a
+case-insensitive filesystem. Claude Code then loads the adapter as project instructions in every
+session that opens this repository.
 
 An adapter is content you need at one moment rather than in every session. Runtime launch flags
 belong here because a wrong flag fails the launch with a visible error. A rule keeps anything

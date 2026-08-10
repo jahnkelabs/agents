@@ -20,12 +20,15 @@ cost of not reading it is a visible error rather than a silent one.
 
 ## Three policies Codex cannot implement
 
-**No per-command deny list.** Codex controls writes with `-s/--sandbox`, which takes
+**No per-worker deny list.** Codex controls writes per launch with `-s/--sandbox`, which takes
 `read-only`, `workspace-write`, or `danger-full-access`. All three are coarse. `read-only` blocks
 a worker that must edit files, and `workspace-write` permits `git add`. Two Codex workers that
-share a tree can therefore cross-commit, and no flag prevents it. On this runtime the git
+share a tree can therefore cross-commit, and no launch flag prevents it. On this runtime the git
 prohibition is a request rather than a structure. Keep each worker in its own tree, or accept
 the risk knowingly.
+
+Codex does have a per-command deny list, and this repository declines to use it. See
+`## Execpolicy, and why this repository does not use it` below before you reach for it.
 
 **No system-prompt append.** Codex has no `--append-system-prompt`. Instructions arrive as the
 prompt argument or on stdin. The preamble and the assignment therefore travel together in
@@ -73,3 +76,37 @@ assignment.
 
 Without it the TUI writes to the alternate screen and `get_process_output` returns nothing. The
 worker then exits on its own after about thirty seconds, and that exit looks like a silent crash.
+
+## Execpolicy, and why this repository does not use it
+
+Codex reads Starlark policy files that decide, per command, whether it may run:
+
+```
+prefix_rule(pattern=["git", "add"], decision="forbidden", justification="the orchestrator owns git")
+```
+
+`decision` is `allow`, `prompt`, or `forbidden`, and the most restrictive match wins. That is a
+real per-command deny list, and it is the closest thing Codex has to what another runtime does
+per launch.
+
+**This repository does not install one.** The mechanism is global. A rule that stops a worker
+staging a commit stops you staging one too, in every Codex session on the machine. Nothing
+distinguishes a worker from your own terminal, so the cost lands on the person.
+
+Verified on codex-cli 0.146.0, so a later version may move these:
+
+- **A second file in `~/.codex/rules/` does load.** The filename does not have to be
+  `default.rules`. Matching reaches the argv inside the `/bin/zsh -lc` wrapper, and the
+  `justification` text reaches the worker in the rejection message.
+- **A symlinked `.rules` file does not load.** A real file at the same path with the same content
+  does. Rules cannot be linked out of a repository the way skills can, so installing one means
+  copying it and keeping the copy fresh.
+- **A project-scope `<repo>/.codex/rules/` does not load.** Not in a git repository, and not with
+  `trust_level = "trusted"` either. `codex doctor` reports only `~/.codex/config.toml` as a loaded
+  layer. Per-project policy would make the denial per-worker, which is the one shape worth
+  having. Re-test it on a newer version before you conclude it cannot work.
+- **`~/.codex/rules/default.rules` belongs to Codex.** It appends to that file as you approve
+  commands. Never manage or overwrite it. An installed policy would go in its own file beside it.
+
+`codex execpolicy check --rules <path> -- <command>` evaluates a file without running anything.
+Pass `--` before the command, or its flags are read as flags to `check`.
