@@ -74,10 +74,11 @@ overwrites a value you set, and it touches nothing else in that file. It does no
 
 ## Rules
 
-All five rules load into every session.
+All six rules load into every session.
 
 | Rule | Description |
 |---|---|
+| [chat-vocabulary](rules/chat-vocabulary.md) | Five reserved headings and one footer mark every message that needs a reply; nothing else gets a heading |
 | [comment-discipline](rules/comment-discipline.md) | Comments are disallowed by default; after the implementation, propose only the few that pass the admission test |
 | [pr-first-contributions](rules/pr-first-contributions.md) | PR-first git workflow with conventional titles, draft PRs, and squash-merge descriptions |
 | [solo-agent-orchestration](rules/solo-agent-orchestration.md) | Fan out with Solo agents, never a vendor's native sub-agent mechanism. Workers signal their own completion and report to a durable surface |
@@ -240,9 +241,11 @@ worker that reasons at length emits no output and looks finished.
 get wrong: why these repos, why these investigation areas, why this is out of scope. A bad guess
 is then visible rather than buried. A gate prints a looked-up fact without argument. The
 selected Solo project needs no justification; a repo list inferred from file references needs
-one.
+one. Every gate carries the reserved `Approve` heading and fences its block, per
+[chat-vocabulary](rules/chat-vocabulary.md).
 
-**`/plan` grills you.** Questions come one at a time, each with a recommended answer. The
+**`/plan` grills you.** One question per message, never two. Each one carries the reserved
+`Deciding` heading, a fenced context block, and a mandatory recommendation. The
 question whose answer changes the most other answers comes first. `/plan` looks up anything the
 filesystem or a tool can tell it, rather than asking you. It stops when the questions left are
 details you would rather see than specify.
