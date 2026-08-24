@@ -52,9 +52,10 @@ An adapter is content you need at one moment rather than in every session. Runti
 belong here because a wrong flag fails the launch with a visible error. A rule keeps anything
 whose absence fails silently.
 
-Re-run the script after you **add or rename** a file. An edit to an existing file takes effect
-immediately. The script prunes links into this repository whose source is gone, and it touches
-nothing else. It moves anything real in the way to `~/.claude/backups/` first. Override the
+Re-run the script after you **add or rename** a file. An edit to an existing rule or skill takes
+effect immediately. An edit to the output style does not. Claude Code reads a style once per
+session, so see `## Output style`. The script prunes links into this repository whose source is
+gone, and it touches nothing else. It moves anything real in the way to `~/.claude/backups/` first. Override the
 repository root with `AGENTS_REPO=/path/to/agents`.
 
 **This repository manages one key in `~/.claude/settings.json`: `outputStyle`.** It never
@@ -67,7 +68,7 @@ overwrites a value you set, and it touches nothing else in that file. It does no
 |---|---|
 | Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/stash`, `/recall` |
 | A tracker MCP | `/stash`, `/recall` — Linear adapter included |
-| Vale 3.0 or later | checking prose against `prose-discipline` — `brew install vale`. CI pins 3.17.1 |
+| Vale 3.0 or later | checking the sentence-level half of `prose-discipline` — `brew install vale`. CI pins 3.17.1 |
 | jq | selecting the output style at install time — without it the install prints the instruction instead |
 | Nothing | `/grill` and the rules |
 
@@ -98,9 +99,15 @@ rather than twice.
 
 Three mechanisms come with a style:
 
-- **A style takes effect at session start only.** A change needs `/clear` or a new session.
+- **A style takes effect at session start only.** An edit to the file needs `/clear` or a new
+  session. A newly linked style file needs a new session. Claude Code caches the set of available
+  styles for the life of the process.
 - **Only one style is active at a time.** Another style therefore drops both standards at once.
 - **It applies to all prose.** An artifact runs to whatever length its purpose requires.
+- **It drops Claude Code's `# Doing tasks` section.** The style omits
+  `keep-coding-instructions`, so the built-in scoping, comment, and verification guidance leaves
+  the system prompt. `yagni` and `comment-discipline` cover scope and comments more strictly. The
+  security guidance and the verification instruction go, and no file here replaces them.
 
 The installer links the style and sets `"outputStyle": "prose-discipline"` in
 `~/.claude/settings.json`. It leaves an `outputStyle` you set yourself alone, and it skips that step
@@ -109,8 +116,11 @@ alongside the rules.
 
 ### Checking prose
 
-Vale checks `prose-discipline` mechanically. Both mechanisms exist because Vale covers committed
-markdown, and the per-turn style reminder covers chat, which Vale never reads.
+Vale checks the sentence-level half of `prose-discipline` mechanically: sentence length, voice,
+verb form, and contractions. It checks none of the imperatives. "Lead with the answer", "one shape
+per fact", and "stop when done" pass Vale whatever you write. Both mechanisms exist because
+Vale covers committed markdown, and the per-turn style reminder covers chat, which Vale never
+reads.
 
 The two directories are one word apart. `styles/` holds the Vale rules that check the prose, and
 `output-styles/` holds the Claude output style itself. `.vale.ini` and the hand-authored

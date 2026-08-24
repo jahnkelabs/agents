@@ -16,8 +16,8 @@ Usage: install.sh [--rules-only]
 
 Installs this repository for both runtimes.
 
-Claude reads a directory of rules and a directory of skills, so both link
-per entry:
+Claude reads directories of rules, output styles, and skills, so each one
+links per entry:
 
   ~/.claude/rules/<name>.md         -> rules/<name>.md          (per file)
   ~/.claude/output-styles/<name>.md -> output-styles/<name>.md   (per file)
@@ -187,14 +187,20 @@ select_output_style() {
     return
   fi
 
-  [[ -f "${f}" ]] || echo '{}' > "${f}"
+  if [[ ! -f "${f}" ]] && ! echo '{}' > "${f}" 2>/dev/null; then
+    echo "  cannot create settings.json -- skipping the output style"
+    echo "  pick prose-discipline in /config instead"
+    return
+  fi
 
-  local current
-  if ! current="$(jq -r '.outputStyle // ""' "${f}" 2>/dev/null)"; then
-    echo "  cannot read settings.json -- it is not valid JSON"
+  if ! jq -e 'type == "object"' "${f}" >/dev/null 2>&1; then
+    echo "  settings.json is not a JSON object -- skipping the output style"
     echo "  fix it and re-run, or pick prose-discipline in /config"
     return
   fi
+
+  local current
+  current="$(jq -r '.outputStyle // ""' "${f}")"
 
   if [[ "${current}" == "prose-discipline" ]]; then
     echo "  already selected: outputStyle"
@@ -207,10 +213,22 @@ select_output_style() {
     return
   fi
 
-  jq '. + {outputStyle: "prose-discipline"}' "${f}" > "${f}.tmp" \
-    && mv "${f}.tmp" "${f}"
-  echo "  selected: outputStyle=prose-discipline"
-  echo "  (takes effect on /clear or a new session)"
+  local tmp
+  if ! tmp="$(mktemp "${f}.XXXXXX")"; then
+    echo "  cannot write in ${DEST} -- skipping the output style"
+    return
+  fi
+
+  # cat rather than mv: it writes through a symlink and keeps the mode and owner.
+  if jq '. + {outputStyle: "prose-discipline"}' "${f}" > "${tmp}" \
+     && cat "${tmp}" > "${f}"; then
+    rm -f "${tmp}"
+    echo "  selected: outputStyle=prose-discipline"
+    echo "  (start a new claude session to load it)"
+  else
+    rm -f "${tmp}"
+    echo "  could not write settings.json -- pick prose-discipline in /config"
+  fi
 }
 
 # Regenerate after the tree changes, so a committed rule edit reaches Codex
@@ -280,7 +298,7 @@ echo ""
 echo "Installed for both runtimes. Rules apply to every session; skills are"
 echo "slash commands on Claude and \$-invoked skills on Codex."
 echo "Claude's prose style lives in the outputStyle key of"
-echo "your ~/.claude/settings.json. Run /clear or start a new session to load it."
+echo "your ~/.claude/settings.json. Start a new claude session to load it."
 echo "/plan, /implement, /critique, /stash and /recall require the Solo MCP server."
 echo "/stash and /recall additionally require a tracker MCP (see references/)."
 echo ""

@@ -13,7 +13,7 @@ Lead with the answer, and earn every sentence after it. The standard is the read
 
 **A sentence passes when it has 20 words or fewer, uses the active voice, and contains no metaphor.**
 
-Signal is the standard, never token cost. A response that drops a needed fact fails, and so does a padded one. Run the word count on every sentence you write.
+The limit rises to 25 words for a description. Signal is the standard, never token cost. A response that drops a needed fact fails, and so does a padded one. Run the word count on every sentence you write.
 
 ## Scope
 
@@ -26,9 +26,9 @@ Signal is the standard, never token cost. A response that drops a needed fact fa
 
 ## The imperatives
 
-- **Lead with the answer.** Write no preamble, do not restate the request, and do not announce what comes next.
+- **Lead with the answer.** The first sentence carries the result. Write no preamble, do not restate the request, and do not announce what comes next.
 - **Do not narrate visible tool work.** A second description only duplicates the transcript.
-- **One shape per fact.** Prose, then a list, then a table of one fact states that fact three times.
+- **One shape per fact.** Prose, then a list, then a table of one fact states that fact three times. An anti-pattern table states a different fact, which is the failure mode, so it stays.
 - **Report the artifact, not its contents.** State what you did, where it is, and what you need from the user. Paste the contents only when the user's next question asks about them.
 - **Stop when done.** Write no unrequested summary, no next-steps section, and no offer of adjacent work. A skill's own defined handoff is the one exception.
 
