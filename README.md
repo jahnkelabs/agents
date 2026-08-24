@@ -18,6 +18,7 @@ One run installs both runtimes.
 | `~/.claude/settings.json` | the `outputStyle` key only — **merged** | Claude |
 | `~/.claude/skills/<name>/` | slash commands — **linked per skill** | Claude |
 | `~/.claude/references` | adapters — whole directory | Claude |
+| `~/.claude/bin/wt-clone.sh` | the `/worktree` clone helper — **linked per file** | both |
 | `~/.agents/skills/<name>/` | the same skills — **linked per skill** | Codex |
 | `~/.agents/references` | the same adapters — whole directory | Codex |
 | `~/.codex/AGENTS.md` | every rule and the output style concatenated — **generated** | Codex |
@@ -32,10 +33,10 @@ reach it any other way. A file you wrote yourself is backed up before the first 
 hooks regenerate it after a commit, a checkout, and a merge, so a rule edit you commit reaches
 Codex without a re-run. `./scripts/install.sh --rules-only` does that regeneration alone.
 
-**Codex has no `disable-model-invocation`.** On Claude, `/plan`, `/implement`, `/stash`, and
-`/recall` cannot be invoked by the model. On Codex it can invoke all four itself. Each still
-gates on your approval before anything lands, so the guarantee weakens from "you start it" to
-"you approve it".
+**Codex has no `disable-model-invocation`.** On Claude, `/plan`, `/implement`, `/worktree`,
+`/stash`, and `/recall` cannot be invoked by the model. On Codex it can invoke all five itself.
+Each still gates on your approval before anything lands, so the guarantee weakens from "you
+start it" to "you approve it".
 
 `references/` is a whole-directory link because it is not a Claude Code directory. It exists so
 a skill or a rule can read an adapter from a stable path, and nothing else writes there. It
@@ -151,12 +152,14 @@ Both checks are warnings for that reason: read each one and decide.
 | [`/grill`](skills/grill/SKILL.md) | Interrogate a decision one question at a time | you or Claude |
 | [`/plan`](skills/plan/SKILL.md) | Research, grill, and produce a plan in one Solo scratchpad | **you only** |
 | [`/implement`](skills/implement/SKILL.md) | Decompose a plan into workers, run them, critique, present | **you only** |
+| [`/worktree`](skills/worktree/SKILL.md) | Set up, convert, and provision a bare-plus-worktrees repository | **you only** |
 | [`/stash`](skills/stash/SKILL.md) | Move active work into a durable tracker | **you only** |
 | [`/recall`](skills/recall/SKILL.md) | Pull tracker work back into planning | **you only** |
 
-Four skills have side effects: they write code, commit, or create tracker objects. Each of the
-four carries `disable-model-invocation: true`, so Claude cannot decide to run it. Those four do
-not appear in Claude's skill listing, so they cost no context until you invoke them.
+Five skills have side effects: they write code, commit, convert a repository, or create tracker
+objects. Each of the five carries `disable-model-invocation: true`, so Claude cannot decide to
+run it. Those five do not appear in Claude's skill listing, so they cost no context until you
+invoke them.
 
 The three advisory skills stay model-invocable and carry `when_to_use` trigger phrases. Say
 "grill me on this" or "find the bugs" and the skill runs without a command name.

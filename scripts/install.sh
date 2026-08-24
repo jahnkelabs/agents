@@ -37,6 +37,11 @@ Rules and skills are linked one at a time, so the directories stay real ones
 you own. Anything else you keep there is left alone, and nothing you create
 locally lands in this repo.
 
+The /worktree clone helper links to a stable path, so a per-repository
+provisioning script can call it without knowing where this repo lives:
+
+  ~/.claude/bin/wt-clone.sh     -> scripts/wt-clone.sh
+
 The install also sets "outputStyle": "prose-discipline" in
 ~/.claude/settings.json. That key selects the prose style for every Claude
 session. An outputStyle you set yourself is left alone, and the step is
@@ -267,6 +272,8 @@ link_entries output-styles files
 select_output_style
 link_entries skills dirs
 link "${REPO_ROOT}/references" "${DEST}/references"
+mkdir -p "${DEST}/bin"
+link "${REPO_ROOT}/scripts/wt-clone.sh" "${DEST}/bin/wt-clone.sh"
 
 echo "Installing for Codex..."
 mkdir -p "${AGENTS_DEST}"
@@ -303,4 +310,4 @@ echo "/plan, /implement, /critique, /stash and /recall require the Solo MCP serv
 echo "/stash and /recall additionally require a tracker MCP (see references/)."
 echo ""
 echo "Codex has no disable-model-invocation, so it can invoke /plan, /implement,"
-echo "/stash and /recall itself. Their approval gates still hold."
+echo "/worktree, /stash and /recall itself. Their approval gates still hold."

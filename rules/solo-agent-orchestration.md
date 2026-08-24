@@ -83,10 +83,12 @@ One session already paid for this. The third spawn attempt abandoned `spawn_agen
 A worker never shares a working tree with the user. Cut one worktree per milestone and per repository. Cut it from a bare-plus-worktrees layout, and use these paths:
 
 ```
-  container   /Users/you/Code/<repo>                      the converted clone's own path
-  bare repo   /Users/you/Code/<repo>/.git                 `git rev-parse --is-bare-repository` returns true
-  worktree    /Users/you/Code/<repo>/<milestone-slug>
-  branch      <type>/<milestone-slug>
+  container   <the repository's own path>                 at whatever depth it sits
+  bare repo   <container>/.git                            `git rev-parse --is-bare-repository` returns true
+  stable      <container>/main                            the user's worktree, never removed
+  worktree    <container>/<plan-slug>-<milestone-slug>    one plan's worktrees sort together
+  branch      <type>/<milestone-slug>                     the plan prefix stays out of the branch
+  example     ~/Code/jahnkelabs/agents/main
   create      git worktree add <worktree> -b <branch> <base>
                 base = origin/HEAD, or the predecessor milestone's branch when stacked
   record      kv_set plan:<slug>:milestone:<m>:worktree
