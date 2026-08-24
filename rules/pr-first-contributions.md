@@ -49,7 +49,7 @@ Resolution must succeed before either signal means anything. A `git diff` agains
 
 - **Run the repo's quality gates**—tests, lint, type checks, whatever the project uses. Report a failure with the shortest decisive output. Do not hide it and do not work around it. If a failure is out of scope, say so plainly. Do not leave it silently broken.
 - **Leave a clean tree.** `git status` shows no uncommitted changes and no stray untracked files.
-- **Summarize and stop.** State what changed, the quality gate results, and `git log --oneline "origin/${DEFAULT}"..HEAD`. Use the remote ref, because a local default branch may lag. Then wait. Do not push as part of "finishing".
+- **Summarize and stop.** State what changed, the quality gate results, and `git log --oneline "origin/${BASE}"..HEAD`. Set `BASE` to the parent branch when the work stacks, and to `${DEFAULT}` otherwise. Use the remote ref, because a local branch may lag. A stacked branch logged against the default branch reports its parent's commits as its own. Then wait. Do not push as part of "finishing".
 
 ## Push and open the PR
 
@@ -80,7 +80,7 @@ Without `--base`, `gh` targets the default branch. The PR then shows the parent 
 
 **Merge a stack from base to head.** GitHub retargets an open PR when its base merges, so the child survives the parent's merge. Merging the child first orphans the parent's review.
 
-**A set of PRs may instead merge together.** One change that spans several repositories lands one PR per repository. Each one bases on its own repository's default branch, so none depends on another. None stands alone either: merging one and dropping the rest leaves the change half-applied. Say in each body that the set merges together, and name the sibling PR URLs.
+**A set of PRs may instead merge together.** One change that spans several repositories lands one PR per repository. Each one bases on its own repository's default branch, unless that repository already carries an unmerged predecessor branch. Where it does, the stacking rule above wins, and that PR bases on the predecessor. A milestone can both span repositories and stack in one of them. None of the set stands alone either: merging one and dropping the rest leaves the change half-applied. Say in each body that the set merges together, and name the sibling PR URLs.
 
 ## Title and description
 

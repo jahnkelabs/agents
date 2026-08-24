@@ -1,12 +1,13 @@
 ---
-description: Five reserved headings and one footer mark every message that needs a reply; nothing else gets a heading
+description: Five reserved headings and one footer mark every message the user must act on; nothing else gets a heading
 ---
 
 # Chat vocabulary
 
-A run produces a lot of text, and little of it needs a reply. This rule reserves five headings
+A run produces a lot of text, and little of it needs the user. This rule reserves five headings
 and one footer for the text that does. The user reads the heading and knows what you want. A
-message with no reserved heading needs no reply, so the user can read it later.
+message that carries neither a heading nor the footer needs no reply, so the user can read it
+later.
 
 Two facts from real runs set this rule. 448 of 1,303 user-role turns were Solo timer bodies,
 which the user never typed. No marker anywhere meant "reply needed", so 13 questions vanished
@@ -17,15 +18,23 @@ Declined: a `references/chat-vocabulary.md` adapter. A missing convention fails 
 
 ## Rule of thumb
 
-**A message that needs a reply carries a reserved heading. Nothing else carries one.**
+**A reserved heading marks a message the user must act on. Nothing else carries one.**
 
-The heading works only while it stays rare. One heading on a message that needs nothing teaches
+Four of the five headings block and wait for a reply. `Landed` asks the user to read a milestone
+result, and the run continues.
+
+The heading works only while it stays rare. One heading on a message that asks nothing teaches
 the user to read every turn again.
 
 ## Default policy
 
-- **Default:** Send no heading. Speak on your own initiative on four occasions only.
+- **Default:** Send no heading, and send no footer.
+- **Cadence:** In an `/implement` run, speak on your own initiative on four occasions only.
 - **The four occasions:** a gate, a milestone landing, an escalation, and a failure.
+- **Every other skill:** speak where the skill's own steps say to speak. A `/research` pad report
+  is one such message, and it carries no heading.
+- **Global parts:** the five headings and the footer hold in every skill. The cadence above holds
+  in `/implement` alone.
 - **Fencing:** Fence every block that sits under a reserved heading.
 - **Recommendation:** Every question carries one. It is mandatory, not expected.
 - **Exceptions:** A direct reply to the user's own question needs no heading.
@@ -38,12 +47,12 @@ the user to read every turn again.
 **Landed — <milestone>**  a milestone shipped. PR URLs, gates, ledger.
 **Blocked — <what>**      work stopped and needs the user.
 **Failed — <what>**       something broke that the orchestrator cannot resolve.
-⏸ waiting on you: <x>     footer. Absent means nothing is outstanding.
+⏸ waiting on you: <x>     the last line of every message that waits.
 ```
 
 Each heading carries exactly one meaning, and no heading carries a second. Nothing else in a run
-gets a heading. `Landed` reports a milestone and does not block. The other four wait for the
-user.
+gets a heading. `Approve`, `Deciding`, `Blocked`, and `Failed` each stop the run and wait for the
+user. `Landed` reports a milestone, and the run continues.
 
 ## Approve versus Deciding
 
@@ -57,9 +66,23 @@ Pick by that test alone, never by how large the question feels. A roster you ass
 
 ## The footer
 
-The footer closes a message that waits. Its presence is the signal, and its absence means
-nothing is outstanding. Name the one thing you wait for. Add no bold sentinel beside it, because
-bold marks emphasis everywhere else in a message.
+The footer is the last line of a message that waits for the user:
+
+```
+⏸ waiting on you: <the one thing you wait for>
+```
+
+Its presence is the signal, and its absence means nothing is outstanding. Name one thing, never
+two. Add no bold sentinel beside it, because bold marks emphasis everywhere else in a message.
+
+**Which messages carry the footer.** Every message that waits for the user carries it, whether or
+not that message carries a heading. `Approve`, `Deciding`, `Blocked`, and `Failed` therefore all
+carry it. A follow-up question inside an open gate carries it too, and that message carries no
+heading of its own.
+
+**Which messages do not.** `Landed` carries no footer, because the run continues. A message with
+no reserved heading carries none either, unless it asks a follow-up question inside an open gate.
+A report, a narration, and a direct answer to the user's own question all carry no footer.
 
 ## Fence every blocking block
 
@@ -74,7 +97,6 @@ Each glyph below already carries one meaning. Never give one of them a second.
 
 ```
 →   a call and what it returns
-●   one model that independently flagged a finding
 ✓   a task committed
 ⚠   a task escalated
 ⊘   a task blocked behind another
@@ -92,9 +114,11 @@ glyph.
 Every question takes this shape, and this rule states it once. A skill points here rather than
 restating it.
 
-1. The reserved heading: `Deciding` for a choice, `Approve` for a proposal.
+1. The reserved heading, on the gate's opening message only: `Deciding` for a choice, `Approve`
+   for a proposal. Each follow-up question inside that open gate carries no heading.
 2. A fenced context block, carrying the three things below.
 3. One short question, and a recommendation. The recommendation is mandatory.
+4. The footer, as the last line. Every question waits, so every question carries it.
 
 The context block carries what you found, why the user must choose, and the cost of each option:
 
@@ -116,7 +140,9 @@ more than one question.
 
 | Anti-pattern | Why it fails |
 |---|---|
-| A heading on a message that needs no reply | The heading stops meaning "reply needed", so the user reads every turn again |
+| A heading on a message the user need not act on | The heading stops marking an action, so the user reads every turn again |
+| A heading on each follow-up question inside one open gate | Twelve questions become twelve headings, and the heading stops staying rare |
+| A blocking message with no footer | Its absence means nothing is outstanding, so the user reads an all-clear |
 | `Approve` on a choice you cannot rank | The user sanctions a proposal nobody made, and the real question stays unasked |
 | `Deciding` on a proposal you already formed | The user ranks options you invented to fill the shape |
 | An unfenced roster or finding block | Real runs reached 286 and 327 columns, and neither block read as a table |
