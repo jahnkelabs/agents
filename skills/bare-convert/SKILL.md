@@ -58,11 +58,17 @@ Use this mode to turn an existing clone into the layout. It preserves uncommitte
 Run every check below before the first move. Each one is cheap. A failure after the first move
 leaves the tree somewhere the user did not put it.
 
+The block also resolves `<staging>`, the directory holding the record this convert verifies
+against. `<staging>` sits beside `<clone>`, never inside it. The convert moves `<clone>`, so a
+file inside it does not survive at a stable path.
+
 ```bash
 test -d "<clone>/.git"                                  # a plain clone, not already converted
 test ! -e "<clone>/main"                                # the destination name is free
-test ! -e "<clone>/main-reg"                            # the staging name is free
+test ! -e "<clone>/main-reg"                            # the registration name is free
 test ! -e "$(dirname "<clone>")/.$(basename "<clone>").wt-convert"
+STAGING="$(dirname "<clone>")/.$(basename "<clone>").wt-verify"
+test ! -e "${STAGING}"                                  # the <staging> path is free
 BRANCH="$(git -C "<clone>" symbolic-ref --short HEAD)"  # fails on a detached HEAD
 ```
 
@@ -91,7 +97,8 @@ Convert this clone?
 ### Record the state, then move
 
 ```bash
-git -C "<clone>" status --porcelain --ignored > "<staging>/dirt-before.txt"
+mkdir "${STAGING}"
+git -C "<clone>" status --porcelain --ignored > "${STAGING}/dirt-before.txt"
 ```
 
 `--ignored` is load-bearing. Without it the file lists no ignored path, and the verification
@@ -145,21 +152,28 @@ core.bare                git --git-dir="<clone>/.git" config core.bare false
 container rename         mv "<clone>" "${PARENT}/.${NAME}.wt-convert"
 clone move               mv "${PARENT}/.${NAME}.wt-convert/main" "<clone>"
 mkdir                    rmdir "${PARENT}/.${NAME}.wt-convert"
+staging mkdir            rm -rf "${STAGING}"
 ```
 
 A full rollback returns the clone to its original path with its uncommitted work intact. Report
 the path the user should find their tree at, whether the rollback ran to the end or stopped.
 
-### Verify before you remove the staging directory
+### Verify, then remove `<staging>`
 
 ```bash
 git -C "<clone>/main" status --porcelain --ignored \
-  | diff -u "<staging>/dirt-before.txt" -
+  | diff -u "${STAGING}/dirt-before.txt" -
 ```
 
 An empty diff means the conversion kept the modified, staged, untracked, and ignored files.
 Both status calls pass `--ignored`, so the diff covers all four kinds. Stop and report anything
-else.
+else, and keep `<staging>` for the report.
+
+Remove `<staging>` once the diff is empty:
+
+```bash
+rm -rf "${STAGING}"
+```
 
 ## Then hand over
 

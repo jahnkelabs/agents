@@ -19,6 +19,11 @@ One Solo agent then investigates each area.
 With no arguments:
 
 > What should the retro look at? Name an area of concern, or ask me to propose some.
+>
+> ⏸ waiting on you: name an area of concern, or ask for a proposal
+
+That question waits, so it carries the footer. `rules/chat-vocabulary.md` states that every
+waiting message does, whether or not it carries a heading.
 
 ## This skill never edits a skill or a rule
 

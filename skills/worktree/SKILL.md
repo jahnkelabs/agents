@@ -40,8 +40,10 @@ Every milestone worktree carries the plan slug as a prefix. The plan slug leads 
 timestamp, so one plan's worktrees sort together and two plans never interleave. The stable
 worktree keeps the name `main`, and it carries no prefix.
 
-The branch stays `<type>/<milestone-slug>`. The plan prefix applies to the worktree path rather
-than to the branch.
+The branch carries the plan slug too: `<type>/<plan-slug>-<milestone-slug>`. Teardown keeps the
+branch, and `/implement`'s close step deletes the KV that names it. The prefix is therefore what
+tells a resume from another plan's leftover. `rules/solo-agent-orchestration.md` states that
+reasoning once.
 
 Every slug is lowercase, because a KV key carries it.
 
@@ -92,19 +94,20 @@ next:       /bare-convert convert <container>
 
 ⏸ waiting on you: run /bare-convert convert <container>, or name another container
 
-Test for the branch before you cut, and tell a resume apart from a collision.
-`rules/solo-agent-orchestration.md` carries that test and the escalation it demands. Follow it
-rather than a second copy here.
+Test the branch and the recorded worktree path before you cut. `rules/solo-agent-orchestration.md`
+carries both tests, the three branch cases, and the escalation each one demands. Follow it rather
+than a second copy here.
 
 Then cut the worktree:
 
 ```bash
 git -C "<container>/main" worktree add \
-  "<container>/<plan-slug>-<milestone-slug>" -b "<type>/<milestone-slug>" "<base>"
+  "<container>/<plan-slug>-<milestone-slug>" -b "<type>/<plan-slug>-<milestone-slug>" "<base>"
 ```
 
 `<base>` is `origin/HEAD`, or the predecessor milestone's branch when the milestones stack. Pass
-no `-b` on a resume, because the branch already exists.
+no `-b` on a resume, because the branch already exists. Where the recorded path already holds
+this milestone's branch, reuse that worktree and cut nothing.
 
 Record the path under `plan:<slug>:milestone:<m>:worktree:<repo>`, as the orchestration rule
 requires. Then run provision mode against the new worktree.
@@ -127,7 +130,7 @@ retry fails on two paths that are already taken:
 
 ```bash
 git -C "<container>/main" worktree remove --force "<worktree>"
-git --git-dir="<container>/.git" branch -D "<type>/<milestone-slug>"
+git --git-dir="<container>/.git" branch -D "<type>/<plan-slug>-<milestone-slug>"
 ```
 
 Delete the branch only when this cut created it. A resume cut onto an existing branch, and that
@@ -228,6 +231,10 @@ dialects:
 
 It clones copy-on-write where the filesystem supports one, and it copies plainly everywhere
 else. It reports the mode it chose, and it exits non-zero when the copy fails.
+
+**It refuses a source holding a symlink that resolves outside the source root.** A pnpm-style
+store keeps its internal links and clones fine. A `vendor/` directory holding a path repository
+does not, and the helper names the link it refused. Run the reconcile alone for that source.
 
 The helper checks the filesystem before it copies. `cp -c` on macOS falls back to a plain copy
 without reporting it, and `cp --reflink=auto` does the same on Linux. A caller that expected a

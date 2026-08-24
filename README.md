@@ -81,7 +81,7 @@ All six rules load into every session.
 
 | Rule | Description |
 |---|---|
-| [chat-vocabulary](rules/chat-vocabulary.md) | Five reserved headings and one footer mark every message that needs a reply; nothing else gets a heading |
+| [chat-vocabulary](rules/chat-vocabulary.md) | Five reserved headings and one footer mark every message the user must act on; nothing else gets a heading |
 | [comment-discipline](rules/comment-discipline.md) | Comments are disallowed by default; after the implementation, propose only the few that pass the admission test |
 | [pr-first-contributions](rules/pr-first-contributions.md) | PR-first git workflow with conventional titles, draft PRs, stacked bases, and squash-merge descriptions |
 | [solo-agent-orchestration](rules/solo-agent-orchestration.md) | Fan out with Solo agents, never a vendor's native sub-agent mechanism. Workers signal their own completion and report to a durable surface |
@@ -231,7 +231,7 @@ Nothing in this repository stores your work. Research and plans live in Solo, no
 | Research pad | `research/<YYYY-MM-DD>T<HHMM>-<topic>` | `research`, `project:<repo>` |
 | Plan pad | `plan/<YYYY-MM-DD>T<HHMM>-<topic>` | `plan`, `project:<repo>` |
 | Task todos | — | `plan:<slug>`, `milestone:<m>`, `project:<repo>`, `task:<letter>` |
-| Worker reports | `<slug>/<task>` | — |
+| Worker reports | `<slug>/<milestone>/<task>` | — |
 | Orchestration | `plan:<slug>:milestone:<m>:branch:<repo>` | — |
 | Orchestration | `plan:<slug>:milestone:<m>:worktree:<repo>` | — |
 
@@ -246,9 +246,9 @@ with `spawn_agent`, never with the host runtime's own sub-agent mechanism.
 reasoning, so the policy also holds for a fan-out that no skill started. Each skill carries only
 its own worker prompt and constraints.
 
-**Every worker launches in auto-approval mode** — `--permission-mode auto` on Claude, and
-`-a never` or `--approve-for-me` on Codex, each alongside `--no-alt-screen`. A read-only
-assignment is no exception. No worker uses a bypass mode.
+**Every worker launches in auto-approval mode.** A read-only assignment is no exception, and no
+worker uses a bypass mode. Each runtime names its own flags, and it renames them between releases.
+Read `references/runtime-<tool_type>.md` for the arguments rather than a list here.
 
 **Workers signal their own completion.** Each worker wakes the orchestrator through a
 one-millisecond timer as its last act, because only the worker knows that it finished. Solo
@@ -309,9 +309,10 @@ the two you get.
 
 An editing worker is the harder case. Claude denies `git add` per command, and Codex has no
 per-worker equivalent. The rule requires that gap disclosed rather than restated as a promise.
-Two workers that stage in one shared tree cross-commit silently. Each worker gets its own tree,
-and workers hold per-path locks. The orchestrator commits each task's declared paths, so history
-stays granular.
+`/worktree` cuts one tree per milestone and per repository, so several workers share one. Two
+Codex workers that stage in that tree cross-commit silently. `/implement` discloses the exposure
+at the roster gate, and it does not close it. Workers hold per-path locks, and the orchestrator
+commits each task's declared paths, so history stays granular.
 
 **Workers escalate on deviation, not on failure.** A worker that cannot self-resolve records
 what it found and stops. So does a worker that would have to depart meaningfully from the
@@ -323,8 +324,8 @@ wave finish, and everything appears together at the join.
 Claude, Copilot, Kimi, or anything else enabled in Solo. Each worker tries to break the target
 rather than survey it. Cross-model agreement is evidence that a defect is real, because two
 models rarely invent one defect. One model gives no such evidence, so a refutation pass takes its
-place and drops what it refutes. Agreement decides what survives the merge, and it never decides
-what reaches you.
+place and drops what it refutes. Agreement raises confidence, and it drops nothing. Every merged
+finding reaches the filter, whether one critic found it or every critic did.
 
 **A filter decides which findings reach you.** `/critique` accepts a finding by default and
 applies the fix it recommends. Six criteria escalate one to you instead:

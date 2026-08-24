@@ -27,6 +27,11 @@ creates no Solo todos. `/implement` composes the slices into milestones when it 
 With no arguments:
 
 > What should I plan? Give me a topic, a research pad from `/research`, or relevant context.
+>
+> ⏸ waiting on you: name what to plan
+
+That question waits, so it carries the footer. `rules/chat-vocabulary.md` states that every
+waiting message does, whether or not it carries a heading.
 
 ## Gate A — Scope and investigation
 
@@ -276,10 +281,12 @@ Plan approved. What next?
   3. Leave active    — pad stays in Solo; run /implement plan/<slug> whenever
 ```
 
+I recommend <one of the three>, because <the ground>.
+
 ⏸ waiting on you: pick one of the three for `plan/<slug>`
 
-Recommend one of the three, and say why. `rules/chat-vocabulary.md` makes the recommendation
-mandatory.
+`rules/chat-vocabulary.md` makes that line mandatory. A `Deciding` message presents options you
+did not rank, so it never counts as its own recommendation.
 
 - **Implement now** — ask which models should run the critique (see `/critique`), then hand to
   `/implement`. That skill composes the slices into milestones and gates that roster separately.
