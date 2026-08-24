@@ -36,9 +36,11 @@ When you delegate work to a parallel worker, that worker is a **Solo agent**. Sp
 A worker's last act is to wake the orchestrator directly:
 
 ```
-timer_set(delay_ms=0, delivery_process_id=<orchestrator process_id>,
+timer_set(delay_ms=1, delivery_process_id=<orchestrator process_id>,
           body="<task> complete. Report in <scratchpad>. <clean|escalated>.")
 ```
+
+Solo rejects a zero delay, so `1` is the smallest legal value.
 
 **The worker knows when it is finished, and nothing else does.** Push the signal, and do not watch for its absence. The orchestrator receives completions rather than infers them.
 
@@ -74,29 +76,61 @@ Idle detection cannot do more than that, for three reasons:
 
 One session already paid for this. The third spawn attempt abandoned `spawn_agent` and launched Codex directly. It used the exact bypass flag this rule and `references/runtime-codex.md` both prohibit by name. Nothing told the retry loop when to stop, so the loop found the prohibited flag on its own.
 
-**Deny git writes at the permission layer.** A worker that cannot run `git add` is safer than a worker you asked not to. Two workers that share a tree can cross-commit each other's work. That failure is silent, and it costs a lot of time to undo. Where a runtime denies per command for one worker, deny the git write commands and nothing broader. A runtime whose denial cannot be scoped to a single worker cannot make this structural, whatever else it offers. Give each worker its own tree, or accept the risk knowingly and say so.
+**Bound a worker's writes by whether it edits the target.** Two classes exist. An immutable-target worker reads the target and writes only scratch. An editing worker changes the target, and its working directory is its milestone worktree. One posture does not fit both. Decide the class first, then read the runtime's adapter for the arguments.
 
-**Carry the invariant preamble once, where the runtime allows it.** Three things are identical across every worker in a wave. They are the working directory, what a worker must not touch, and what to do when stuck. Only the assignment differs. A runtime with a system-prompt argument takes the constant half there, which shortens each `send_input` and makes the constraints harder to drop by accident. A runtime without one carries the preamble in every prompt.
+**The immutable-target worker.** Every critic, every research agent, and every retro agent is one. Give it a writable scratch directory, an unwritable target, and unrestricted reads. A runtime that scopes writes by directory makes that structural.
+
+**Here Codex enforces what Claude can only request.** That reverses what the two adapters otherwise suggest, so treat it as a measurement. Verified on codex-cli 0.149.0. The worker ran with its working directory set to a scratch directory, writes scoped there, and reads unrestricted:
+
+```
+  read the target        OK
+  write scratch          OK
+  write the target       BLOCKED — Operation not permitted
+  git add in the target  BLOCKED
+  man cp                 OK
+```
+
+`references/runtime-codex.md` carries the arguments that produce this.
+
+Claude scopes writes by tool rather than by directory. **A tool deny list does not bound shell redirection.** A worker denied the file-editing tools still writes the target through the shell. This run's critics launched under exactly that deny list, and they wrote freely. On Claude the immutable target is a request rather than a structure. A brief that relies on it says so.
+
+**The editing worker.** A sandbox that permits its edits permits `git add` in its milestone worktree. No directory-scoped posture denies git there. A per-command deny list does, where the runtime scopes one to a single worker.
+
+Where no runtime in the roster can, the denial does not exist. **Disclose the gap rather than restate the promise.** Name the runtime that cannot enforce it, and name the exposure. Two workers in one tree cross-commit each other's work, silently, and the undo costs a lot of time. Give each worker its own tree, or accept the risk knowingly and say so.
+
+**Carry the invariant preamble once, where the runtime allows it.** Two things are identical across every worker in a wave. They are what a worker must not touch, and what to do when stuck.
+
+The working directory is not one of them. A milestone that spans repositories cuts one worktree per repository. A slice belongs to exactly one repository, so that milestone passes one preamble per repository. A runtime with a system-prompt argument takes the preamble there. That shortens each `send_input` and makes the constraints harder to drop by accident. A runtime without one carries the preamble in every prompt.
 
 ## One worktree per milestone
 
 A worker never shares a working tree with the user. Cut one worktree per milestone and per repository. Cut it from a bare-plus-worktrees layout, and use these paths:
 
 ```
-  container   <the repository's own path>                 at whatever depth it sits
-  bare repo   <container>/.git                            `git rev-parse --is-bare-repository` returns true
-  stable      <container>/main                            the user's worktree, never removed
-  worktree    <container>/<plan-slug>-<milestone-slug>    one plan's worktrees sort together
-  branch      <type>/<milestone-slug>                     the plan prefix stays out of the branch
-  example     ~/Code/jahnkelabs/agents/main
-  create      git worktree add <worktree> -b <branch> <base>
-                base = origin/HEAD, or the predecessor milestone's branch when stacked
-  record      kv_set plan:<slug>:milestone:<m>:worktree
-  remove      at milestone close, after a successful push
-  sweep       git worktree prune at run close
+  container          <the repository's own path>                 at whatever depth it sits
+  bare repo          <container>/.git                            `git rev-parse --is-bare-repository` returns true
+  stable             <container>/main                            the user's worktree, never removed
+  worktree           <container>/<plan-slug>-<milestone-slug>    one plan's worktrees sort together
+  branch             <type>/<milestone-slug>                     the plan prefix stays out of the branch
+  example container  ~/Code/jahnkelabs/agents
+  example worktree   ~/Code/jahnkelabs/agents/<plan-slug>-<milestone-slug>
+  create             test for the branch, then cut:
+                       git worktree add <worktree> -b <branch> <base>   no such branch yet
+                       git worktree add <worktree> <branch>             the branch already exists
+                     base = origin/HEAD, or the predecessor milestone's branch when stacked
+  record             kv_set plan:<slug>:milestone:<m>:worktree:<repo>
+  remove             at milestone close, after a successful push
+  sweep              git worktree prune at run close
 ```
 
-The milestone slug is lowercase, because the KV key carries it.
+The milestone slug is lowercase, because the KV key carries it. The `record` key carries the repository too, because one milestone cuts one worktree per repository. Without it the second cut overwrites the first, and teardown then leaks a worktree with its stack still running.
+
+**Test for the branch before you cut.** `git worktree add -b` fails outright when the branch already exists. Two different situations produce that, and this plan's own KV record tells them apart.
+
+- **A resume.** `plan:<slug>:milestone:<m>:branch:<repo>` already names this branch. Teardown removed the worktree and left the branch behind, so re-cut onto it. Pass no `-b`: `git worktree add <worktree> <branch>`.
+- **A collision.** No KV key of this plan claims the branch, so another live plan owns it. The branch name carries the milestone slug and not the plan prefix. Two plans that both name a milestone `m1` therefore want one branch. Rename this plan's milestone, and escalate. Renaming the other plan's branch breaks its open PR.
+
+A milestone slug is therefore unique across every live plan, and this test enforces it.
 
 A plain clone fails loudly. Test the layout before you cut anything, and print the conversion command rather than a worktree path.
 
@@ -112,7 +146,9 @@ A worker's working directory is its worktree, so its lock keys carry the worktre
 
 Split the prompt by what varies.
 
-Pass the **preamble** once through the runtime's system-prompt argument, or in every prompt where the runtime has none. It carries the working directory as an absolute path, with an instruction to stay inside it. It names what the worker must not touch: git writes, undeclared paths, todos it does not own, and KV. It also says what to do when stuck, which is to record what it found and stop. A worker that improvises past its brief is the expensive failure. A worker that stops behaves correctly.
+Pass the **preamble** through the runtime's system-prompt argument, or in every prompt where the runtime has none. It carries the working directory as an absolute path, with an instruction to stay inside it. That path is one repository's worktree, so a milestone spanning repositories passes one preamble per repository.
+
+The preamble names what the worker must not touch: git writes, undeclared paths, todos it does not own, and KV. It also says what to do when stuck, which is to record what it found and stop. A worker that improvises past its brief is the expensive failure. A worker that stops behaves correctly.
 
 Pass the **assignment** via `send_input`. It carries the one job this worker owns and where to write its report. It also carries the orchestrator's `process_id`, which the worker signals on completion. A todo or a work item may already state the job. The assignment then points at it rather than restating it.
 
@@ -137,6 +173,8 @@ Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, an
 | Vendor sub-agent for fan-out | Invisible, unaddressable, single-vendor, no locks or todos |
 | "Spawn N parallel agents" with no mechanism named | The runtime uses its own default, so name `spawn_agent` explicitly |
 | Workers running git writes in a shared tree | `git add` from two workers cross-commits their work |
+| A tool deny list treated as a sandbox | Denying the editing tools leaves `cat > <target>` open through the shell |
+| Cutting a milestone branch with `-b` and no existence test | A resumed run fails outright, because teardown left the branch behind |
 | Treating an idle timer as the completion signal | No debounce, and a thinking worker looks like a finished one |
 | Scheduling an idle timer before workers produce output | An all-idle watch list returns `already_satisfied` and creates no timer |
 | Reading a worker's result from process output | Rendered rows, capped and wrapped: fine for a sentinel, incomplete for a report |
