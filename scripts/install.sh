@@ -19,21 +19,28 @@ Installs this repository for both runtimes.
 Claude reads a directory of rules and a directory of skills, so both link
 per entry:
 
-  ~/.claude/rules/<name>.md     -> rules/<name>.md        (per file)
-  ~/.claude/skills/<name>       -> skills/<name>/         (per skill)
-  ~/.claude/references          -> references/            (whole directory)
+  ~/.claude/rules/<name>.md         -> rules/<name>.md          (per file)
+  ~/.claude/output-styles/<name>.md -> output-styles/<name>.md   (per file)
+  ~/.claude/skills/<name>           -> skills/<name>/            (per skill)
+  ~/.claude/references              -> references/               (whole directory)
 
 Codex reads skills from ~/.agents/skills and follows symlinks, so those link
 the same way. It reads instructions from a single file with no include
-mechanism, so the rules are concatenated instead of linked:
+mechanism, so the rules and the output styles are concatenated instead of
+linked:
 
   ~/.agents/skills/<name>       -> skills/<name>/         (per skill)
   ~/.agents/references          -> references/            (whole directory)
-  ~/.codex/AGENTS.md             = rules/*.md concatenated   (generated)
+  ~/.codex/AGENTS.md             = rules/*.md + output-styles/*.md (generated)
 
 Rules and skills are linked one at a time, so the directories stay real ones
 you own. Anything else you keep there is left alone, and nothing you create
 locally lands in this repo.
+
+The install also sets "outputStyle": "prose-discipline" in
+~/.claude/settings.json. That key selects the prose style for every Claude
+session. An outputStyle you set yourself is left alone, and the step is
+skipped when jq is absent.
 
 Re-run after adding or renaming a file. Links pointing into this repo whose
 source has gone are pruned; nothing else is touched.
@@ -139,9 +146,10 @@ link_entries() {
   shopt -u nullglob
 }
 
-# Codex reads one instructions file and resolves no includes, so the rules are
-# concatenated rather than linked. Frontmatter is stripped: Codex has no use for
-# it, and a stray --- fence renders as a horizontal rule.
+# Codex reads one instructions file and resolves no includes, so the rules and
+# the output styles are concatenated rather than linked. Frontmatter is
+# stripped: Codex has no use for it, and a stray --- fence renders as a
+# horizontal rule.
 generate_codex_rules() {
   local out="${CODEX_DEST}/AGENTS.md"
   mkdir -p "${CODEX_DEST}"
@@ -154,10 +162,10 @@ generate_codex_rules() {
 
   {
     echo "${GEN_MARKER}"
-    echo "<!-- source: ${REPO_ROOT}/rules -- regenerate with scripts/install.sh -->"
+    echo "<!-- source: ${REPO_ROOT}/{rules,output-styles} -- regenerate with scripts/install.sh -->"
     echo ""
     shopt -s nullglob
-    for src in "${REPO_ROOT}"/rules/*.md; do
+    for src in "${REPO_ROOT}"/rules/*.md "${REPO_ROOT}"/output-styles/*.md; do
       awk 'NR==1 && /^---$/ {fm=1; next} fm && /^---$/ {fm=0; next} !fm' "${src}"
       echo ""
     done
@@ -165,6 +173,40 @@ generate_codex_rules() {
   } > "${out}"
 
   echo "  generated: .codex/AGENTS.md ($(wc -l < "${out}" | tr -d ' ') lines)"
+}
+
+# Claude reads the selected style from settings.json, which is yours to own, so
+# a value you already set is kept rather than replaced.
+select_output_style() {
+  local f="${DEST}/settings.json"
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "  jq not found -- cannot select the output style"
+    echo "  run /config and pick prose-discipline, or add"
+    echo '  "outputStyle": "prose-discipline" to settings.json'
+    return
+  fi
+
+  [[ -f "${f}" ]] || echo '{}' > "${f}"
+
+  local current
+  current="$(jq -r '.outputStyle // ""' "${f}")"
+
+  if [[ "${current}" == "prose-discipline" ]]; then
+    echo "  already selected: outputStyle"
+    return
+  fi
+
+  if [[ -n "${current}" ]]; then
+    echo "  kept your outputStyle=${current}"
+    echo "  -- set it to prose-discipline in /config"
+    return
+  fi
+
+  jq '. + {outputStyle: "prose-discipline"}' "${f}" > "${f}.tmp" \
+    && mv "${f}.tmp" "${f}"
+  echo "  selected: outputStyle=prose-discipline"
+  echo "  (takes effect on /clear or a new session)"
 }
 
 # Regenerate after the tree changes, so a committed rule edit reaches Codex
@@ -199,6 +241,8 @@ mkdir -p "${DEST}"
 
 echo "Installing for Claude..."
 link_entries rules files
+link_entries output-styles files
+select_output_style
 link_entries skills dirs
 link "${REPO_ROOT}/references" "${DEST}/references"
 
@@ -231,6 +275,8 @@ fi
 echo ""
 echo "Installed for both runtimes. Rules apply to every session; skills are"
 echo "slash commands on Claude and \$-invoked skills on Codex."
+echo "Claude's prose style lives in the outputStyle key of"
+echo "your ~/.claude/settings.json. Run /clear or start a new session to load it."
 echo "/plan, /implement, /critique, /stash and /recall require the Solo MCP server."
 echo "/stash and /recall additionally require a tracker MCP (see references/)."
 echo ""
