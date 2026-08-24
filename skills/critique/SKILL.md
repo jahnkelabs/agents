@@ -69,10 +69,18 @@ Always ask, unless the caller already supplied a roster:
 list_agent_tools  →  Claude (3), Copilot (8), Kimi (9), ...
 ```
 
+**Deciding — the critique roster**
+
 ```
-Which models should critique this?
-  <name>, <name>, <name> available.
+found:        <n> enabled runtimes — <name>, <name>, <name>
+decision:     each model misses different defects, and only you know the budget
+two or more   cross-model agreement, which is evidence that a defect is real
+one           cheaper, and a refutation pass stands in for the agreement evidence
 ```
+
+Which models should critique this? I recommend <the models>, because <the ground>.
+
+⏸ waiting on you: name the models for this critique
 
 Use only enabled runtimes — never assume a fixed set. Each model misses different defects,
 which is the point. Independent critics find more defects than one critic that you run repeatedly.

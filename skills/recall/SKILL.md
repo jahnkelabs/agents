@@ -89,11 +89,9 @@ That first investigation item matters: when recalling a later work item, what ea
 Do not modify the tracker item during recall. Nothing has happened to it yet — planning may
 decide to change the work's shape or to drop it entirely.
 
-Three things update the tracker later:
-
-- `/implement` moves it to in-progress when work starts
-- `/stash` reconciles if you park the plan again
-- The PR merge closes it, by whatever process you already use
+Nothing in this repository moves the item for you. `/stash` and `/recall` are always explicit, so
+you update the tracker yourself when work starts and when you park the plan again. The PR merge
+closes it, by whatever process you already use.
 
 Note the recalled ref under `### References` in the plan pad's `## Appendix` so the connection
 survives.

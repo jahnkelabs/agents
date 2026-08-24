@@ -48,7 +48,7 @@ Resolution must succeed before either signal means anything. A `git diff` agains
 ## Before presenting work
 
 - **Run the repo's quality gates**—tests, lint, type checks, whatever the project uses. Report a failure with the shortest decisive output. Do not hide it and do not work around it. If a failure is out of scope, say so plainly. Do not leave it silently broken.
-- **Leave a clean tree.** `git status` shows no uncommitted changes and no stray untracked files.
+- **Leave a clean tree.** `git status` shows no uncommitted changes and no stray untracked files. A milestone worktree exempts the files the provisioning contract generated. `/worktree` defines that exempt set, and deleting one of them removes the override the stack runs on.
 - **Summarize and stop.** State what changed, the quality gate results, and `git log --oneline "origin/${BASE}"..HEAD`. Set `BASE` to the parent branch when the work stacks, and to `${DEFAULT}` otherwise. Use the remote ref, because a local branch may lag. A stacked branch logged against the default branch reports its parent's commits as its own. Then wait. Do not push as part of "finishing".
 
 ## Push and open the PR

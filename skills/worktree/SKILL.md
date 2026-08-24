@@ -5,7 +5,7 @@ when_to_use: >-
   When a milestone needs a working tree of its own, or when a closed milestone gives one back.
   Trigger phrases: "cut a worktree", "provision this worktree", "tear the milestone down".
   Also invoked by the implement skill, once per repository per milestone.
-argument-hint: "[cut | provision | teardown] [container] [milestone]"
+argument-hint: "[cut | provision | teardown] [container] [milestone] [branch] [base]"
 ---
 
 # Worktree
@@ -68,6 +68,33 @@ on git 2.50.1.
 `/plan` records the container with this derivation, so the path it hands `/implement` needs no
 repair.
 
+## What the caller passes
+
+Every mode takes the container, the milestone slug, and the branch. Cut alone takes the base,
+because only cut creates anything.
+
+```
+<container>        the repository's own path
+<milestone-slug>   the milestone slug, lowercase — the `[milestone]` argument
+<branch>           <type>/<plan-slug>-<milestone-slug>, resolved by the caller
+<base>             origin/HEAD, or the predecessor milestone's branch when the milestones stack
+```
+
+**Never rebuild the branch name here.** `<type>` is `feat`, `fix`, or `chore`, chosen for the work
+per `rules/pr-first-contributions.md`. Only the caller holds that choice. Build the name here as
+well, and the two constructions can differ. The next pass then reads a KV key naming a branch that
+does not exist. It takes the collision case, and escalates over its own branch.
+
+Three more values follow from those four, and this skill states each derivation once:
+
+```
+<worktree>    <container>/ then <branch> with its <type>/ prefix removed
+<plan-slug>   <branch> with its <type>/ prefix and its -<milestone-slug> suffix removed
+<repo>        the basename of <container>
+```
+
+`/implement` resolves all four before it calls, and it passes them in the order above.
+
 ## Cut
 
 Use this mode to create a milestone worktree and provision it.
@@ -101,12 +128,10 @@ than a second copy here.
 Then cut the worktree:
 
 ```bash
-git -C "<container>/main" worktree add \
-  "<container>/<plan-slug>-<milestone-slug>" -b "<type>/<plan-slug>-<milestone-slug>" "<base>"
+git -C "<container>/main" worktree add "<worktree>" -b "<branch>" "<base>"
 ```
 
-`<base>` is `origin/HEAD`, or the predecessor milestone's branch when the milestones stack. Pass
-no `-b` on a resume, because the branch already exists. Where the recorded path already holds
+Pass no `-b` on a resume, because the branch already exists. Where the recorded path already holds
 this milestone's branch, reuse that worktree and cut nothing.
 
 Record the path under `plan:<slug>:milestone:<m>:worktree:<repo>`, as the orchestration rule
@@ -130,7 +155,7 @@ retry fails on two paths that are already taken:
 
 ```bash
 git -C "<container>/main" worktree remove --force "<worktree>"
-git --git-dir="<container>/.git" branch -D "<type>/<plan-slug>-<milestone-slug>"
+git --git-dir="<container>/.git" branch -D "<branch>"
 ```
 
 Delete the branch only when this cut created it. A resume cut onto an existing branch, and that

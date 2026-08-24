@@ -69,11 +69,11 @@ overwrites a value you set, and it touches nothing else in that file. It does no
 
 | | |
 |---|---|
-| Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/retro`, `/stash`, `/recall` |
+| Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/retro`, `/worktree`, `/stash`, `/recall` |
 | A tracker MCP | `/stash`, `/recall` — Linear adapter included |
 | Vale 3.0 or later | checking the sentence-level half of `prose-discipline` — `brew install vale`. CI pins 3.17.1 |
 | jq | selecting the output style at install time — without it the install prints the instruction instead |
-| Nothing | `/grill` and the rules |
+| Nothing | `/grill`, `/bare-convert`, and the rules |
 
 ## Rules
 
@@ -240,8 +240,8 @@ confirmation.
 
 ## How the workflow behaves
 
-**Every worker is a Solo agent.** `/research`, `/plan`, `/implement`, and `/critique` fan out
-with `spawn_agent`, never with the host runtime's own sub-agent mechanism.
+**Every worker is a Solo agent.** `/research`, `/plan`, `/implement`, `/critique`, and `/retro`
+fan out with `spawn_agent`, never with the host runtime's own sub-agent mechanism.
 [solo-agent-orchestration](rules/solo-agent-orchestration.md) carries the policy and the
 reasoning, so the policy also holds for a fan-out that no skill started. Each skill carries only
 its own worker prompt and constraints.
@@ -262,7 +262,7 @@ is then visible rather than buried. A gate prints a looked-up fact without argum
 selected Solo project needs no justification; a repo list inferred from file references needs
 one. A gate's opening message carries a reserved heading and fences its block, per
 [chat-vocabulary](rules/chat-vocabulary.md). `Approve` marks a proposal, and `Deciding` marks a
-choice you cannot rank.
+question you cannot answer yourself.
 
 **`/plan` grills you.** One question per message, never two. Each one carries a fenced context
 block, a mandatory recommendation, and the `⏸` footer. Only the first question carries the
@@ -327,8 +327,10 @@ models rarely invent one defect. One model gives no such evidence, so a refutati
 place and drops what it refutes. Agreement raises confidence, and it drops nothing. Every merged
 finding reaches the filter, whether one critic found it or every critic did.
 
-**A filter decides which findings reach you.** `/critique` accepts a finding by default and
-applies the fix it recommends. Six criteria escalate one to you instead:
+**A filter decides which findings reach you.** `/critique` accepts a finding by default. What
+acceptance does then depends on who called. A milestone critique inside `/implement` applies the
+fix; a standalone or `--integration` pass reports the remedy and edits nothing. Six criteria
+escalate a finding to you instead:
 
 ```
 C1  the fix rests on a fact the orchestrator cannot verify

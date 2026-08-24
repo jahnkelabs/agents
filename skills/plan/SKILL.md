@@ -26,12 +26,15 @@ creates no Solo todos. `/implement` composes the slices into milestones when it 
 
 With no arguments:
 
+> **Deciding — what to plan**
+>
 > What should I plan? Give me a topic, a research pad from `/research`, or relevant context.
 >
 > ⏸ waiting on you: name what to plan
 
-That question waits, so it carries the footer. `rules/chat-vocabulary.md` states that every
-waiting message does, whether or not it carries a heading.
+That question opens a `Deciding` gate, so it carries the heading and the footer. It offers nothing
+to rank, so it carries no context block and no recommendation. `rules/chat-vocabulary.md` states
+all three.
 
 ## Gate A — Scope and investigation
 
@@ -105,9 +108,10 @@ Follow `/grill`. Ask one question at a time, and wait for the answer before you 
 `rules/chat-vocabulary.md` gives the shape of a question, including the mandatory
 recommendation. Point at that rule rather than restating it, and never batch two questions.
 
-**The heading opens the gate once.** The first question carries `Deciding` for a choice, or
-`Approve` for a proposal you already formed. Every later question inside this open gate carries no
-heading. A grilling asks many questions, and one heading each would stop the heading staying rare.
+**The heading opens the gate once.** The first question carries `Deciding` for a question you
+cannot answer, or `Approve` for a proposal you already formed. Every later question inside this
+open gate carries no heading. A grilling asks many questions, and one heading each would stop the
+heading staying rare.
 
 **Every question carries the footer**, whether or not it carries a heading. Every question waits
 for the user, and the footer is the only mark that says so.
@@ -199,6 +203,7 @@ One line per repo when more than one is in scope. The path is the container gate
 
 ### References
 - Research absorbed from: <pad name and id, if any>
+- Critique roster: <model · effort, one per critic>
 ```
 
 The plan leads and the evidence follows. One `**Repos**:` line carries the container path
@@ -285,11 +290,12 @@ I recommend <one of the three>, because <the ground>.
 
 ⏸ waiting on you: pick one of the three for `plan/<slug>`
 
-`rules/chat-vocabulary.md` makes that line mandatory. A `Deciding` message presents options you
+`rules/chat-vocabulary.md` makes that line mandatory. This `Deciding` presents three options you
 did not rank, so it never counts as its own recommendation.
 
-- **Implement now** — ask which models should run the critique (see `/critique`), then hand to
-  `/implement`. That skill composes the slices into milestones and gates that roster separately.
+- **Implement now** — ask which models should run the critique (see `/critique`), write the answer
+  to the pad's `### References`, then hand to `/implement`. That skill composes the slices into
+  milestones and gates that roster separately.
 - **Stash for later** — hand to `/stash`, which proposes the tracker shape and confirms.
 - **Leave active** — do nothing. The pad stays in Solo.
 

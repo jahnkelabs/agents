@@ -123,9 +123,10 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what the user
    things becomes obvious. It is also where two milestones that should be one become obvious.
 
    **The critique roster comes from the plan.** `/plan` selects it before it hands off, and the
-   pad records it. Restate it in this gate as a line the user can change, and do not ask again.
-   One run holds one roster, or nobody can compare its milestone findings. Ask for a roster only
-   when a directly invoked plan carries none, and then ask inside this gate. One stop, not two.
+   pad records it under `### References`. Restate it in this gate as a line the user can change,
+   and do not ask again. One run holds one roster, or nobody can compare its milestone findings.
+   Ask for a roster only when a directly invoked plan carries none, and then ask inside this gate.
+   One stop, not two.
    `list_agent_tools` resolves the enabled runtimes. Never hardcode a roster.
 
    **Disclose a runtime that cannot deny a worker's git writes.** An editing worker needs that
@@ -166,7 +167,7 @@ none. The waves inside one milestone still run their tasks concurrently — that
    first, then cut:
    ```
    kv_set(key="plan:<slug>:milestone:<m>:branch:<repo>", value="<branch>")
-   /worktree cut <the container path from the plan's **Repos**: line> <milestone>
+   /worktree cut <container path from the plan's **Repos**: line> <milestone> <branch> <base>
    ```
    **The key goes first, and that order is load-bearing.** `/worktree` reads the key to tell a
    resume from a collision. Write it after the cut, and a run that dies between the two takes the
@@ -184,7 +185,9 @@ none. The waves inside one milestone still run their tasks concurrently — that
    The branch is `<type>/<slug>-<milestone>` — the plan slug, then the milestone slug, per
    `solo-agent-orchestration`. The base is
    `origin/HEAD`, or the predecessor milestone's branch in that repository when the milestones
-   stack there.
+   stack there. **Pass both to `/worktree`, which builds neither.** `<type>` is `feat`, `fix`, or
+   `chore`, and this skill holds that choice. Let `/worktree` construct the name a second time,
+   and the two can differ from the key you just wrote.
 
    **A resumed run may find the worktree still standing.** `/stash` leaves one on unpushed commits
    and on uncommitted work. `solo-agent-orchestration` carries both tests. Reuse a recorded path

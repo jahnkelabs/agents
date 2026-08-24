@@ -36,15 +36,15 @@ the user to read every turn again.
 - **Global parts:** the five headings and the footer hold in every skill. The cadence above holds
   in `/implement` alone.
 - **Fencing:** Fence every block that sits under a reserved heading.
-- **Recommendation:** Every question carries one. An `Approve` proposal is its own; every other
-  question states one explicitly.
+- **Recommendation:** Every question that offers options carries one. An `Approve` proposal is its
+  own; every other such question states one explicitly. A question offering none carries none.
 - **Exceptions:** A direct reply to the user's own question needs no heading.
 
 ## The reserved vocabulary
 
 ```
 **Approve — <topic>**     a gate. Nothing proceeds without a reply.
-**Deciding — <topic>**    a choice. Context block, then a short question.
+**Deciding — <topic>**    a question the user must answer, with or without options.
 **Landed — <milestone>**  a milestone shipped. PR URLs, gates, ledger.
 **Blocked — <what>**      work stopped and needs the user.
 **Failed — <what>**       something broke that the orchestrator cannot resolve.
@@ -59,19 +59,25 @@ user. `Landed` reports a milestone, and the run continues.
 
 Both stop the run, and the difference is what the user must do. `Approve` asks the user to
 sanction a proposal you already formed. You state the proposal, and the user says yes or changes
-it. `Deciding` asks the user to choose among options you cannot rank. You state the options and
-your recommendation, and the user picks one.
+it. `Deciding` asks the user to answer a question you cannot answer yourself.
+
+**`Deciding` covers two shapes.** The first offers options. You state them and your recommendation,
+and the user picks one. The second offers none, because you hold nothing to offer. A skill's first
+question is commonly that shape: `What should I plan?` names no options, and inventing some would
+be worse than asking.
 
 Pick by that test alone, never by how large the question feels. A roster you assembled is an
-`Approve`. A tradeoff only the user can settle is a `Deciding`.
+`Approve`. A tradeoff only the user can settle is a `Deciding`, and so is an open prompt for
+input.
 
 **An `Approve` proposal is its own recommendation.** The message states one course and asks the
 user to sanction it. You did the ranking work, and the user can read it. An `Approve` therefore
 satisfies the mandatory recommendation without a separate line, and it may still carry one.
 
-A `Deciding` message needs an explicit recommendation, because it presents options you did not
-rank. So does a `Blocked` message that lists options. Neither one ranks anything by itself, and
-both leave the user the work this rule removes.
+A `Deciding` message that offers options needs an explicit recommendation, because it presents
+options you did not rank. So does a `Blocked` message that lists options. Neither one ranks
+anything by itself, and both leave the user the work this rule removes. A `Deciding` that offers no
+options carries no recommendation, because it holds nothing to rank.
 
 ## The footer
 
@@ -89,8 +95,8 @@ not it carries a heading. `Approve`, `Deciding`, `Blocked`, and `Failed` therefo
 does a question that carries no heading of its own.
 
 **A question opens the gate it belongs to.** A skill's first question is that gate's opening
-message. The questions after it are follow-ups inside the same open gate. `/plan` invoked with no
-arguments asks which plan to run. That question opens a gate rather than standing outside one. So
+message. The questions after it are follow-ups inside the same open gate. `/implement` invoked with
+no arguments asks which plan to run. That question opens a gate rather than standing outside one. So
 "inside an open gate" covers a first question too, and no waiting message falls outside this rule.
 
 **Which messages do not.** `Landed` carries no footer, because the run continues. A report, a
@@ -103,6 +109,8 @@ Fence every block that sits under a reserved heading. Unfenced, the roster gate 
 of 286 columns and the finding block 327. At that width the terminal wrapped both, and neither
 read as a table any more. Real runs fenced the roster gate 5 times out of 13, and the
 per-finding block 13 of 25.
+
+A question that offers nothing to rank has no block, so it fences nothing.
 
 ## The taken glyphs stay taken
 
@@ -127,12 +135,18 @@ glyph.
 Every question takes this shape, and this rule states it once. A skill points here rather than
 restating it.
 
-1. The reserved heading, on the gate's opening message only: `Deciding` for a choice, `Approve`
-   for a proposal. Each follow-up question inside that open gate carries no heading.
+1. The reserved heading, on the gate's opening message only: `Deciding` for a question you cannot
+   answer yourself, `Approve` for a proposal. Each follow-up question inside that open gate carries
+   no heading.
 2. A fenced context block, carrying the three things below.
 3. One short question, and a recommendation. The recommendation is mandatory. An `Approve`
    proposal is its own, so it needs no separate line.
 4. The footer, as the last line. Every question waits, so every question carries it.
+
+**A question that offers nothing to rank drops part 2 and the recommendation.** It has no option to
+cost and nothing to recommend. The heading, the question, and the footer are the whole message.
+The first question of `/plan`, `/research`, and `/retro` is that shape. `/implement`'s lists the
+active plan pads, so it offers options and takes the full shape.
 
 The context block carries what you found, why the user must choose, and the cost of each option:
 
@@ -160,7 +174,7 @@ more than one question.
 | `Approve` on a choice you cannot rank | The user sanctions a proposal nobody made, and the real question stays unasked |
 | `Deciding` on a proposal you already formed | The user ranks options you invented to fill the shape |
 | An unfenced roster or finding block | Real runs reached 286 and 327 columns, and neither block read as a table |
-| A question with no recommendation | The user does the ranking work you were able to do first |
+| A question that offers options and no recommendation | The user does the ranking work you were able to do first |
 | Two questions in one message | The user answers the first, and the second one disappears |
 | A bold sentinel in place of the footer | Bold marks emphasis everywhere else, so it marks nothing here |
 | A new glyph for a meaning a taken glyph holds | A reader learns two symbols for one fact and trusts neither |

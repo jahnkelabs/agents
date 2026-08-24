@@ -21,7 +21,15 @@ it is also the research phase inside `/plan`.
 
 If the user invokes it with no arguments:
 
+> **Deciding — what to research**
+>
 > What would you like me to research? Give me a question or an area of the codebase.
+>
+> ⏸ waiting on you: name a question or an area of the codebase
+
+That question opens a `Deciding` gate, so it carries the heading and the footer. It offers nothing
+to rank, so it carries no context block and no recommendation. `rules/chat-vocabulary.md` states
+all three.
 
 ## Step 1 — Establish scope, and confirm it
 

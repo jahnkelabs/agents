@@ -18,12 +18,15 @@ One Solo agent then investigates each area.
 
 With no arguments:
 
+> **Deciding — what the retro looks at**
+>
 > What should the retro look at? Name an area of concern, or ask me to propose some.
 >
 > ⏸ waiting on you: name an area of concern, or ask for a proposal
 
-That question waits, so it carries the footer. `rules/chat-vocabulary.md` states that every
-waiting message does, whether or not it carries a heading.
+That question opens a `Deciding` gate, so it carries the heading and the footer. It offers nothing
+to rank, so it carries no context block and no recommendation. `rules/chat-vocabulary.md` states
+all three.
 
 ## This skill never edits a skill or a rule
 
