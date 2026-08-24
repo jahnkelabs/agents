@@ -26,12 +26,21 @@ without the feature. The Linux clone runs cp --reflink=always, which
 fails loudly rather than falling back.
 
 A symlinked source is resolved first, so the destination holds a real
-file or directory rather than a link back into the source tree.
+file or directory rather than a link back into the source tree. The
+script copies a symlink inside the source as a symlink, because a pnpm
+store needs its internal links. It refuses one that resolves outside the
+source, and names the link and its target.
 
 The destination must not exist, and a symlink there is refused even when
-it dangles. The copy lands in a temporary sibling and is renamed into
-place, so a failed copy leaves no partial destination to block a retry.
-Exit status is 0 only when the copy reached the destination.
+it dangles. The script also refuses a symlinked directory in the
+destination's path, and names that component.
+
+The copy lands in a temporary sibling and is renamed into place, so a
+failed copy leaves no partial destination to block a retry. The script
+then checks that the renamed object is the one it staged. A destination
+that appears during the copy makes the rename land inside it. The script
+removes what it wrote there and exits non-zero. Exit status is 0 only
+when the copy reached the destination.
 USAGE
   exit 0
 fi
@@ -67,6 +76,27 @@ if [[ ! -d "${DEST_PARENT}" ]]; then
   exit 1
 fi
 
+check_parent_components() {
+  local dir="$1" prefix="" component
+  local -a parts
+  [[ "${dir}" == /* ]] || dir="${PWD}/${dir}"
+  IFS='/' read -r -a parts <<< "${dir}"
+  for component in "${parts[@]}"; do
+    [[ -n "${component}" && "${component}" != "." ]] || continue
+    prefix="${prefix}/${component}"
+    if [[ -L "${prefix}" ]]; then
+      echo "error: a symlinked directory leads to the destination, refusing to write through it" >&2
+      echo "error: ${prefix} -> $(readlink "${prefix}")" >&2
+      return 1
+    fi
+  done
+  return 0
+}
+
+if ! check_parent_components "${DEST_PARENT}"; then
+  exit 1
+fi
+
 resolve_source() {
   local path="$1" target levels=0
   while [[ -L "${path}" ]]; do
@@ -93,10 +123,59 @@ if ! SOURCE="$(resolve_source "${SOURCE}")"; then
   exit 1
 fi
 
+NORMALISED=""
+
+normalise_path() {
+  local path="$1" component out=""
+  local -a parts
+  IFS='/' read -r -a parts <<< "${path}"
+  for component in "${parts[@]}"; do
+    case "${component}" in
+      "" | ".") ;;
+      "..") out="${out%/*}" ;;
+      *) out="${out}/${component}" ;;
+    esac
+  done
+  NORMALISED="${out:-/}"
+}
+
+check_source_links() {
+  local root="$1" link target resolved
+  [[ -d "${root}" ]] || return 0
+  while IFS= read -r link; do
+    target="$(readlink "${link}")"
+    if [[ "${target}" == /* ]]; then
+      resolved="${target}"
+    else
+      resolved="${link%/*}/${target}"
+    fi
+    normalise_path "${resolved}"
+    case "${NORMALISED}" in
+      "${root}" | "${root}"/*) continue ;;
+    esac
+    echo "error: a symlink in the source resolves outside it, refusing to clone it" >&2
+    echo "error: ${link} -> ${target}" >&2
+    echo "error: it resolves to ${NORMALISED}, which is outside ${root}" >&2
+    return 1
+  done < <(find "${root}" -type l)
+  return 0
+}
+
+if ! check_source_links "${SOURCE}"; then
+  exit 1
+fi
+
 device_id() {
   case "$(uname -s)" in
     Darwin) stat -f '%d' "$1" ;;
     *) stat -c '%d' "$1" ;;
+  esac
+}
+
+object_id() {
+  case "$(uname -s)" in
+    Darwin) stat -f '%d:%i' "$1" ;;
+    *) stat -c '%d:%i' "$1" ;;
   esac
 }
 
@@ -176,6 +255,8 @@ if [[ -e "${DEST}" || -L "${DEST}" ]]; then
   exit 1
 fi
 
+STAGE_ID="$(object_id "${STAGE}")"
+
 if ! mv -- "${STAGE}" "${DEST}"; then
   echo "error: ${MODE} could not be renamed into place: ${DEST}" >&2
   exit 1
@@ -183,6 +264,19 @@ fi
 
 if [[ ! -e "${DEST}" || -L "${DEST}" ]]; then
   echo "error: ${MODE} reported success but ${DEST} is missing or a symlink" >&2
+  exit 1
+fi
+
+if [[ "$(object_id "${DEST}")" != "${STAGE_ID}" ]]; then
+  DESCENDED="${DEST}/$(basename "${DEST}")"
+  echo "error: the destination appeared during the ${MODE}, so the ${MODE} landed inside it" >&2
+  if [[ -e "${DESCENDED}" ]] \
+     && [[ "$(object_id "${DESCENDED}" 2>/dev/null || true)" == "${STAGE_ID}" ]]; then
+    rm -rf -- "${DESCENDED}"
+    echo "error: removed ${DESCENDED}, which this ${MODE} wrote in the wrong place" >&2
+  else
+    echo "error: ${DEST} holds something this script did not stage, and it stays as it is" >&2
+  fi
   exit 1
 fi
 

@@ -59,6 +59,10 @@ it after a commit, checkout, or merge, so an edit you commit takes effect
 without a re-run. --rules-only does just that regeneration, and the hooks
 call it.
 
+The install writes those hooks only when AGENTS_REPO is the root of a git
+repository. It writes them where core.hooksPath points, because that is where
+git reads them. It names the directory it wrote, and it says so when it skips.
+
 Override the repo root with AGENTS_REPO=/path/to/agents.
 USAGE
   exit 0
@@ -241,12 +245,31 @@ select_output_style() {
 # Regenerate after the tree changes, so a committed rule edit reaches Codex
 # without a re-run. Only hooks we wrote are replaced; yours are left alone.
 install_git_hooks() {
-  local git_common hooks
-  git_common="$(git -C "${REPO_ROOT}" rev-parse --git-common-dir 2>/dev/null)" || return 0
-  [[ -n "${git_common}" ]] || return 0
-  [[ "${git_common}" == /* ]] || git_common="${REPO_ROOT}/${git_common}"
-  hooks="${git_common}/hooks"
-  mkdir -p "${hooks}" || return 0
+  local toplevel root_real top_real hooks
+  if ! toplevel="$(git -C "${REPO_ROOT}" rev-parse --show-toplevel 2>/dev/null)" \
+     || [[ -z "${toplevel}" ]]; then
+    echo "  no git repository at ${REPO_ROOT} -- skipped the hooks"
+    return 0
+  fi
+
+  root_real="$(cd -P "${REPO_ROOT}" 2>/dev/null && pwd -P)" || return 0
+  top_real="$(cd -P "${toplevel}" 2>/dev/null && pwd -P)" || return 0
+  if [[ "${root_real}" != "${top_real}" ]]; then
+    echo "  ${REPO_ROOT} is not the root of a git repository -- skipped the hooks"
+    echo "  it sits inside ${top_real}, whose hooks are not ours to write"
+    return 0
+  fi
+
+  if ! hooks="$(git -C "${REPO_ROOT}" rev-parse --path-format=absolute --git-path hooks 2>/dev/null)" \
+     || [[ -z "${hooks}" ]]; then
+    echo "  git could not resolve the hooks directory -- skipped the hooks"
+    return 0
+  fi
+
+  if ! mkdir -p "${hooks}"; then
+    echo "  cannot create ${hooks} -- skipped the hooks"
+    return 0
+  fi
 
   local hook
   for hook in post-commit post-checkout post-merge; do
@@ -262,7 +285,7 @@ exec "${REPO_ROOT}/scripts/install.sh" --rules-only >/dev/null
 HOOK
     chmod +x "${path}"
   done
-  echo "  installed git hooks: post-commit, post-checkout, post-merge"
+  echo "  installed git hooks in ${hooks}: post-commit, post-checkout, post-merge"
 }
 
 if [[ "${1:-}" == "--rules-only" ]]; then
@@ -321,4 +344,4 @@ echo "/plan, /implement, /critique, /stash and /recall require the Solo MCP serv
 echo "/stash and /recall additionally require a tracker MCP (see references/)."
 echo ""
 echo "Codex has no disable-model-invocation, so it can invoke /plan, /implement,"
-echo "/worktree, /stash and /recall itself. Their approval gates still hold."
+echo "/bare-convert, /stash and /recall itself. Their approval gates still hold."
