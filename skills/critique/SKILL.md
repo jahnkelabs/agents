@@ -52,17 +52,47 @@ which is the point. Independent critics find more defects than one critic that y
 When `/implement` calls this skill, it already chose the roster at setup. Use that roster, and
 do not ask again.
 
+**One roster serves a whole run.** `/implement` chooses it once, then reuses it for every
+milestone critique and for the integration pass. Two milestones critiqued by different rosters
+produce findings nobody can compare.
+
 ## Step 3 — Pick the lenses
+
+Two lens sets exist, and the target picks one. A milestone's diff takes the per-milestone set. A
+pass over a whole plan's landed milestones takes the integration set. Run one set, never both.
+
+### Per-milestone lenses
 
 | Lens | Applies when | Question |
 |---|---|---|
-| **Plan fidelity** | an approved plan exists | Does this do what the plan approved — and nothing more? Did the work quietly skip, expand, or substitute anything? |
+| **Plan fidelity** | an approved plan exists | Does this milestone do what its slices approved — and nothing more? Did the work quietly skip, expand, or substitute anything? |
 | **Correctness** | always | Where does this produce a wrong result? Give concrete inputs and the wrong output. |
 | **Edge cases** | always | Empty, null, concurrent, oversized, malformed. What does the code not handle? Which error path has no test? |
 | **Security** | the target touches auth, input handling, secrets, permissions, or shells out | What is exploitable? |
 
 Drop the plan fidelity lens silently when there is no plan. A standalone `/critique src/foo.php`
 has nothing to check fidelity against.
+
+### Integration lenses
+
+Run this set only over a whole plan's landed milestones. Each question needs more than one
+milestone's diff to answer.
+
+| Lens | Question |
+|---|---|
+| **Cross-milestone contract drift** | Does a caller one milestone changed still match a callee another milestone changed? |
+| **Plan completeness** | Did every slice the plan declared land in some milestone? |
+| **Claim consistency** | Do two milestones state one fact two ways? |
+| **Stack coherence** | Do the branches stack in the order the milestones shipped? |
+
+**The integration pass may not raise a finding that lives wholly inside one milestone's diff.**
+The per-milestone pass already ran that finding through the filter, and the user already decided.
+Drop it rather than present it. One run had to drop a finding by hand as
+`re-litigating the disabled-step export semantics, which you and I already settled`.
+
+**No question appears in both sets.** Per-milestone fidelity asks whether one milestone's diff
+matches its own slices. Integration completeness asks whether every slice landed somewhere.
+Neither question answers the other.
 
 ## Step 4 — Run the critics
 
@@ -137,62 +167,130 @@ Work through each of these separately:
 Be specific and be harsh. Vague concerns are noise.
 ```
 
-## Step 5 — Merge and rank
+## Step 5 — Merge
 
 Read each worker's scratchpad. Match findings that describe the same defect at the same
 location, even when the wording differs.
 
-**Cross-model agreement is the confidence signal.** A defect that two independent models find
-is probably real. A defect that one model raises deserves attention, but it ranks lower. This
-replaces a separate verification stage.
+**Cross-model agreement is evidence that a finding is real.** Two independent models rarely
+invent one defect. Use agreement to decide what survives the merge.
 
-**When you select only one model**, that signal does not exist. Run a refutation pass instead.
+**Agreement does not decide what reaches the user.** Step 6's criteria do that, and none of them
+names agreement. `1b15feba` finding 1 carried three-model agreement, and the user delegated it
+anyway.
+
+**When you select only one model**, that evidence does not exist. Run a refutation pass instead.
 Spawn one more worker per finding, and tell it to argue that the finding is *not* real. It
 defaults to refuted when it is uncertain. Drop what it refutes.
 
-## Step 6 — Triage serially
+## Step 6 — Filter, then escalate what the user must decide
 
-Present findings **one at a time**, `/grill`-style — the finding, its evidence, the decision you
-need. Wait for that decision before you present the next finding. Order by severity, then by
-agreement. There is no batch report and no user-facing pad. This skill replaces the batch list
-that the user must then read through.
+You decide almost every finding yourself. Six criteria escalate a finding to the user, and three
+grounds never do. The ledger discloses every decision either way.
+
+**Default: fail toward accepting.** Accept any finding that matches no criterion below, and
+apply the remediation it recommends.
+
+Real runs set that default. The user overrode serial triage 13 times between 2026-08-04 and
+2026-08-23, every time as the reply to `Finding 1 of N`. Serial triage cost about 115 human turns
+across 8 runs for about 176 findings. Delegated triage cost about 20 turns across 14 runs for
+about 260.
+
+### The six criteria
+
+Each criterion is a test you apply to one finding. Escalate only on a yes.
+
+- **C1 — the fix rests on a fact you cannot verify.** Check the premise before the remedy.
+  `cc3da3e8` 5/26 asserted `No ECR tag exists`, and that premise was false.
+- **C2 — the fix needs the user to act outside the repository.** `ee524d20` 4/11 committed the
+  user to `handle the tagging and release`.
+- **C3 — the fix is irreversible, or visible outside the repository.** The fix at `ee524d20`
+  8/11 read `Push it`.
+- **C4 — the fix changes a default posture.** The user answered `cc3da3e8` 22/26 with
+  `I'd rather start with strict rule enforcement`.
+- **C5 — the fix changes who decides, or who merges.** The user answered `ee524d20` Security 3/3
+  with `You MUST open a PR and allow me to review and merge it myself`.
+- **C6 — two or more fixes exist, and you cannot rank them on stated grounds.** A genuine tie
+  only.
+
+**C6 covers a genuine tie and nothing wider.** When you can argue for one fix, take it and
+disclose the alternative in the ledger. `More than one plausible fix exists` holds for roughly a
+third of findings, and that reading would rebuild serial triage. The corpus's largest cluster was
+a different remedy than the one recommended — 15 findings, 7 of them in `9fd97382`.
+
+### The three anti-criteria
+
+Each one is a prohibition. Never escalate a finding on one of these grounds.
+
+- **Severity `nit`.** The corpus presented 16 nits and fixed 16. The user questioned none.
+- **Cross-model agreement.** `1b15feba` finding 1 carried three-model agreement, and the user
+  delegated it anyway. Two two-model findings turned out to be no findings at all. Both critics
+  lacked context the user had already given.
+- **A verifiable mismatch between two artifacts with one mechanical fix.** The user accepted
+  about 60 of about 120 individually presented findings with a single word.
+
+### The ledger
+
+Report one line per decision, ranked by criticality. Criticality means a wrong result outranks a
+plausible failure, which outranks a nit.
 
 ```
-Finding 1 of 6   ●  bug   `src/token.php:88`
+Ledger — <target> (<models>)
 
-Refresh drops the retry budget.
+  bug    `src/token.php:88`   refresh drops the retry budget
+         fixed: threaded the budget through the call
+         declined: reset it in the caller — the caller cannot see the ceiling
 
-  Evidence  `refresh()` resets `$attempts` to 0 on entry, so three consecutive
-            401s never reach the ceiling and the caller retries forever.
-  Fix       thread the budget through the call instead of resetting it.
+  risk   `src/auth.php:12`    the 401 path retries without a bound
+         fixed: bounded the loop
 
-Fix it, drop it, or something else?
+  nit    `src/auth.php:40`    `$tok` shadows the outer binding
+         fixed: renamed it to `$refreshed`
 ```
 
-(● = models that independently flagged it)
+Carry the declined alternative wherever more than one fix existed, and give its reason in one
+clause. Omit that line where only one fix existed.
+
+**The ledger is the only surface where a remedy choice stays correctable.** C6 escalates a
+genuine tie alone, so every other choice between two fixes reaches the user here.
+
+**A ledger with nothing critical in it carries no reserved heading.** Report it and stop.
+`rules/chat-vocabulary.md` reserves a heading for a message that needs a reply, and a ledger of
+accepted findings needs none.
+
+### Escalate one finding per message
+
+Take the most critical first. `rules/chat-vocabulary.md` forbids two questions in one message.
+The filter keeps the escalated count low, which is what makes one question per message
+affordable.
+
+C1 through C5 carry a proposal you already formed, so each takes `Approve`. C6 carries options
+you cannot rank, so it takes `Deciding`. A C6 recommendation names the ground it rests on,
+because the stated grounds do not rank the two fixes.
+
+```
+**Approve — `src/token.php:88`**
+
+  found:      refresh drops the retry budget — C1, the ceiling is unverifiable
+  decision:   the fix assumes a ceiling of 3, and no code in the repository states one
+  fix it      threads the budget through the call, on an assumed ceiling
+  drop it     three consecutive 401s retry forever
+
+Fix it as proposed, or drop it? I recommend fixing it.
+```
 
 Every finding carries a severity — `bug` (wrong behavior), `risk` (plausible failure), `nit`
-(style, naming, cleanup). Severity is half of the ordering, so never drop it from the line.
+(style, naming, cleanup). Severity ranks the ledger, so never drop it from a line.
 
-When the user decides the last finding, close with the counts and nothing else:
-
-```
-6 findings triaged — 4 to fix, 2 dropped. 4 more were refuted before triage.
-```
-
-When a refutation pass ran, report the refuted count, so the user knows that you filtered
-findings. Do not list the refuted findings unless the user asks. With more than one model there
-is no refutation pass. Then the close is `<N> findings triaged — <N> to fix, <N> dropped.`
-
-`/critique` owns this presentation. `/plan` and `/implement` receive the resulting decisions
-rather than the raw findings, so nobody triages a finding twice.
+`/critique` owns the filter, the ledger, and this presentation. `/plan` and `/implement` receive
+the ledger rather than the raw findings, so nobody triages a finding twice.
 
 `close_process` every worker, and archive the per-model scratchpads. Those pads are the
 worker-to-orchestrator channel that `solo-agent-orchestration` requires. They cost nothing to
 archive after you merge the findings.
 
-If nothing survives, there is no decision to request. Report the action alone — one line, no
-findings block, no closing question:
+If nothing survives, there is no ledger and no decision to request. Report the action alone —
+one line, no findings block, no closing question:
 
 ```
 Critique of <target> (<models>) — nothing survived. 4 findings raised, all refuted.

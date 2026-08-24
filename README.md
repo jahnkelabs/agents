@@ -67,7 +67,7 @@ overwrites a value you set, and it touches nothing else in that file. It does no
 
 | | |
 |---|---|
-| Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/stash`, `/recall` |
+| Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/retro`, `/stash`, `/recall` |
 | A tracker MCP | `/stash`, `/recall` — Linear adapter included |
 | Vale 3.0 or later | checking the sentence-level half of `prose-discipline` — `brew install vale`. CI pins 3.17.1 |
 | jq | selecting the output style at install time — without it the install prints the instruction instead |
@@ -150,6 +150,7 @@ Both checks are warnings for that reason: read each one and decide.
 | [`/research`](skills/research/SKILL.md) | Investigate a codebase with parallel Solo agents and write the findings to a Solo scratchpad | you or Claude |
 | [`/critique`](skills/critique/SKILL.md) | Adversarial multi-model review of a diff, plan, files, or PR | you or Claude |
 | [`/grill`](skills/grill/SKILL.md) | Interrogate a decision one question at a time | you or Claude |
+| [`/retro`](skills/retro/SKILL.md) | Analyse past sessions for recurring failures and hand the findings to `/plan` | you or Claude |
 | [`/plan`](skills/plan/SKILL.md) | Research, grill, and produce a plan in one Solo scratchpad | **you only** |
 | [`/implement`](skills/implement/SKILL.md) | Compose a plan into milestones, and ship each one as its own PRs | **you only** |
 | [`/worktree`](skills/worktree/SKILL.md) | Set up, convert, and provision a bare-plus-worktrees repository | **you only** |
@@ -161,7 +162,7 @@ objects. Each of the five carries `disable-model-invocation: true`, so Claude ca
 run it. Those five do not appear in Claude's skill listing, so they cost no context until you
 invoke them.
 
-The three advisory skills stay model-invocable and carry `when_to_use` trigger phrases. Say
+The four advisory skills stay model-invocable and carry `when_to_use` trigger phrases. Say
 "grill me on this" or "find the bugs" and the skill runs without a command name.
 
 **No skill overrides the model.** Every skill respects your session's choice, including a `[1m]`
@@ -186,6 +187,7 @@ flowchart LR
     C["/critique"]
     S["/stash"]
     RC["/recall"]
+    RT["/retro"]
     T[("tracker")]
     PR["draft PRs<br/>one per repo"]
 
@@ -197,6 +199,7 @@ flowchart LR
     S --> T
     T --> RC
     RC -->|"always re-plans"| P
+    RT -->|"proposed changes"| P
     I -->|"milestones in DAG order"| M
     M -->|"cut a tree per repo"| W
     M -->|"before the landing"| C
@@ -303,19 +306,40 @@ wave finish, and everything appears together at the join.
 
 **Critique is adversarial and multi-model.** `/critique` spawns one worker per model you select:
 Claude, Copilot, Kimi, or anything else enabled in Solo. Each worker tries to break the target
-rather than survey it. Cross-model agreement is the confidence signal, because a defect that two
-models independently find is probably real. One model gives no such signal, so a refutation pass
-takes its place and drops what it refutes.
+rather than survey it. Cross-model agreement is evidence that a defect is real, because two
+models rarely invent one defect. One model gives no such evidence, so a refutation pass takes its
+place and drops what it refutes. Agreement decides what survives the merge, and it never decides
+what reaches you.
 
-**You triage findings one at a time.** Each surviving finding arrives with its evidence and the
-decision it needs. The next finding waits until you make that decision. Severity orders the
-findings, and agreement breaks a tie. There is no batch report to read back through.
-`/implement` hands its critique findings over in the same shape, so nobody triages a finding
-twice.
+**A filter decides which findings reach you.** `/critique` accepts a finding by default and
+applies the fix it recommends. Six criteria escalate one to you instead:
 
-**`/implement` critiques each milestone, not the whole run.** The critique and your triage block
-the next milestone, because a finding may change what it should do. Your review of the PR blocks
-nothing. The run opens the PR, reports the landing, and starts the next milestone.
+```
+C1  the fix rests on a fact the orchestrator cannot verify
+C2  the fix needs you to act outside the repository
+C3  the fix is irreversible, or visible outside the repository
+C4  the fix changes a default posture
+C5  the fix changes who decides, or who merges
+C6  two fixes exist, and neither one ranks above the other on stated grounds
+```
+
+Three grounds never escalate: a nit, cross-model agreement, and a mechanical fix to a verifiable
+mismatch. Serial triage cost about 115 of your turns across 8 runs. Delegated triage cost about
+20 across 14.
+
+**The ledger discloses every decision.** One line per finding, ranked by criticality. Each line
+carries the claim, the action, and the alternative the orchestrator declined. The ledger is where
+you correct a remedy choice, because C6 covers a genuine tie alone. `/implement` reports it with
+each milestone landing, so nobody triages a finding twice.
+
+**`/implement` critiques each milestone, not the whole run.** That critique and any escalation
+block the next milestone, because a finding may change what it should do. Your review of the PR
+blocks nothing. The run opens the PR, reports the landing, and starts the next milestone.
+
+**A separate integration pass sees only what one milestone cannot.** Its lenses are
+cross-milestone contract drift, plan completeness, claim consistency, and stack coherence. It may
+not raise a finding that lives wholly inside one milestone's diff. That milestone already put the
+finding through the filter.
 
 ## Adding a tracker
 
