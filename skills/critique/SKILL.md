@@ -35,8 +35,28 @@ say so and stop rather than reviewing nothing.
 `/implement` always passes it. Resolve the pad before you spawn anything. A pad id you cannot
 read is a stop, never a silent drop — see step 3.
 
-`--integration` is the only target that takes the integration lens set. `/implement`'s `## Close`
-step is its caller.
+`--integration` is the only target that takes the integration lens set. `/implement`'s milestone
+loop is its caller, and it calls once the last milestone has pushed.
+
+**Resolve the critic report pad name here.** Each critic writes to
+`critique/<slug>/<milestone-or-integration>/<model>`. The three segments resolve like this:
+
+```
+  slug                       the plan's slug. Where no plan resolved, a lowercase slug of the
+                             target: `pr-42`, `working-tree`, or the path with `/` as `-`
+  milestone-or-integration   the milestone `/implement` is shipping, plus the repository name
+                             where that milestone spans more than one; `integration` for
+                             `--integration`; `roster` for `--roster`; `standalone` otherwise
+  model                      the critic's model name, from the roster
+```
+
+`/implement` calls this skill once per repository per milestone, and once more after the last one
+pushes. A three-milestone, one-repository run with a two-critic roster therefore writes eight
+critic pads. The repository belongs in the middle segment for the same reason the milestone does.
+Two repositories in one milestone would otherwise write one pad twice.
+
+Omit the middle segment, and M2's pad overwrites M1's. Step 6 archives every pad after the merge,
+so that overwrite leaves no trace.
 
 A roster is a real target, because an approved artifact has its own failure modes. The roster
 fidelity lens in step 3 names them.
@@ -139,6 +159,10 @@ writes by directory and blocks the target structurally. Another scopes them by t
 denied the editing tools still writes the target through the shell. Where the target stays
 writable, say so in the prompt. Never assert a denial the runtime lacks.
 
+The prompt below carries the immutable-target, scratch-only, and no-git rules in its `## Rules`
+block. They reach the critic whether the runtime enforces them or not. On a runtime that cannot
+bound them, the prompt is the only place they exist. Never drop them from it.
+
 Each critic signals when it finishes; arm one idle timer as the dead-worker fallback only:
 
 ```
@@ -180,10 +204,14 @@ Work through each of these separately:
 - Do not suggest features, refactors, or improvements beyond the target's scope
 - Do not report "consider adding tests" without naming the specific untested path
 - A finding you cannot demonstrate is a nit at best. Say which it is.
-- Write your findings to a scratchpad named "critique/<target-slug>/<your model>"
+- Write no file outside your own scratch directory. Your Solo scratchpad is the one exception.
+- The target is immutable. Read it; never edit it, add a file to it, or delete one from it.
+- Run no git write anywhere — no `add`, no `commit`, no `checkout`, no `stash`.
+- Your permission layer may not enforce these three rules. They hold whether it enforces them or not.
+- Write your findings to the scratchpad named "<the pad name step 1 resolved>"
 - Signal completion as your last act:
     timer_set(delay_ms=1, delivery_process_id=<orchestrator process_id>,
-              body="Critique <model> done. Findings in critique/<target-slug>/<model>.")
+              body="Critique <model> done. Findings in <that same pad name>.")
 
 Be specific and be harsh. Vague concerns are noise.
 ```
@@ -226,8 +254,17 @@ about 260.
 
 **What acceptance does depends on who called.** A standalone critique reports the remedy and edits
 nothing, because the request covered a review only. `/critique --pr 42` that rewrites the local
-tree exceeds what the user asked for. When `/implement` calls, apply each accepted fix before that
-skill re-verifies and pushes.
+tree exceeds what the user asked for. When `/implement` calls on a milestone diff, apply each
+accepted fix before that skill re-verifies and pushes.
+
+**An `--integration` pass reports the remedy and edits nothing, whoever called it.** Every
+milestone it reviews already shipped its PRs. A finding against M1 cannot land on M1's branch. That
+branch already carries an open or merged PR. Write it into whatever tree stands open, and M1's fix
+lands on another milestone's branch.
+
+Never write into the user's stable `main` worktree. `rules/solo-agent-orchestration.md` keeps a
+worker out of the user's tree, and `pr-first-contributions` forbids a commit on the default branch.
+An accepted remedy therefore lands as a follow-up milestone, and `/implement` proposes one.
 
 ### The six criteria
 
@@ -284,14 +321,15 @@ Ledger — <target> (<models>)
 Carry the declined alternative wherever more than one fix existed, and give its reason in one
 clause. Omit that line where only one fix existed.
 
-The `fixed:` line reads `remedy:` in a standalone critique, because that run applied nothing.
+The `fixed:` line reads `remedy:` wherever the run applied nothing. That covers a standalone
+critique and every `--integration` pass.
 
 **The ledger is the only surface where a remedy choice stays correctable.** C6 escalates a
 genuine tie alone, so every other choice between two fixes reaches the user here.
 
 **A ledger with nothing critical in it carries no reserved heading.** Report it and stop.
-`rules/chat-vocabulary.md` reserves a heading for a message that needs a reply, and a ledger of
-accepted findings needs none.
+`rules/chat-vocabulary.md` reserves a heading for a message the user must act on. A ledger of
+accepted findings asks for nothing.
 
 ### Escalate one finding per message
 

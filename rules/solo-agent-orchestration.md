@@ -100,7 +100,7 @@ Where no runtime in the roster can, the denial does not exist. **Disclose the ga
 
 **Carry the invariant preamble once, where the runtime allows it.** Two things are identical across every worker in a wave. They are what a worker must not touch, and what to do when stuck.
 
-The working directory is not one of them. A milestone that spans repositories cuts one worktree per repository. A slice belongs to exactly one repository, so that milestone passes one preamble per repository. A runtime with a system-prompt argument takes the preamble there. That shortens each `send_input` and makes the constraints harder to drop by accident. A runtime without one carries the preamble in every prompt.
+The working directory is not one of them. A milestone that spans repositories cuts one worktree per repository. **A task receives one preamble per repository it writes in.** Each one names that repository's own worktree, and it scopes the task's declared paths to that repository. Most tasks write in one repository and take one preamble. A `same-worker` task may span two, and it then takes two. A runtime with a system-prompt argument takes the preamble there. That shortens each `send_input` and makes the constraints harder to drop by accident. A runtime without one carries the preamble in every prompt.
 
 ## One worktree per milestone
 
@@ -111,12 +111,13 @@ A worker never shares a working tree with the user. Cut one worktree per milesto
   bare repo          <container>/.git                            `git rev-parse --is-bare-repository` returns true
   stable             <container>/main                            the user's worktree, never removed
   worktree           <container>/<plan-slug>-<milestone-slug>    one plan's worktrees sort together
-  branch             <type>/<milestone-slug>                     the plan prefix stays out of the branch
+  branch             <type>/<plan-slug>-<milestone-slug>         the plan slug keeps two plans off one branch
   example container  ~/Code/jahnkelabs/agents
   example worktree   ~/Code/jahnkelabs/agents/<plan-slug>-<milestone-slug>
-  create             test for the branch, then cut:
+  create             test the branch and the path, then cut:
                        git worktree add <worktree> -b <branch> <base>   no such branch yet
                        git worktree add <worktree> <branch>             the branch already exists
+                       reuse <worktree>, cut nothing                    the path already holds <branch>
                      base = origin/HEAD, or the predecessor milestone's branch when stacked
   record             kv_set plan:<slug>:milestone:<m>:worktree:<repo>
   remove             at milestone close, after a successful push
@@ -125,18 +126,25 @@ A worker never shares a working tree with the user. Cut one worktree per milesto
 
 The milestone slug is lowercase, because the KV key carries it. The `record` key carries the repository too, because one milestone cuts one worktree per repository. Without it the second cut overwrites the first, and teardown then leaks a worktree with its stack still running.
 
-**Test for the branch before you cut.** `git worktree add -b` fails outright when the branch already exists. Two different situations produce that, and this plan's own KV record tells them apart.
+**Test the branch and the path before you cut.** `git worktree add -b` fails outright when the branch already exists. `git worktree add` fails the same way when another worktree already holds the path. Run both tests, because a stopped run can leave either one behind.
+
+**The branch test has three cases, and this plan's own KV record tells them apart.**
 
 - **A resume.** `plan:<slug>:milestone:<m>:branch:<repo>` already names this branch. Teardown removed the worktree and left the branch behind, so re-cut onto it. Pass no `-b`: `git worktree add <worktree> <branch>`.
-- **A collision.** No KV key of this plan claims the branch, so another live plan owns it. The branch name carries the milestone slug and not the plan prefix. Two plans that both name a milestone `m1` therefore want one branch. Rename this plan's milestone, and escalate. Renaming the other plan's branch breaks its open PR.
+- **A closed plan's leftover.** No KV key claims the branch. `gh pr list --head <branch> --state merged` returns a merged PR, or the remote no longer carries the ref. That plan finished, and its close step deleted the KV that named the branch. Delete the branch and cut fresh. `rules/pr-first-contributions.md` carries this test under `## Branch staleness check`.
+- **A collision.** No KV key claims the branch, and no merged PR explains it. Another live plan owns it. Rename this plan's milestone, and escalate. Renaming the other plan's branch breaks its open PR.
 
-A milestone slug is therefore unique across every live plan, and this test enforces it.
+**The branch carries the plan slug because teardown outlives the KV record.** Teardown keeps the branch, and a plan's close step deletes every `plan:<slug>:*` key. Drop the prefix, and a second plan that reuses a milestone slug finds a branch no KV key claims. It then escalates over a PR that merged and closed. `/implement` labels milestones `m1`, `m2`, and `m3`, so that is the common case rather than the rare one.
+
+**Test the recorded worktree path too.** `plan:<slug>:milestone:<m>:worktree:<repo>` holds it, so this costs one `kv_get`. Where the path exists and holds this milestone's branch, reuse it and cut nothing. Where it exists and holds anything else, stop and report both paths. `/stash` leaves a worktree standing on unpushed commits and on uncommitted work. A stashed plan therefore resumes onto a path another worktree still holds, and `git worktree add` exits 128 there.
+
+A milestone slug is therefore unique inside its plan. The plan slug separates it from every other plan's.
 
 A plain clone fails loudly. Test the layout before you cut anything, and print the conversion command rather than a worktree path.
 
 The worktree is disposable once the push succeeds, because the branch then lives on the remote. Remove it at milestone close.
 
-A worker's working directory is its worktree, so its lock keys carry the worktree path.
+A worker's working directory is a worktree, so its lock keys carry that worktree's path. A worker writing in two repositories has two, and each file locks under the worktree that holds it.
 
 **Why a worktree.** The user sits on a branch in their own tree. A worker that cannot take that branch cannot trample the user's working state. Git refuses to check out one branch in two worktrees, so the guarantee is structural rather than requested.
 
@@ -146,7 +154,7 @@ A worker's working directory is its worktree, so its lock keys carry the worktre
 
 Split the prompt by what varies.
 
-Pass the **preamble** through the runtime's system-prompt argument, or in every prompt where the runtime has none. It carries the working directory as an absolute path, with an instruction to stay inside it. That path is one repository's worktree, so a milestone spanning repositories passes one preamble per repository.
+Pass the **preamble** through the runtime's system-prompt argument, or in every prompt where the runtime has none. It carries the working directory as an absolute path, with an instruction to stay inside it. That path names one repository's worktree. A task writing in two repositories therefore receives two preambles, one per repository. Its lock keys come from the matching worktree.
 
 The preamble names what the worker must not touch: git writes, undeclared paths, todos it does not own, and KV. It also says what to do when stuck, which is to record what it found and stop. A worker that improvises past its brief is the expensive failure. A worker that stops behaves correctly.
 
@@ -175,6 +183,7 @@ Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, an
 | Workers running git writes in a shared tree | `git add` from two workers cross-commits their work |
 | A tool deny list treated as a sandbox | Denying the editing tools leaves `cat > <target>` open through the shell |
 | Cutting a milestone branch with `-b` and no existence test | A resumed run fails outright, because teardown left the branch behind |
+| Cutting onto a recorded worktree path with no existence test | `/stash` leaves the worktree standing, so `git worktree add` exits 128 |
 | Treating an idle timer as the completion signal | No debounce, and a thinking worker looks like a finished one |
 | Scheduling an idle timer before workers produce output | An all-idle watch list returns `already_satisfied` and creates no timer |
 | Reading a worker's result from process output | Rendered rows, capped and wrapped: fine for a sentinel, incomplete for a report |

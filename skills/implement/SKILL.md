@@ -27,7 +27,8 @@ completion — see [Escalation](#escalation).
 ## Input
 
 - **A plan pad** (`plan/<slug>` or an id) — the normal case
-- **No arguments** — list active plan pads via `scratchpad_list(tags=["plan"])` and ask
+- **No arguments** — list active plan pads via `scratchpad_list(tags=["plan"])` and ask. That
+  question opens a `Deciding` gate, per `rules/chat-vocabulary.md`.
 - **Existing todos for the slug** — this is a resumed run. The todos *are* the composition, so
   reuse them rather than composing again. Pick up at the first milestone with open tasks.
 
@@ -58,8 +59,8 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what the user
    milestones that hold the two slices. That aggregate is the dependency half of the order.
 
    **File overlap forces ordering, never parallelism.** Add an edge for every file two milestones
-   share. Two milestones that touch one file run in sequence, whatever their `after` constraints
-   allow. The second branch would otherwise carry a conflict the user never approved.
+   share. The loop is sequential either way, so this edge decides which of the two ships first.
+   The second branch would otherwise carry a conflict the user never approved.
 3. **Schedule the waves inside each milestone.** Slices marked `same-worker` share one task.
    Slices marked `after` land in a later wave. Slices whose `**Files**:` overlap never run
    concurrently. Everything else is free. Group for coherence rather than for a worker count. A
@@ -105,9 +106,6 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what the user
               Add stacked-PR guidance to a general rule without turning it
               into an appendix.
 
-     Concurrent stacks: 1. All three milestones touch README.md, so they
-     ship in sequence.
-
      Critique per milestone: <models> — from the plan.
      Sandbox: <runtime> cannot deny a worker's git writes.
    ```
@@ -120,14 +118,6 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what the user
    line references". Another reads "a rewrite of two skills onto one vocabulary". Each summary
    argues for a different tier by itself. Write the summary so the tier follows from it, and never
    add a separate rationale field.
-
-   **Bound the parallelism by the machine as well as by the DAG.** Each milestone stack runs its
-   own containers, volumes, and network. Concurrent stacks therefore consume the machine's memory
-   and disk in proportion. State how many stacks you propose to run at once, as the block above
-   does. The user adjusts that count here.
-
-   State no ceiling. This skill runs on more than one machine, so any figure is false on the
-   others. The user knows what the machine holds; the skill does not.
 
    The user can adjust boundaries, not just tiers. The roster is where a milestone that does two
    things becomes obvious. It is also where two milestones that should be one become obvious.
@@ -167,20 +157,38 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what the user
 
 ## The milestone loop
 
-Run the milestones in DAG order. One pass through this loop ships one milestone. The next pass
-starts again at step 1.
+**This loop is sequential.** Run the milestones in DAG order, one at a time. One pass ships one
+milestone, and the next pass starts again at step 1. Two milestones never run at once, whatever
+their DAG edges allow. This skill therefore offers no concurrency setting, and it asks the user for
+none. The waves inside one milestone still run their tasks concurrently — that is step 3's job.
 
-1. **Cut a worktree and branch for each repository the milestone touches.** Run
-   `/worktree cut <repo> <milestone>`. That skill owns the layout, the provisioning, the container
-   naming, and the refusal on a plain clone. Add nothing to its procedure and do not paraphrase
-   it.
-
-   The base is `origin/HEAD`, or the predecessor milestone's branch in that repository when the
-   milestones stack in one repository.
-
+1. **Cut a worktree and branch for each repository the milestone touches.** Write the branch key
+   first, then cut:
    ```
    kv_set(key="plan:<slug>:milestone:<m>:branch:<repo>", value="<branch>")
+   /worktree cut <the container path from the plan's **Repos**: line> <milestone>
    ```
+   **The key goes first, and that order is load-bearing.** `/worktree` reads the key to tell a
+   resume from a collision. Write it after the cut, and a run that dies between the two takes the
+   collision branch. It then escalates over its own branch.
+
+   **Pass the container path, never the repository name.** `/worktree` takes a container and
+   substitutes it into `--git-dir`. Pass `agents` instead, and that command resolves against the
+   session's working directory. Cut mode then refuses an already-converted repository. `/plan`
+   records the container path on its `**Repos**:` line for this call. `<repo>` stays the short
+   name, and it names the same repository in every KV key here.
+
+   That skill owns the layout, the provisioning, the container naming, and the refusal on a plain
+   clone. Add nothing to its procedure and do not paraphrase it.
+
+   The branch is `<type>/<slug>-<milestone>` — the plan slug, then the milestone slug, per
+   `solo-agent-orchestration`. The base is
+   `origin/HEAD`, or the predecessor milestone's branch in that repository when the milestones
+   stack there.
+
+   **A resumed run may find the worktree still standing.** `/stash` leaves one on unpushed commits
+   and on uncommitted work. `solo-agent-orchestration` carries both tests. Reuse a recorded path
+   that holds this milestone's branch, and stop where it holds anything else.
 
    `/worktree` records the tree path under `plan:<slug>:milestone:<m>:worktree:<repo>`. Both keys
    carry the milestone and the repository. One plan holds several branches per repository. One
@@ -194,20 +202,29 @@ starts again at step 1.
    **Escalate on drift.** A path the census now returns, and the plan does not declare, is a
    deviation. Stop and put it to the user. Do not widen a task's declared paths yourself.
 3. **Run the milestone's waves.** See [Wave execution](#wave-execution). Every worker works
-   inside the worktree of the repository its slices belong to. Each wave commits its own tasks at
-   its join, so no task commit follows the last wave.
-4. **Critique this milestone's diff.** Name the base explicitly, and pass the plan:
+   inside the worktree of the repository it writes in. A task that writes in two repositories works
+   in both, and it takes one preamble per repository. Each wave commits its own tasks at its join,
+   so no task commit follows the last wave.
+4. **Critique this milestone's diff, once per repository it touches.** Name the base explicitly,
+   and pass the plan:
    ```
-   /critique --base <the milestone's effective base> --plan <the plan pad>
+   /critique --base <that repository's effective base> --plan <the plan pad>
    ```
-   The effective base is the ref step 1 cut from. That is `origin/HEAD`, or the predecessor
-   milestone's branch where the milestones stack. Without `--base`, `/critique` falls back to the
-   default branch and reviews the predecessor's diff as this milestone's. It then re-raises
-   findings the user already settled.
+   A repository's effective base is the ref step 1 cut from there. That is `origin/HEAD`, or the
+   predecessor milestone's branch where the milestones stack in that repository.
 
-   Use the roster the plan supplied. `/critique` does not ask again.
+   **One `--base` cannot express two repositories.** Repository A stacks on `fix/<slug>-m1` while
+   repository B starts from `origin/HEAD`. One ref is wrong for one of them. It either fails to
+   resolve, or it pulls in commits this milestone never touched. Run the skill once per repository
+   instead.
+
+   Without `--base`, `/critique` falls back to the default branch and reviews the predecessor's
+   diff as this milestone's. It then re-raises findings the user already settled.
+
+   Use the roster the plan supplied, in every invocation. `/critique` does not ask again.
 5. **Apply the filter and present what survives.** `/critique` owns the filter, the ledger, and
-   the presentation of a finding. Point at it and add nothing. Fix no finding unilaterally.
+   the presentation of a finding. Point at it and add nothing. Fix no finding unilaterally. Each
+   repository's invocation returns its own ledger, so present them grouped by repository.
 
    **Commit the remedies.** `/critique` applies each accepted fix in this milestone's worktrees,
    and it leaves them uncommitted. Commit them here, once per repository, before the push gate:
@@ -233,7 +250,27 @@ starts again at step 1.
 7. **Push and open one PR per repository the milestone touches.** Follow
    `pr-first-contributions`, which owns the stacked-PR base and the title spec. Update an open PR
    rather than opening a second one.
-8. **Announce the landing.** It reports and does not block.
+8. **Run the integration critique, once the last milestone has pushed.** This is a step, not an
+   option. Skip it on every earlier milestone.
+   ```
+   /critique --integration <slug> --plan <the plan pad>
+   ```
+   It runs the four integration lenses with the roster the plan supplied. One of them is the
+   reason this step exists: did every slice the plan declared land in some milestone? A
+   per-milestone critique cannot answer that, because it sees one milestone's diff.
+
+   Every milestone pushed its branch, so the diffs live on the remote. Run it from this
+   milestone's worktree, which step 10 has not yet removed. Never run it from the stable `main`
+   worktree of a container. That is the tree the user sits in, on the default branch.
+
+   **The integration pass edits nothing, and `/critique` owns that.** Its ledger line reads
+   `remedy:` rather than `fixed:`. Every milestone it reviews already shipped its PRs, so an
+   accepted remedy lands as a follow-up milestone. Propose that milestone and let the user approve
+   it. Escalate as `Blocked` where a finding invalidates a PR the run already opened.
+
+   **It runs before the landing so its result reaches the user inside `Landed`.** Run it after,
+   and the run speaks a fifth time. `rules/chat-vocabulary.md` allows four occasions.
+9. **Announce the landing.** It reports and does not block.
 
    **Landed — `<milestone>`**
 
@@ -245,11 +282,15 @@ starts again at step 1.
 
      Quality gates: <results>
      Critique:      <N> findings, <M> presented, <models>
+     Integration:   <N> findings, <M> presented, <models>
    ```
 
    Then the ledger, in the shape `/critique` defines. `Landed` carries no footer, because the
    run continues.
-9. **Tear down and clean up.** Do all four, in this order:
+
+   **The last milestone's block carries the `Integration:` line and the integration ledger too.**
+   Omit both on every earlier milestone, because step 8 ran nothing there.
+10. **Tear down and clean up.** Do all four, in this order:
     ```
     timer_cancel(timer_id=<each guard armed for this milestone>)
     close_process(process_id=<each worker of this milestone>)
@@ -306,17 +347,22 @@ For each wave of the current milestone, for each task in it:
 3. `send_input(process_id, input=<agent_instructions + the assignment below>)`
 
 The **preamble** has two halves. What a worker must not touch, and what to do when stuck, are
-identical for every worker in the milestone. The working directory is not. A milestone spanning
-repositories therefore passes one preamble per repository, and a slice belongs to exactly one
-repository. Each worker's directory is the worktree of the repository holding its slices. Pass the
-preamble through the runtime's system-prompt argument, or in every prompt where the runtime has
-none.
+identical for every worker in the milestone. The working directory is not. Pass the preamble
+through the runtime's system-prompt argument, or in every prompt where the runtime has none.
+
+**A task receives one preamble per repository it writes in.** Each one names that repository's own
+worktree, and it scopes the task's declared paths to that repository. The task's lock keys come
+from the matching worktree, so a path locks under the tree that holds it.
+
+Most tasks write in one repository and take one preamble. A `same-worker` task may hold slices in
+two, and it then takes two. The commit block below already commits such a task once per
+repository. `solo-agent-orchestration` carries the same rule.
 
 ```
 You are a Solo agent implementing one task of an approved plan.
 
-Working directory: <the worktree of the repository this task's slices sit in,
-absolute>. Stay inside it.
+Working directory: <this repository's worktree, absolute>. Stay inside it.
+Declared paths: <this task's paths inside this repository>.
 
 Do not write any file outside your task's declared paths — needing to is a deviation.
 Do not create or complete todos, or write KV. Write only your own report scratchpad.
@@ -339,9 +385,9 @@ Prior waves: <what already landed, or "this is the first wave of this milestone"
 
 Before you touch anything, lock each file you will modify:
   lock_acquire(lock_key="path:<lowercased absolute path>", lease_ttl_seconds=3600)
-The key is the absolute path inside your worktree, not the declared relative one. Solo scopes a
-lock to the project, and one project holds many repositories and many worktrees. A relative key
-therefore collides with every tree that has a file of that name.
+The key is the absolute path inside the worktree that holds the file, not the declared relative
+one. Solo scopes a lock to the project, and one project holds many repositories and many
+worktrees. A relative key therefore collides with every tree that has a file of that name.
 If a lock is unavailable, report which actor holds it, then stop and escalate — do not wait or
 work around it.
 
@@ -361,7 +407,7 @@ work around it.
 
 **The report pad carries the milestone, not the task letter alone.** A composition may restart
 task letters per milestone, so `<slug>/<task>` lets M2 task A overwrite M1 task A. That destroys
-an escalation record before `## Close` reads it.
+an escalation record that nothing recreates.
 
 4. **Wait for the workers to signal.** Each one wakes this session directly when it finishes.
    Arm one idle timer per wave as the dead-worker fallback only:
@@ -421,9 +467,16 @@ the milestone lands, or the run stops here.
 
 The plan assumed <X>; the code actually does <Y>.
 Options: <adjust the plan / a different approach / drop the slice>
+
+I recommend <the option>, because <the ground it rests on>.
 ```
 
 ⏸ waiting on you: pick one option for task `B`
+
+**The recommendation is mandatory.** `rules/chat-vocabulary.md` requires one on every question, and
+a `Blocked` options list ranks nothing by itself. Name the option you would take and the ground it
+rests on. An `Approve` gate needs no separate line, because its proposal is its own
+recommendation — that rule lives in `rules/chat-vocabulary.md` too.
 
 Do not start the next wave until you resolve this. If the plan needs a change, update the pad so
 it stays the record of what the user actually agreed.
@@ -433,31 +486,22 @@ within the plan's intent should. It escalates when the fix would require departi
 
 ## Close
 
-Close the run after the last milestone lands. Every milestone already pushed its own PRs and tore
-down its own worktrees, so nothing here opens a PR.
+Close the run after the last milestone lands. Every milestone pushed its own PRs and tore down its
+own worktrees. Step 8 of the loop ran the integration critique, and step 9 reported it. Nothing
+here opens a PR, and nothing here speaks.
 
-1. **Run the integration critique.** This is a step, not an option:
-   ```
-   /critique --integration <slug> --plan <the plan pad>
-   ```
-   It runs the four integration lenses with the roster the plan supplied. One of them is the
-   reason this step exists: did every slice the plan declared land in some milestone? A
-   per-milestone critique cannot answer that, because it sees one milestone's diff.
+1. `scratchpad_archive(scratchpad_id=<plan pad>)` — it has served its purpose
+2. `kv_delete` every `plan:<slug>:*` key
+3. `close_process` any surviving worker
+4. `git worktree prune` in each container, per `solo-agent-orchestration`
 
-   Every milestone already pushed its branch, so the diffs live on the remote. Run this from the
-   stable `main` worktree of each container. Step 9 of the loop removed the milestone worktrees.
+**Close is silent.** Each `Landed` already carried its own PR URLs and quality gates. The last one
+carried the integration ledger. Repeat none of it here. `rules/chat-vocabulary.md` reserves four
+occasions, and a closing report is a fifth.
 
-   Present what survives, through `/critique`'s filter and ledger. A finding here reaches a
-   milestone that already shipped. It lands as a follow-up rather than as a fix to a closed
-   milestone. Escalate it as `Blocked` where it invalidates a PR the run already opened.
-2. `scratchpad_archive(scratchpad_id=<plan pad>)` — it has served its purpose
-3. `kv_delete` every `plan:<slug>:*` key
-4. `close_process` any surviving worker
-5. `git worktree prune` in each container, per `solo-agent-orchestration`
-6. Return every PR URL the run opened, grouped by milestone
-
-**The order matters.** The integration critique compares the landed branches against the plan
-pad. Archive the pad first, and you remove half of that comparison.
+**The integration critique runs before this section, and that order matters.** It compares the
+landed branches against the plan pad. Archive the pad first, and you remove half of that
+comparison.
 
 ## Notes
 

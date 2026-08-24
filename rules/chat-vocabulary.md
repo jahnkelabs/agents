@@ -36,7 +36,8 @@ the user to read every turn again.
 - **Global parts:** the five headings and the footer hold in every skill. The cadence above holds
   in `/implement` alone.
 - **Fencing:** Fence every block that sits under a reserved heading.
-- **Recommendation:** Every question carries one. It is mandatory, not expected.
+- **Recommendation:** Every question carries one. An `Approve` proposal is its own; every other
+  question states one explicitly.
 - **Exceptions:** A direct reply to the user's own question needs no heading.
 
 ## The reserved vocabulary
@@ -64,6 +65,14 @@ your recommendation, and the user picks one.
 Pick by that test alone, never by how large the question feels. A roster you assembled is an
 `Approve`. A tradeoff only the user can settle is a `Deciding`.
 
+**An `Approve` proposal is its own recommendation.** The message states one course and asks the
+user to sanction it. You did the ranking work, and the user can read it. An `Approve` therefore
+satisfies the mandatory recommendation without a separate line, and it may still carry one.
+
+A `Deciding` message needs an explicit recommendation, because it presents options you did not
+rank. So does a `Blocked` message that lists options. Neither one ranks anything by itself, and
+both leave the user the work this rule removes.
+
 ## The footer
 
 The footer is the last line of a message that waits for the user:
@@ -76,13 +85,17 @@ Its presence is the signal, and its absence means nothing is outstanding. Name o
 two. Add no bold sentinel beside it, because bold marks emphasis everywhere else in a message.
 
 **Which messages carry the footer.** Every message that waits for the user carries it, whether or
-not that message carries a heading. `Approve`, `Deciding`, `Blocked`, and `Failed` therefore all
-carry it. A follow-up question inside an open gate carries it too, and that message carries no
-heading of its own.
+not it carries a heading. `Approve`, `Deciding`, `Blocked`, and `Failed` therefore all carry it. So
+does a question that carries no heading of its own.
 
-**Which messages do not.** `Landed` carries no footer, because the run continues. A message with
-no reserved heading carries none either, unless it asks a follow-up question inside an open gate.
-A report, a narration, and a direct answer to the user's own question all carry no footer.
+**A question opens the gate it belongs to.** A skill's first question is that gate's opening
+message. The questions after it are follow-ups inside the same open gate. `/plan` invoked with no
+arguments asks which plan to run. That question opens a gate rather than standing outside one. So
+"inside an open gate" covers a first question too, and no waiting message falls outside this rule.
+
+**Which messages do not.** `Landed` carries no footer, because the run continues. A report, a
+narration, and a direct answer to the user's own question carry none. None of the three waits, and
+waiting is the whole test. Whether a message carries a heading decides nothing here.
 
 ## Fence every blocking block
 
@@ -117,7 +130,8 @@ restating it.
 1. The reserved heading, on the gate's opening message only: `Deciding` for a choice, `Approve`
    for a proposal. Each follow-up question inside that open gate carries no heading.
 2. A fenced context block, carrying the three things below.
-3. One short question, and a recommendation. The recommendation is mandatory.
+3. One short question, and a recommendation. The recommendation is mandatory. An `Approve`
+   proposal is its own, so it needs no separate line.
 4. The footer, as the last line. Every question waits, so every question carries it.
 
 The context block carries what you found, why the user must choose, and the cost of each option:
