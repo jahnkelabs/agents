@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Execute an approved plan as Solo-orchestrated waves, critique the result, and present it
+description: Execute an approved plan as a loop of milestones, each landing its own PRs
 argument-hint: "[plan/<slug>]"
 disable-model-invocation: true
 ---
@@ -10,90 +10,229 @@ disable-model-invocation: true
 Orchestrate execution of an approved plan. You own git, todo lifecycle, and worker
 coordination. Workers write code and nothing else.
 
-The plan declares **work items**. This skill groups them into **tasks** — one worker, one todo,
-one scratchpad, one model tier. It gates that roster before anything spawns. Tasks then run to
-completion without per-task review gates. Workers escalate on **deviation**, not on completion —
-see [Escalation](#escalation).
+The plan declares **slices**. This skill composes them into **milestones**, and each milestone
+ships its own PRs before the next one starts.
+
+```
+  slice       one worker's unit of work. Narrow, vertical, one repository.
+  milestone   a consumable chunk of a plan, sequenced in a DAG. May span
+              repositories. The unit of delivery.
+  wave        the concurrency schedule inside a milestone, from file overlap.
+```
+
+A **task** is one worker, one todo, one report scratchpad, one model tier. A task carries one
+slice, or several that must not drift apart. Workers escalate on **deviation**, not on
+completion — see [Escalation](#escalation).
 
 ## Input
 
 - **A plan pad** (`plan/<slug>` or an id) — the normal case
 - **No arguments** — list active plan pads via `scratchpad_list(tags=["plan"])` and ask
-- **Existing todos for the slug** — this is a resumed run. The todos *are* the decomposition, so
-  reuse them rather than decomposing again; pick up where the incomplete tasks are
+- **Existing todos for the slug** — this is a resumed run. The todos *are* the composition, so
+  reuse them rather than composing again. Pick up at the first milestone with open tasks.
 
 Read the pad fully. If none exists, send the user to `/plan`.
 
 Use whichever Solo project is currently selected, consistent with `/plan`.
 
-## Setup
+## Speaking
+
+`rules/chat-vocabulary.md` reserves the headings and the footer. Speak on four occasions and no
+others: a gate, a milestone landing, an escalation, and a failure. The rest of the run is
+silent.
+
+Narrate no worker completion and no wave boundary. Worker traffic drove 78% of the assistant
+turns in one run, and none of it needed a reply.
+
+## Compose the milestones
 
 Skip anything the `/plan` fork already confirmed — do not re-ask what the user just settled.
 
-1. **Decompose the work items into tasks.** Items marked `same-worker` share a task. Items marked
-   `after` land in a later wave. Items whose `**Files**:` overlap never run concurrently.
-   Everything else is free. Group for coherence rather than for a worker count. A task that spans
-   one subsystem is easier to brief and verify than one assembled to fill a slot.
-2. **Assign each task a model and effort tier.** A task does not inherit these from the session.
+1. **Compose milestones from the plan's slices.** A milestone's outcome is one sentence with no
+   `and`. Add slices while that sentence stays true. Open a new milestone once the sentence needs
+   an `and`. That is the whole test.
+
+   A milestone may span repositories. It then lands **one PR per repository it touches**. Each
+   of those PR titles states the milestone's outcome, scoped to its repository.
+2. **Order the milestones into a DAG.** Aggregate every slice's `after` constraint onto the
+   milestones that hold the two slices. That aggregate is the dependency half of the order.
+
+   **File overlap forces ordering, never parallelism.** Add an edge for every file two milestones
+   share. Two milestones that touch one file run in sequence, whatever their `after` constraints
+   allow. The second branch would otherwise carry a conflict the user never approved.
+3. **Schedule the waves inside each milestone.** Slices marked `same-worker` share one task.
+   Slices marked `after` land in a later wave. Slices whose `**Files**:` overlap never run
+   concurrently. Everything else is free. Group for coherence rather than for a worker count. A
+   task that spans one subsystem is easier to brief and verify than one assembled to fill a slot.
+4. **Assign each task a model and effort tier.** A task does not inherit these from the session.
    Judge by what the task actually demands. Mechanical edits against precise line references are
    not the same work as a rewrite that must preserve a behavioral contract. The two should not
    cost the same. `list_agent_tools` resolves the runtime, and model and effort vary within it.
-3. **Gate the roster.** This is an approval stop, not an announcement.
+5. **Gate the roster.** This is an approval stop, not an announcement. Milestones and their PR
+   titles come first. Waves and tiers come second, inside the milestone that holds them.
+
+   **Approve — roster for `plan/<slug>`**
+
    ```
-   5 workers, 2 waves.
+   3 milestones, 5 workers.
 
-     wave 1
-       A  rules/output-discipline.md, rules/yagni.md          opus · xhigh
-          Author two rules from scratch, matching house style across three
-          existing files, with a clause that must be byte-identical in both.
-       B  rules/pr-first-contributions.md                     opus · xhigh
-          Rewrite 166 lines to ~90 while preserving fifteen behavioral
-          imperatives, each stated exactly once.
-       C  skills/{grill,stash,recall}/SKILL.md                sonnet · medium
-          Three localized edits against precise line references.
-     wave 2
-       D  README.md                                           sonnet · high
-          Read the wave-1 diff and reconcile every claim it falsified.
+     M1  reserve a chat vocabulary for messages that need a reply
+         agents  feat(rules): reserve a chat vocabulary for messages that need a reply
+         wave 1
+           A  rules/chat-vocabulary.md                       opus · xhigh
+              Author one rule from scratch, matching house style across six
+              existing files.
+         wave 2
+           B  skills/{research,recall,stash}/SKILL.md        sonnet · medium
+              Three localized edits against precise line references.
 
-   Critique at the end: <models>.
+     M2  give every milestone its own provisioned worktree
+         agents  feat(worktree): add /worktree to set up and provision repositories
+         after M1 — both touch README.md
+         wave 1
+           C  skills/worktree/SKILL.md, scripts/wt-clone.sh  opus · xhigh
+              Author a skill and a helper script, with a measured filesystem
+              pre-check the exit code cannot replace.
 
-   Adjust any model, effort, or grouping, or approve as proposed.
+     M3  deliver each milestone as its own PRs
+         agents  feat(skills): deliver each milestone as its own PRs
+         after M2 — both touch README.md
+         wave 1
+           D  skills/{plan,implement}/SKILL.md               opus · xhigh
+              Rewrite two skills onto one delivery vocabulary that must not
+              drift between them.
+           E  rules/pr-first-contributions.md                sonnet · high
+              Add stacked-PR guidance to a general rule without turning it
+              into an appendix.
+
+     Concurrent stacks: 1 of roughly 3. All three milestones touch README.md,
+     so they ship in sequence.
+
+     Critique per milestone: <models>.
    ```
+
+   Adjust any milestone boundary, model, effort, or grouping, or approve as proposed.
+
    **The summary is the justification.** One task reads "three localized edits against precise
-   line references". Another reads "preserve fifteen imperatives while cutting 46% of the file".
-   Each summary argues for a different tier by itself. Write the summary so the tier follows from
-   it, and never add a separate rationale field.
+   line references". Another reads "a rewrite of two skills onto one vocabulary". Each summary
+   argues for a different tier by itself. Write the summary so the tier follows from it, and never
+   add a separate rationale field.
 
-   The user can adjust grouping, not just tiers. The roster is where two tasks that should be one
-   become obvious. It is also where a task that does too much becomes obvious.
+   **Bound the parallelism by the machine as well as by the DAG.** `/worktree` states the
+   container ceiling: roughly three concurrent milestone stacks on this machine. Propose no more
+   concurrent milestones than that ceiling holds, even where the DAG allows more. State the count
+   you propose against the ceiling, as the block above does.
 
-   Offer the enabled runtimes for the end-of-run critique in the same gate. One stop, not two.
+   The user can adjust boundaries, not just tiers. The roster is where a milestone that does two
+   things becomes obvious. It is also where two milestones that should be one become obvious.
+
+   Offer the enabled runtimes for the per-milestone critique in the same gate. One stop, not two.
    Never hardcode a roster.
-4. **Create the branch** in each target repo, off whatever `origin/HEAD` points to — never a
-   hardcoded default branch name:
-   ```bash
-   cd <repo path>
-   DEFAULT="$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')"
-   [ -z "$DEFAULT" ] && DEFAULT="$(git remote show origin | awk '/HEAD branch/ {print $NF}')"
-   [ -z "$DEFAULT" ] && { echo "cannot resolve the default branch"; exit 1; }
-   git checkout "$DEFAULT" && git pull --rebase && git checkout -b <type>/<slug>
-   ```
-   The fallback, the abort, and the `&&` chain all matter. A resolution that yields an empty
-   string fails the checkout. Without the chain, the branch cut would root the new branch on
-   whatever branch is currently in use.
-   `kv_set(key="plan:<slug>:branch:<repo>", value="<branch>")` — keys are lowercase. Lowercase
-   any slug that carries an uppercase timestamp.
-5. **Create the todos** — one per approved task. The body carries the **task spec**: the work
-   items it covers, their files, and their verification. This is not a copy of the plan. The plan
-   holds work items; the todo holds the grouping, which exists nowhere else. The worker reads its
-   own todo, so this is the only place the spec belongs.
+6. **Create the todos** — one per approved task, tagged with its milestone. The body carries the
+   **task spec**: the slices it covers, their files, and their verification. This is not a copy of
+   the plan. The plan holds slices; the todo holds the grouping, which exists nowhere else. The
+   worker reads its own todo, so this is the only place the spec belongs.
    ```
    todo_create(title="<task>: <name>", body=<task spec>,
-               tags=["plan:<slug>", "project:<repo>", "task:<letter>"])
+               tags=["plan:<slug>", "milestone:<m>", "project:<repo>", "task:<letter>"])
    todo_add_blocker(todo_id=<dependent>, blocker_id=<prerequisite>)
    ```
+   Keys and tags are lowercase. Lowercase any slug that carries an uppercase timestamp.
 
-Then run unattended through every wave.
+   **Every automated check must be able to fail.** Run each check against the pre-change tree
+   before you write it into the spec, and record the output there. A check that already passes
+   needs a mutation proof. Copy the file to a scratch path, break what the check tests, and record
+   the failure on the copy. Never mutate the repository for a proof. Mark a check `unverifiable`
+   where neither route works, and say why.
+
+   Two checks in the corpus could never fire. `grep -rn 'App\\Models'` searched for two literal
+   backslashes. `grep -ci Test` matched an unrelated domain string. Both read as passing evidence.
+
+## The milestone loop
+
+Run the milestones in DAG order. One pass through this loop ships one milestone. The next pass
+starts again at step 1.
+
+1. **Cut a worktree and branch for each repository the milestone touches.** Run
+   `/worktree cut <repo> <milestone>`. That skill owns the layout, the provisioning, the container
+   naming, and the refusal on a plain clone. Add nothing to its procedure and do not paraphrase
+   it.
+
+   The base is `origin/HEAD`, or the predecessor milestone's branch in that repository when the
+   milestones stack in one repository.
+
+   ```
+   kv_set(key="plan:<slug>:milestone:<m>:branch:<repo>", value="<branch>")
+   ```
+
+   `/worktree` records the tree path under `plan:<slug>:milestone:<m>:worktree`. Both keys carry
+   the milestone, because one plan holds several branches per repository.
+2. **Re-check the census in the worktree.** The plan's `**Files**:` lists came from a census at
+   plan time. Repeat that census now for this milestone's slices, in the tree you just cut.
+   `/plan` names what it searches for: the caller, the test, and the standard your change
+   falsifies.
+
+   **Escalate on drift.** A path the census now returns, and the plan does not declare, is a
+   deviation. Stop and put it to the user. Do not widen a task's declared paths yourself.
+3. **Run the milestone's waves.** See [Wave execution](#wave-execution). Every worker in this
+   milestone works inside this milestone's worktree.
+4. **Commit each completed task separately**, staging only its declared paths:
+   ```bash
+   cd <the milestone's worktree>
+   git add <task's declared paths>
+   git commit -m "<type>(<scope>): <task summary>"
+   ```
+   Never `git add -A` — another task's work may be in the tree.
+5. **Critique this milestone's diff.** Run `/critique` over the diff with the models chosen at the
+   roster gate, and pass the approved plan so the plan-fidelity lens has something to check.
+6. **Apply the filter and present what survives.** `/critique` owns the filter, the ledger, and
+   the presentation of a finding. Point at it and add nothing. Fix no finding unilaterally.
+7. **Gate the push.** `pr-first-contributions` forbids a push without explicit approval, and this
+   gate is where you ask. Re-run its staleness check first.
+
+   **Approve — push milestone `<m>`**
+
+   ```
+     <repo>   <N> commits   base <branch>   "<the PR title>"
+     <repo>   <N> commits   base <branch>   "<the PR title>"
+
+     Quality gates: <results>
+   ```
+8. **Push and open one PR per repository the milestone touches.** Follow
+   `pr-first-contributions`, which owns the stacked-PR base and the title spec. Update an open PR
+   rather than opening a second one.
+9. **Announce the landing.** It reports and does not block.
+
+   **Landed — `<milestone>`**
+
+   ```
+   <the milestone's outcome, in one sentence>
+
+     <repo>   <PR url>   <N> commits   base <the default branch>
+     <repo>   <PR url>   <N> commits   base <the predecessor milestone's branch>
+
+     Quality gates: <results>
+     Critique:      <N> findings, <M> presented, <models>
+   ```
+
+   Then the ledger, in the shape `/critique` defines.
+10. **Tear down and clean up.** Do all four, in this order:
+    ```
+    timer_cancel(timer_id=<each guard armed for this milestone>)
+    close_process(process_id=<each worker of this milestone>)
+    lock_release for any lock a dead worker left held
+    stop the stack and remove the worktree, per /worktree's teardown block
+    ```
+    The branch lives on the remote once the push succeeds, so the worktree is disposable. A guard
+    left armed fires during a later milestone and arrives as an instruction about workers that
+    finished long ago.
+
+Then start the next milestone.
+
+**Critique and triage block the next milestone. The user's PR review does not.** A finding that
+survives the filter may change what the next milestone should do, so the loop waits for it. A PR
+review does not, and the run would otherwise stall behind a human queue. Open the PR, announce
+the landing, and move on.
 
 ## Wave execution
 
@@ -102,7 +241,7 @@ sub-agent cannot hold a lock, own a todo, or wake this session when it finishes.
 
 Call `whoami` once and keep the returned `process_id`. Every worker needs it to signal back.
 
-For each wave, for each task in it:
+For each wave of the current milestone, for each task in it:
 
 1. `todo_update(todo_id, status="in_progress")`
 2. Spawn at the approved tier, with the constraints enforced rather than requested:
@@ -113,26 +252,25 @@ For each wave, for each task in it:
      <the system-prompt argument carrying the preamble below, if the runtime has one>])
    ```
    `list_agent_tools` returns a `tool_type` for each runtime. Read `references/runtime-<tool_type>.md`
-   and use the arguments it lists. Never write a launch argument from memory: a runtime renames
+   and use the arguments it lists. Never write a launch argument from memory. A runtime renames
    its flags between releases, and the adapter is the only current record.
 
    Auto-approval keeps the worker from stalling on its actual job. It still leaves the requests
    that matter reviewable. Never use a bypass mode.
 
    Denying git writes, not the approval mode, makes the prohibition structural. A worker that
-   *cannot* stage is safer than one asked not to. Cross-commits between workers that share a tree
-   are silent when they happen. A runtime that cannot scope a denial to one worker cannot give
-   you this. The adapter says so, and each worker then needs its own tree, or a knowing
-   acceptance of the risk.
+   *cannot* stage is safer than one asked not to. Two workers that share a tree cross-commit
+   silently. When a spawn fails, read the adapter, correct the arguments, and retry once. Escalate
+   on the second failure, and never loosen a flag to make a launch succeed.
 3. `send_input(process_id, input=<agent_instructions + the assignment below>)`
 
-The **preamble**, identical for every worker in the wave. Pass it once through the runtime's
+The **preamble**, identical for every worker in the milestone. Pass it once through the runtime's
 system-prompt argument, or in every prompt where the runtime has none:
 
 ```
 You are a Solo agent implementing one task of an approved plan.
 
-Working directory: <absolute repo path>. Stay inside it.
+Working directory: <the milestone's worktree, absolute>. Stay inside it.
 
 Do not write any file outside your task's declared paths — needing to is a deviation.
 Do not create or complete todos, or write KV. Write only your own report scratchpad.
@@ -148,22 +286,24 @@ Lock and KV keys must be lowercase — normalize any path before using it as a k
 The **assignment**, passed via `send_input` and different for every worker:
 
 ```
-Your task is Solo todo <id>. Read it — it carries your work items, their files, and their
+Your task is Solo todo <id>. Read it — it carries your slices, their files, and their
 verification. The full plan is scratchpad <id> if you need surrounding context.
 
-Prior waves: <what already landed, or "this is the first wave">
+Prior waves: <what already landed, or "this is the first wave of this milestone">
 
 Before you touch anything, lock each file you will modify:
   lock_acquire(lock_key="path:<lowercased absolute path>", lease_ttl_seconds=3600)
-The key is the absolute path, not the declared relative one. Solo scopes a lock to the project,
-and one project can hold many repositories, so a relative key collides with every repository
-that has a file of that name.
+The key is the absolute path inside your worktree, not the declared relative one. Solo scopes a
+lock to the project, and one project holds many repositories and many worktrees. A relative key
+therefore collides with every tree that has a file of that name.
 If a lock is unavailable, report which actor holds it, then stop and escalate — do not wait or
 work around it.
 
 1. Read every file your task names, fully, before changing anything
 2. Make the changes
-3. Run the task's automated verification
+3. Run the task's automated verification. Every check must be able to fail.
+   Run each one against the pre-change state first. Where a check already passes, prove it fails
+   on a mutated copy under your scratch directory. Never mutate the repository for a proof.
 4. Write your report to scratchpad "<slug>/<task>". Record what you did, the verification
    output, and anything you found that the task did not anticipate. Begin the report with
    "ESCALATION:" if you stop rather than finish.
@@ -177,8 +317,8 @@ work around it.
    Arm one idle timer per wave as the dead-worker fallback only:
    ```
    timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
-     body="Wave <N> guard expired. Any worker that has not signalled has died, hung, or
-           failed to finish — investigate before treating it as complete. Check each
+     body="Milestone <m> wave <N> guard expired. Any worker that has not signalled has died,
+           hung, or failed to finish — investigate before treating it as complete. Check each
            task's scratchpad and process status.")
      → timer_id
    ```
@@ -186,20 +326,12 @@ work around it.
    length is indistinguishable from a finished one — see `solo-agent-orchestration`.
 
    Keep the returned `timer_id`. One guard per wave means one id to hold.
-5. When every task in the wave signals, `timer_cancel(timer_id=<id>)` for that wave's guard.
-   Cancel before you commit: a guard left armed fires during a later wave and arrives as an
-   instruction about workers that finished long ago. Then run `scratchpad_find` for `ESCALATION`
-   across the wave's report pads. Do this before you read any pad in full. If nothing matches, read only what you
-   need to write the commit messages.
-6. **Commit each completed task separately**, staging only its declared paths:
-   ```bash
-   cd <repo path>
-   git add <task's declared paths>
-   git commit -m "<type>(<scope>): <task summary>"
-   ```
-   Never `git add -A` — another task's work may be in the tree.
-7. `todo_complete(todo_id, completed=true)` for each task that finished.
-8. `close_process(process_id)` for each worker.
+5. When every task in the wave signals, `timer_cancel(timer_id=<id>)` for that wave's guard. Then
+   run `scratchpad_find` for `ESCALATION` across the wave's report pads. Do this before you read
+   any pad in full. If nothing matches, read only what you need for the commit messages.
+
+Then commit the wave's tasks, `todo_complete` each one, and start the next wave of this
+milestone.
 
 ## Escalation
 
@@ -211,89 +343,37 @@ deviates from the task.
 dependencies on each other, so no other work depends on the problem.
 
 The worker's report scratchpad is the durable record, and its completion signal says whether it
-escalated. The wave join is the only place an escalation appears. Before you present, you
-resolve every escalation or the run stops here. At the join, stop and show the whole wave
-together:
+escalated. The wave join is the only place an escalation appears. Resolve every escalation before
+the milestone lands, or the run stops here.
+
+**Blocked — milestone `<m>` wave `<N>`**
 
 ```
-Wave <N> complete — one task needs discussion.
-
   A  ✓ committed
   B  ⚠ escalated — <what the worker found>
   D  ✓ committed
   C  ⊘ blocked behind B
 
 The plan assumed <X>; the code actually does <Y>.
-Options: <adjust the plan / different approach / drop the work item>
+Options: <adjust the plan / a different approach / drop the slice>
 ```
 
-Do not start the next wave until you resolve this. If the plan needs a change, update the pad
-so it stays the record of what the user actually agreed.
+Do not start the next wave until you resolve this. If the plan needs a change, update the pad so
+it stays the record of what the user actually agreed.
 
 Automated verification failing is not automatically an escalation — a worker that can fix it
-within the plan's intent should. It escalates when the fix would require departing from the
-plan.
-
-## Critique
-
-Once all waves are done, run `/critique` over the full diff with the models chosen at setup.
-Pass the approved plan, so the plan-fidelity lens has something to check against.
-
-Fold the surviving findings into what you present. Do not fix them unilaterally.
-
-## Present
-
-State the run, then hand the findings over one at a time. `/critique` owns that presentation and
-this is the same shape: one finding, one decision, in severity order. You triage each finding
-once.
-
-```
-Implementation complete.
-
-<repo>  branch <name>
-  Tasks:   <N> committed
-  Commits: <git log --oneline "origin/${DEFAULT}"..HEAD>
-  Quality gates: <results>
-
-<N> critique findings to triage (<models>).
-```
-
-Then, for each in turn:
-
-```
-Finding 1 of <N>   ●●●  bug   `file:line`
-
-<what is wrong, in one sentence>
-
-  Evidence  <concrete inputs or state, and the wrong result they produce>
-  Fix       <the specific change>
-
-Fix it, drop it, or something else?
-```
-
-(● = models that independently flagged it)
-
-`/critique` defines severity and the `●` count: `bug` for wrong behavior, `risk` for a plausible
-failure, `nit` for style or cleanup. Severity orders the triage, so it stays on the line.
-
-Apply each decision as the user makes it, then wait for the next. Never ask for all of them at
-once. When the user settles the last one, run `git commit -m "chore: address critique findings"`.
-Offer a re-critique or move to close.
+within the plan's intent should. It escalates when the fix would require departing from the plan.
 
 ## Close
 
-After approval — and only after — push and open the PR by following
-`pr-first-contributions`. `/implement` adds nothing to that procedure and must not
-paraphrase it. Re-run the branch staleness check before you push. Confirm the quality gates
-passed and the tree is clean. Then open a draft PR whose title and body meet that rule's spec.
-If a PR for the branch is already open, update it rather than opening a second.
-
-Then:
+Close the run after the last milestone lands. Every milestone already pushed its own PRs and tore
+down its own worktrees, so nothing here opens a PR.
 
 - `scratchpad_archive(scratchpad_id=<plan pad>)` — it has served its purpose
 - `kv_delete` every `plan:<slug>:*` key
-- `close_process` any surviving workers
-- Return the PR links
+- `close_process` any surviving worker
+- `git worktree prune` in each container, per `solo-agent-orchestration`
+- Return every PR URL the run opened, grouped by milestone
 
 ## Notes
 

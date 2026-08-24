@@ -1,5 +1,5 @@
 ---
-description: PR-first git workflow with conventional titles, draft PRs, and squash-merge descriptions
+description: PR-first git workflow with conventional titles, draft PRs, stacked bases, and squash-merge descriptions
 ---
 
 # PR-first contributions
@@ -8,9 +8,10 @@ Contribute code through pull requests by default. The PR is the unit of contribu
 
 ## Default policy
 
-- **Default:** Deliver every repository change through a **PR** against the repo's default branch. Resolve that branch from `origin/HEAD`: `main`, `master`, or whatever it points to.
+- **Default:** Deliver every repository change through a **PR**. Base it on the repo's default branch, resolved from `origin/HEAD`: `main`, `master`, or whatever it points to.
+- **Base:** The default branch is the usual base, not the only one. Work that depends on an unmerged branch bases on that branch instead. See `## Stacked PRs`.
 - **Exceptions:** Skip the PR workflow only when the user **clearly** instructs otherwise. Examples: "commit directly to main", "no PR", "push straight to default branch". If the request is ambiguous, ask once. Otherwise follow this rule.
-- **Branch:** Cut a feature branch from the latest default branch. Name it for the work and prefix it by type: `feat/…`, `fix/…`, `chore/…`. Never commit on the default branch.
+- **Branch:** Cut a feature branch from the latest default branch, or from the unmerged branch this work depends on. Name it for the work and prefix it by type: `feat/…`, `fix/…`, `chore/…`. Never commit on the default branch.
 - **Commits:** Only create commits when the user asks or when the PR workflow clearly requires it. No secrets, no `--no-verify`, and no amend unless the user allows it.
 - **Pushes:** Never push or open a PR without explicit approval. Approval for one push does not carry to the next.
 - **Draft by default:** Open PRs as drafts. Mark ready for review only when the user says so.
@@ -64,6 +65,22 @@ EOF
 ```
 
 A PR for this branch may already be open. Push the new commits, then update its title and description. Do not open a duplicate. Return the PR URL to the user.
+
+## Stacked PRs
+
+A branch whose work depends on another unmerged branch opens its PR against that branch. Pass `--base` to say so:
+
+```bash
+gh pr create --draft --base "<parent branch>" --title "<conventional-title>" --body "…"
+```
+
+Without `--base`, `gh` targets the default branch. The PR then shows the parent branch's commits as its own. A reviewer cannot separate the new work from the work already under review.
+
+**A stacked PR names its parent PR's URL in its body.** A base branch name does not say which PR owns that branch. The diff does not show the dependency at all. State the parent URL, and say that it merges first.
+
+**Merge a stack from base to head.** GitHub retargets an open PR when its base merges, so the child survives the parent's merge. Merging the child first orphans the parent's review.
+
+**A set of PRs may instead merge together.** One change that spans several repositories lands one PR per repository. Each one bases on its own repository's default branch, so none depends on another. None stands alone either: merging one and dropping the rest leaves the change half-applied. Say in each body that the set merges together, and name the sibling PR URLs.
 
 ## Title and description
 

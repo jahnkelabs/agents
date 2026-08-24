@@ -81,7 +81,7 @@ All six rules load into every session.
 |---|---|
 | [chat-vocabulary](rules/chat-vocabulary.md) | Five reserved headings and one footer mark every message that needs a reply; nothing else gets a heading |
 | [comment-discipline](rules/comment-discipline.md) | Comments are disallowed by default; after the implementation, propose only the few that pass the admission test |
-| [pr-first-contributions](rules/pr-first-contributions.md) | PR-first git workflow with conventional titles, draft PRs, and squash-merge descriptions |
+| [pr-first-contributions](rules/pr-first-contributions.md) | PR-first git workflow with conventional titles, draft PRs, stacked bases, and squash-merge descriptions |
 | [solo-agent-orchestration](rules/solo-agent-orchestration.md) | Fan out with Solo agents, never a vendor's native sub-agent mechanism. Workers signal their own completion and report to a durable surface |
 | [testing-philosophy](rules/testing-philosophy.md) | Contract-first tests through production entry points; refactor-resistant |
 | [yagni](rules/yagni.md) | Build for the present need; defer what is cheap to add later |
@@ -151,7 +151,7 @@ Both checks are warnings for that reason: read each one and decide.
 | [`/critique`](skills/critique/SKILL.md) | Adversarial multi-model review of a diff, plan, files, or PR | you or Claude |
 | [`/grill`](skills/grill/SKILL.md) | Interrogate a decision one question at a time | you or Claude |
 | [`/plan`](skills/plan/SKILL.md) | Research, grill, and produce a plan in one Solo scratchpad | **you only** |
-| [`/implement`](skills/implement/SKILL.md) | Decompose a plan into workers, run them, critique, present | **you only** |
+| [`/implement`](skills/implement/SKILL.md) | Compose a plan into milestones, and ship each one as its own PRs | **you only** |
 | [`/worktree`](skills/worktree/SKILL.md) | Set up, convert, and provision a bare-plus-worktrees repository | **you only** |
 | [`/stash`](skills/stash/SKILL.md) | Move active work into a durable tracker | **you only** |
 | [`/recall`](skills/recall/SKILL.md) | Pull tracker work back into planning | **you only** |
@@ -181,11 +181,13 @@ flowchart LR
     R["/research"]
     P["/plan"]
     I["/implement"]
+    W["/worktree"]
+    M["milestone loop"]
     C["/critique"]
     S["/stash"]
     RC["/recall"]
     T[("tracker")]
-    PR["draft PR"]
+    PR["draft PRs<br/>one per repo"]
 
     R -->|"research pad"| P
     P -->|"1. implement now"| I
@@ -195,8 +197,11 @@ flowchart LR
     S --> T
     T --> RC
     RC -->|"always re-plans"| P
-    I -->|"before presenting"| C
-    I --> PR
+    I -->|"milestones in DAG order"| M
+    M -->|"cut a tree per repo"| W
+    M -->|"before the landing"| C
+    M --> PR
+    M -->|"next milestone"| M
 ```
 
 ## How the system divides state
@@ -215,9 +220,10 @@ Nothing in this repository stores your work. Research and plans live in Solo, no
 |---|---|---|
 | Research pad | `research/<YYYY-MM-DD>T<HHMM>-<topic>` | `research`, `project:<repo>` |
 | Plan pad | `plan/<YYYY-MM-DD>T<HHMM>-<topic>` | `plan`, `project:<repo>` |
-| Task todos | — | `plan:<slug>`, `project:<repo>`, `task:<letter>` |
+| Task todos | — | `plan:<slug>`, `milestone:<m>`, `project:<repo>`, `task:<letter>` |
 | Worker reports | `<slug>/<task>` | — |
-| Orchestration | `plan:<slug>:branch:<repo>` | — |
+| Orchestration | `plan:<slug>:milestone:<m>:branch:<repo>` | — |
+| Orchestration | `plan:<slug>:milestone:<m>:worktree` | — |
 
 Skills use whichever Solo project is currently selected, and say which one in their first
 confirmation.
@@ -250,20 +256,39 @@ one. Every gate carries the reserved `Approve` heading and fences its block, per
 **`/plan` grills you.** One question per message, never two. Each one carries the reserved
 `Deciding` heading, a fenced context block, and a mandatory recommendation. The
 question whose answer changes the most other answers comes first. `/plan` looks up anything the
-filesystem or a tool can tell it, rather than asking you. It stops when the questions left are
-details you would rather see than specify.
+filesystem or a tool can tell it, rather than asking you. Its scope gate names the decisions it
+expects to put to you. That gate also reports how far each tree sits behind its default branch.
+It stops when the questions left are details you would rather see than specify.
 
-**The plan says what changes; `/implement` decides how it runs.** A plan declares work items
-with their file scopes. It also declares the two constraints only it knows: which items must
-share a worker, and which must follow another. Grouping items into workers, ordering them into
-waves, and choosing a model and effort are scheduling. `/implement` decides the schedule at
+**`/plan` censuses the inbound references before it writes the pad.** It searches for three
+kinds of reference to every file a slice changes. Those kinds are the caller, the test, and the
+standard whose text the change makes false. The third kind is the one that gets missed, because
+no import points to it. Nineteen of thirty sessions shipped an incomplete file list before this
+step existed.
+
+**Three words carry the delivery model, and each means one thing.** A **slice** is one worker's
+unit of work: narrow, vertical, one repository. A **milestone** is a consumable chunk of a plan
+and the unit of delivery, and it may span repositories. A **wave** is the concurrency schedule
+inside a milestone, taken from file overlap.
+
+**The plan declares slices; `/implement` composes the milestones.** A plan declares slices with
+their file scopes. It also declares the two constraints only it knows: which slices must share a
+worker, and which must follow another. Composing slices into milestones, ordering those
+milestones, and choosing a model and effort are scheduling. `/implement` decides the schedule at
 execution time, against facts that are current then.
 
-**You approve the roster before anything spawns.** `/implement` presents the worker count, the
-job of each worker, and the model and effort it requests. `/implement` writes each summary so
-the tier follows from it. A task described as "three localized edits against precise line
-references" argues for its own tier. Adjust any model, effort, or grouping, or approve the
-roster as proposed. You decide cost and parallelism here.
+**A milestone lands one PR per repository it touches.** Its outcome is one sentence with no
+`and`, and each of its PR titles states that outcome scoped to its repository. Two milestones
+that touch one file ship in sequence, because their branches would otherwise conflict. A
+milestone gets its own worktree per repository through `/worktree`, so no worker ever shares
+your tree.
+
+**You approve the roster before anything spawns.** `/implement` presents the milestones and
+their PR titles first, then the waves and tiers inside each one. `/implement` writes each summary
+so the tier follows from it. A task described as "three localized edits against precise line
+references" argues for its own tier. The proposed parallelism also respects the container
+ceiling, which is roughly three concurrent milestone stacks on this machine. Adjust any milestone
+boundary, model, effort, or grouping, or approve the roster as proposed.
 
 **The permission layer enforces the constraints rather than requesting them.** Every worker launches with git writes denied at the
 permission layer, rather than prohibited in prose. Two workers that stage in one shared tree
@@ -287,6 +312,10 @@ decision it needs. The next finding waits until you make that decision. Severity
 findings, and agreement breaks a tie. There is no batch report to read back through.
 `/implement` hands its critique findings over in the same shape, so nobody triages a finding
 twice.
+
+**`/implement` critiques each milestone, not the whole run.** The critique and your triage block
+the next milestone, because a finding may change what it should do. Your review of the PR blocks
+nothing. The run opens the PR, reports the landing, and starts the next milestone.
 
 ## Adding a tracker
 

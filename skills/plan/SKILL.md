@@ -12,7 +12,7 @@ skeptical, thorough, and collaborative.
 
 Three gates: **scope**, **grilling**, **approval**. The output is exactly one artifact — a
 plan scratchpad. It leads with the plan and keeps the research in an appendix. This skill
-creates no Solo todos. `/implement` groups the work items into tasks when it starts, or
+creates no Solo todos. `/implement` composes the slices into milestones when it starts, or
 `/stash` turns them into tracker issues.
 
 ## Input
@@ -40,12 +40,19 @@ path matching, no assumed name. State it in the gate.
 repos a research pad's target list names. Draw on repos implied by `file:line` references in
 findings, and on the `path` of each known Solo project. Say what you excluded and why.
 
+**Tree staleness:** run a real `git fetch` in each repo in scope. Report how far each tree sits
+behind its default branch, as a number of commits. Report `0` for a current tree. A claim that
+the tree is current is not a number, so it does not count.
+
 **Investigation:** describe what you intend to look into, not a tier. If the user supplied a
 research pad, read it fully first. Scope the investigation to the gaps, and do not re-derive
 what you already know.
 
-**Question count:** estimate how many questions gate B will ask. The user needs that number
-before agreeing.
+**Decisions:** name each decision you expect to put to the user at gate B. A list of decisions
+tells the user what the grilling costs. A count of questions does not, and the count ran 1.43×
+low across twenty runs.
+
+**Approve — /plan scope**
 
 ```
 Before I investigate — confirm or adjust:
@@ -53,8 +60,8 @@ Before I investigate — confirm or adjust:
   Solo project: <name>  (<path>)
 
   Repos in scope:
-    <repo>  ─ <evidence>
-    <repo>  ─ <evidence>
+    <repo>  ─ <evidence>                    <N> commits behind <default>
+    <repo>  ─ <evidence>                    <N> commits behind <default>
 
   Not included: <repo> (<why>)
 
@@ -62,7 +69,9 @@ Before I investigate — confirm or adjust:
     1. <specific question>
     2. <specific question>
 
-  ...and I expect roughly <N> questions for you afterward.
+  Decisions I expect to put to you:
+    1. <the decision, in a phrase>
+    2. <the decision, in a phrase>
 
 Accept, or tell me what to add or cut.
 ```
@@ -79,11 +88,38 @@ without deleting it, so the pad stays recoverable. Add anything new your investi
 
 ## Gate B — Grill the user
 
-Follow `/grill`. Ask one question at a time, each with a recommended answer. Wait for a response
-before you ask the next. Do not batch.
+Follow `/grill`. Ask one question at a time, and wait for the answer before you ask the next.
+`rules/chat-vocabulary.md` gives the shape of a question, including the mandatory
+recommendation. Point at that rule rather than restating it, and never batch two questions.
 
 The remaining questions may turn out to be details the user would rather see than specify. In
 that case, propose defaults, flag them as proposals, and move to gate E.
+
+## The census
+
+Run the inbound-reference census before you write the pad. It is a required step, not a
+thoroughness reminder. Every slice must declare every path it touches. The census finds the
+paths you did not think of.
+
+Take each file a slice changes, and each symbol it renames or removes. Search for three kinds of
+inbound reference:
+
+```
+caller     every site that imports, calls, includes, or spawns the thing you change
+test       every test that exercises it, by name or through its public entry point
+standard   every rule, ADR, README, or skill whose text your change makes false
+```
+
+Record every path the search returns in that slice's `**Files**:` list. A hit in another
+repository belongs to another slice, because a slice covers exactly one repository.
+
+The third kind is the one that gets missed. A change to a rule falsifies the README table that
+describes it. No import points from one to the other, so grep the prose as well as the code.
+
+Nineteen of thirty sessions shipped an incomplete `**Files**:` list, and one run reported ten
+affected waves of fourteen. The census now decides what ships in parallel, not only who edits
+what. `/implement` composes milestones from slices, and file overlap between two milestones
+forces them into sequence.
 
 ## Write the pad
 
@@ -145,31 +181,51 @@ One line per repo when more than one is in scope.
 ```
 
 The plan leads and the evidence follows. One `**Repos**:` line carries the absolute path
-`/implement` needs to place its workers. Each item verifies itself. There is no separate testing
-section, so unit, integration, and manual checks all go under that item's `### Verification`.
+`/implement` needs to cut each milestone's worktree. Each slice verifies itself. There is no
+separate testing section, so unit, integration, and manual checks all sit under that slice's
+`### Verification`.
 
-**A work item is a coherent change, not a unit of execution.** It says what changes and why.
-Worker count, order, and model are scheduling. That schedule depends on facts that only exist
-at execution time, so `/implement` decides it. Do not group items to suit a worker count, and
-do not number them to imply sequence.
+**A work item is a slice.** A slice is narrow and vertical: one coherent change, in exactly one
+repository, that stands on its own. It says what changes and why, never who runs it. Worker
+count, order, and model belong to the schedule. That schedule rests on facts that exist only at
+execution time, so `/implement` decides it.
+
+Shape each slice so `/implement` can compose milestones from it:
+
+```
+  slice       one worker's unit of work. Narrow, vertical, one repository.
+  milestone   a consumable chunk of a plan, sequenced in a DAG. May span
+              repositories. The unit of delivery.
+  wave        the concurrency schedule inside a milestone, from file overlap.
+```
+
+A plan declares slices and nothing above them. `/implement` groups slices into milestones,
+orders the milestones, and schedules each milestone's waves. Do not group slices to suit a worker
+count, and do not number them to imply sequence.
 
 Rules the rest of the workflow depends on:
 
-- **`**Files**:` must list every path the item will touch.** `/implement` computes worker
-  grouping and wave parallelism from these. A worker that writes an undeclared path deviates
-  from the task. This is the one field nobody can infer later.
+- **`**Files**:` must list every path the slice will touch.** The census above is how you get
+  that list right. `/implement` computes milestone boundaries, worker grouping, and wave
+  parallelism from these. A worker that writes an undeclared path deviates from its task. This is
+  the one field nobody can infer later.
 - **`**Constraint**:` is optional and has exactly two forms.** Use `same-worker as <item>` when
   two items must not drift apart. Two examples: a shared clause that has to stay byte-identical,
   and a rename and its call sites. Use `after <item>` for a genuine dependency, such as
   documenting a result. Anything else is scheduling and does not belong here.
-- **Split any item that spans two repos.** Each item belongs to exactly one repo in the
-  `**Repos**:` list.
+- **`after` also feeds the milestone DAG.** `/implement` aggregates every `after` in the plan
+  onto the milestones that hold the two slices. That aggregate becomes the order the milestones
+  ship in, so an `after` you add for convenience delays delivery.
+- **Split any slice that spans two repos.** Each slice belongs to exactly one repo in the
+  `**Repos**:` list. A slice that straddles two repositories joins neither milestone cleanly.
 
 ## Gate E — Approval and fork
 
 Optionally run `/critique plan/<slug>` first and fold in what survives.
 
-Present the design — the work, its file scopes, and any constraint that ties two items together:
+Present the design — the slices, their file scopes, and any constraint that ties two together:
+
+**Approve — `plan/<slug>`**
 
 ```
 Plan: plan/<slug>  (id <n>)
@@ -183,14 +239,16 @@ Plan: plan/<slug>  (id <n>)
 Approve the plan?
 ```
 
-**No waves, no worker count, no models here.** `/implement` computes those at decomposition,
-from facts that are current at that moment, and gates them separately. A plan that fixes the
-schedule forces an approval on evidence nobody has yet.
+**No milestones, no waves, no worker count, no models here.** `/implement` composes and
+schedules those at decomposition, against facts that are current then, and gates them
+separately. A plan that fixes the schedule forces an approval on evidence nobody has yet.
 
 Iterate on feedback and update the pad each time. **Do not proceed past this gate without
 explicit approval.**
 
 Once the user approves:
+
+**Deciding — what happens to `plan/<slug>`**
 
 ```
 Plan approved. What next?
@@ -200,9 +258,11 @@ Plan approved. What next?
   3. Leave active    — pad stays in Solo; run /implement plan/<slug> whenever
 ```
 
+Recommend one of the three, and say why. `rules/chat-vocabulary.md` makes the recommendation
+mandatory.
+
 - **Implement now** — ask which models should run the critique (see `/critique`), then hand to
-  `/implement`. That skill decomposes the work items into workers and gates that roster
-  separately.
+  `/implement`. That skill composes the slices into milestones and gates that roster separately.
 - **Stash for later** — hand to `/stash`, which proposes the tracker shape and confirms.
 - **Leave active** — do nothing. The pad stays in Solo.
 
