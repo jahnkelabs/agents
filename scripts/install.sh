@@ -47,8 +47,10 @@ The install also sets "outputStyle": "prose-discipline" in
 session. An outputStyle you set yourself is left alone, and the step is
 skipped when jq is absent.
 
-Re-run after adding or renaming a file. Links pointing into this repo whose
-source has gone are pruned; nothing else is touched.
+Re-run after adding or renaming a file. The per-entry links -- rules, output
+styles, and skills -- are pruned once their source has gone, and nothing else
+is touched. The two direct links, references/ and bin/wt-clone.sh, are not
+pruned, so renaming either source leaves the old link dangling.
 
 A generated ~/.codex/AGENTS.md is the one file this repository writes rather
 than links, because Codex gives it no other shape. An existing file that we
@@ -239,8 +241,12 @@ select_output_style() {
 # Regenerate after the tree changes, so a committed rule edit reaches Codex
 # without a re-run. Only hooks we wrote are replaced; yours are left alone.
 install_git_hooks() {
-  local hooks="${REPO_ROOT}/.git/hooks"
-  [[ -d "${hooks}" ]] || return 0
+  local git_common hooks
+  git_common="$(git -C "${REPO_ROOT}" rev-parse --git-common-dir 2>/dev/null)" || return 0
+  [[ -n "${git_common}" ]] || return 0
+  [[ "${git_common}" == /* ]] || git_common="${REPO_ROOT}/${git_common}"
+  hooks="${git_common}/hooks"
+  mkdir -p "${hooks}" || return 0
 
   local hook
   for hook in post-commit post-checkout post-merge; do
@@ -272,6 +278,11 @@ link_entries output-styles files
 select_output_style
 link_entries skills dirs
 link "${REPO_ROOT}/references" "${DEST}/references"
+if [[ -L "${DEST}/bin" || ( -e "${DEST}/bin" && ! -d "${DEST}/bin" ) ]]; then
+  mkdir -p "${BACKUP_DIR}"
+  mv "${DEST}/bin" "${BACKUP_DIR}/bin.$(date +%s)"
+  echo "  backed up something blocking bin/ -> backups/"
+fi
 mkdir -p "${DEST}/bin"
 link "${REPO_ROOT}/scripts/wt-clone.sh" "${DEST}/bin/wt-clone.sh"
 

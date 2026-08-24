@@ -19,17 +19,19 @@ plain copy without saying so, and cp --reflink=auto does the same on
 Linux. A caller that expects a clone would then consume the full size of
 the source without warning.
 
-Clone-capable filesystems: apfs on macOS, btrfs and xfs on Linux. The
-Linux clone runs cp --reflink=always, which fails loudly rather than
-falling back.
+Clone-capable filesystems: apfs on macOS. On Linux the script probes the
+destination volume with a real reflink instead of reading the filesystem
+name, because an xfs volume built with -m reflink=0 carries the name
+without the feature. The Linux clone runs cp --reflink=always, which
+fails loudly rather than falling back.
 
-The destination must not exist. Exit status is 0 only when the copy
-reached it.
+A symlinked source is resolved first, so the destination holds a real
+file or directory rather than a link back into the source tree.
 
-Measured on APFS: a 500 MB clone took 0.00s and consumed 0 MB, against
-0.19s and 500 MB for a plain copy. Diverging 100 MB of that clone then
-consumed 100 MB. A recursive clone runs at roughly 5,000 files per
-second, so time scales with file count rather than with bytes.
+The destination must not exist, and a symlink there is refused even when
+it dangles. The copy lands in a temporary sibling and is renamed into
+place, so a failed copy leaves no partial destination to block a retry.
+Exit status is 0 only when the copy reached the destination.
 USAGE
   exit 0
 fi
@@ -48,6 +50,11 @@ if [[ ! -e "${SOURCE}" ]]; then
   exit 1
 fi
 
+if [[ -L "${DEST}" ]]; then
+  echo "error: destination is a symlink, refusing to write through it: ${DEST}" >&2
+  exit 1
+fi
+
 if [[ -e "${DEST}" ]]; then
   echo "error: destination exists, refusing to overwrite: ${DEST}" >&2
   exit 1
@@ -57,6 +64,32 @@ DEST_PARENT="$(dirname "${DEST}")"
 
 if [[ ! -d "${DEST_PARENT}" ]]; then
   echo "error: destination directory missing: ${DEST_PARENT}" >&2
+  exit 1
+fi
+
+resolve_source() {
+  local path="$1" target levels=0
+  while [[ -L "${path}" ]]; do
+    levels=$((levels + 1))
+    if [[ "${levels}" -gt 40 ]]; then
+      echo "error: too many symlink levels: $1" >&2
+      exit 1
+    fi
+    target="$(readlink "${path}")"
+    if [[ "${target}" == /* ]]; then
+      path="${target}"
+    else
+      path="$(dirname "${path}")/${target}"
+    fi
+  done
+  if [[ -d "${path}" ]]; then
+    (cd -P "${path}" && pwd -P)
+  else
+    printf '%s/%s\n' "$(cd -P "$(dirname "${path}")" && pwd -P)" "$(basename "${path}")"
+  fi
+}
+
+if ! SOURCE="$(resolve_source "${SOURCE}")"; then
   exit 1
 fi
 
@@ -84,6 +117,15 @@ filesystem_type() {
   esac
 }
 
+supports_reflink() {
+  local dir="$1" probe status=0
+  probe="$(mktemp -d "${dir}/.wt-clone-probe.XXXXXX")" || return 1
+  printf 'probe' > "${probe}/a"
+  cp --reflink=always "${probe}/a" "${probe}/b" >/dev/null 2>&1 || status=1
+  rm -rf "${probe}"
+  return "${status}"
+}
+
 SOURCE_DEVICE="$(device_id "${SOURCE}")"
 DEST_DEVICE="$(device_id "${DEST_PARENT}")"
 SOURCE_FS="$(filesystem_type "${SOURCE}")"
@@ -93,10 +135,16 @@ REASON=""
 
 if [[ "${SOURCE_DEVICE}" != "${DEST_DEVICE}" ]]; then
   REASON="different volumes (${SOURCE_FS} device ${SOURCE_DEVICE} to device ${DEST_DEVICE})"
-elif [[ "${SOURCE_FS}" != "apfs" && "${SOURCE_FS}" != "btrfs" && "${SOURCE_FS}" != "xfs" ]]; then
-  REASON="filesystem ${SOURCE_FS:-unknown} does not support cloning"
-else
+elif [[ "$(uname -s)" == "Darwin" ]]; then
+  if [[ "${SOURCE_FS}" == "apfs" ]]; then
+    MODE=clone
+  else
+    REASON="filesystem ${SOURCE_FS:-unknown} does not support cloning"
+  fi
+elif supports_reflink "${DEST_PARENT}"; then
   MODE=clone
+else
+  REASON="filesystem ${SOURCE_FS:-unknown} does not support reflinks"
 fi
 
 if [[ "${MODE}" == "clone" ]]; then
@@ -113,13 +161,28 @@ else
   echo "wt-clone: warning: reason: ${REASON}" >&2
 fi
 
-if ! cp "${CP_ARGS[@]}" -- "${SOURCE}" "${DEST}"; then
+STAGE_DIR="$(mktemp -d "${DEST_PARENT}/.wt-clone.XXXXXX")"
+trap 'rm -rf "${STAGE_DIR}"' EXIT
+trap 'rm -rf "${STAGE_DIR}"; exit 130' INT TERM
+STAGE="${STAGE_DIR}/$(basename "${DEST}")"
+
+if ! cp "${CP_ARGS[@]}" -- "${SOURCE}" "${STAGE}"; then
   echo "error: ${MODE} failed: ${SOURCE} -> ${DEST}" >&2
   exit 1
 fi
 
-if [[ ! -e "${DEST}" ]]; then
-  echo "error: ${MODE} reported success but ${DEST} is missing" >&2
+if [[ -e "${DEST}" || -L "${DEST}" ]]; then
+  echo "error: destination appeared during the ${MODE}: ${DEST}" >&2
+  exit 1
+fi
+
+if ! mv -- "${STAGE}" "${DEST}"; then
+  echo "error: ${MODE} could not be renamed into place: ${DEST}" >&2
+  exit 1
+fi
+
+if [[ ! -e "${DEST}" || -L "${DEST}" ]]; then
+  echo "error: ${MODE} reported success but ${DEST} is missing or a symlink" >&2
   exit 1
 fi
 
