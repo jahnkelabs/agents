@@ -52,17 +52,21 @@ Write the pulled content into a Solo pad as planning input, then invoke `/plan` 
 `/plan` runs normally from there: gate A proposes scope and investigation, gate B grills, gate
 E approves and forks. The tracker content becomes context, not a substitute for any of it.
 
-```
 → starting /plan with this as input
 
+```
 Pulled from <tracker>:
   project   <name>
   issue     <ID> — <title>
   context   parent document, blocked by <ID> (done)
   siblings  <ID> <work item> — waits on this
+```
 
-Before I investigate — confirm or adjust:
+Then present the gate, in the shape `rules/chat-vocabulary.md` defines:
 
+**Approve — /recall scope**
+
+```
   Solo project: <name>  (<path>)
 
   Repos in scope:
@@ -71,9 +75,9 @@ Before I investigate — confirm or adjust:
   I plan to investigate (2 parallel Solo agents):
     1. what <the prerequisite item> actually landed vs. what it planned
     2. current state of <the area this item touches>
+```
 
 Accept, or tell me what to add or cut.
-```
 
 That first investigation item matters: when recalling a later work item, what earlier ones
 *actually did* may differ from what they said they would.

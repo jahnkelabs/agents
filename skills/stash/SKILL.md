@@ -37,32 +37,33 @@ Shape follows the payload:
 
 **A loose idea** → one issue. No project, no milestones.
 
-```
-Stash to <tracker>:
+**Approve — stash to `<tracker>`**
 
+```
   issue  "<title>"
     team        <team>
     state       <triage/backlog state>
     description <the idea, plus where it came from>
-
-Confirm?
 ```
+
+Confirm the shape, or tell me what to change.
 
 **A plan with work items** → a project, a document holding the plan body, and one issue per work
-item with `after` constraints preserved as dependencies.
+item with `after` constraints preserved as dependencies. A plan may cover several milestones;
+list each milestone's work items under its own name.
+
+**Approve — stash to `<tracker>`**
 
 ```
-Stash to <tracker>:
-
   project   "<plan title>"
   document  plan body (research + plan)
   issues
     ☐ <work item>              <repo>
     ☐ <work item>              <repo>   blocked by <item>
     ☐ <work item>              <repo>   blocked by <item>
-
-Confirm?
 ```
+
+Confirm the shape, or tell me what to change.
 
 Read work items **from the pad**, not from Solo todos. An approved plan that was never
 implemented has no todos. A plan mid-implementation has todos that hold a task grouping, an
@@ -97,8 +98,10 @@ The work has left the active set.
    mid-implementation does — `todo_delete` each one. Do not mark them complete; the work did
    not get done, it moved.
 4. `kv_delete` every `plan:<slug>:*` key
-5. If a branch exists with committed work, say so and leave it alone. A stash does
-   not discard code.
+5. A plan may have landed several milestones, each with its own branch, worktree, and PR across
+   several repositories. Remove every live worktree for the plan, and leave its branch on the
+   remote. Report every open PR the plan produced rather than closing one — a stash does not
+   discard code, and closing a PR would.
 
 ## Step 6 — Report
 

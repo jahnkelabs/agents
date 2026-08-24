@@ -36,11 +36,11 @@ wrong scope before you write anything.
 Check for prior work before you investigate: `scratchpad_list(query="<topic keywords>")`. If an
 existing research pad covers this, read it and extend it. Do not duplicate it.
 
-Then present the gate:
+Then present the gate, in the shape `rules/chat-vocabulary.md` defines:
+
+**Approve — /research scope**
 
 ```
-Before I investigate — confirm or adjust:
-
   Solo project: <name>  (<path>)
 
   Repos in scope:
@@ -51,9 +51,9 @@ Before I investigate — confirm or adjust:
   I plan to investigate (<N> parallel Solo agents):
     1. <specific question>
     2. <specific question>
+```
 
 Accept, or tell me what to add or cut.
-```
 
 Scale the investigation to the question. A narrow lookup deserves one agent; mapping a
 subsystem deserves several. State what you are *not* looking at, and why. A wrong omission is
@@ -205,7 +205,8 @@ Extend the same pad rather than creating another:
 
 - New material under an existing heading → `scratchpad_append_section`
 - A section replacement → `scratchpad_edit` with
-  `target={"type":"section","section_heading":"## ..."` or `"### ..."}` and the current `expected_revision`
+  `target={"type":"section","section_heading":"## ..."` or `"### ..."}` and the current `expected_revision`.
+  `section` and `line_range` are the only valid `target.type` values; nothing else is
 - A dated addition at the end → `scratchpad_append`
 
 On a revision mismatch, re-read and retry — something else touched the pad.
