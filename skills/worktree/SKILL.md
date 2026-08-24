@@ -1,14 +1,17 @@
 ---
 name: worktree
-description: Set up, convert, and provision a bare-plus-worktrees repository so each milestone gets its own tree
-argument-hint: "[set-up | convert | cut] [repo] [milestone]"
-disable-model-invocation: true
+description: Cut, provision, and tear down one milestone worktree in a bare-plus-worktrees repository
+when_to_use: >-
+  When a milestone needs a working tree of its own, or when a closed milestone gives one back.
+  Trigger phrases: "cut a worktree", "provision this worktree", "tear the milestone down".
+  Also invoked by the implement skill, once per repository per milestone.
+argument-hint: "[cut | provision | teardown] [container] [milestone]"
 ---
 
 # Worktree
 
-Give every milestone worker its own working tree. Three modes: **set up**, **convert**, and
-**cut**.
+Give every milestone worker its own working tree. Three modes: **cut**, **provision**, and
+**teardown**.
 
 A milestone loop needs this before it can run. A fresh worktree holds no `.env`, no
 `auth.json`, no `vendor/`, and no `node_modules/`. It also cannot start a container stack
@@ -17,6 +20,9 @@ unprovisioned worktree for reasons unrelated to the change.
 
 `rules/solo-agent-orchestration.md` carries the worktree standard. This skill implements that
 standard and invents no second convention.
+
+This skill refuses a repository that is not a container yet. `/bare-convert` sets one up, or
+converts an existing clone, and it runs before the first cut.
 
 ## The layout
 
@@ -30,16 +36,6 @@ The container is the repository's own path, at whatever depth it sits.
   <plan-slug>-<milestone-slug>/    a second milestone worktree
 ```
 
-Repositories on this machine sit at `~/Code/<org>/<repo>`:
-
-```
-~/Code/jahnkelabs/agents/
-  .git/
-  main/
-  2026-08-23t2304-agents-skills-revision-m1-auth/
-  2026-08-23t2304-agents-skills-revision-m2-installer/
-```
-
 Every milestone worktree carries the plan slug as a prefix. The plan slug leads with a sortable
 timestamp, so one plan's worktrees sort together and two plans never interleave. The stable
 worktree keeps the name `main`, and it carries no prefix.
@@ -49,105 +45,93 @@ than to the branch.
 
 Every slug is lowercase, because a KV key carries it.
 
-## Set up
+## Derive the container from any worktree
 
-Use this mode for a repository that this machine does not hold yet.
-
-```bash
-git clone --bare <url> <container>/.git
-git --git-dir=<container>/.git config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
-git --git-dir=<container>/.git fetch origin
-git --git-dir=<container>/.git remote set-head origin --auto
-DEFAULT="$(git --git-dir=<container>/.git symbolic-ref refs/remotes/origin/HEAD \
-  | sed 's@^refs/remotes/origin/@@')"
-git --git-dir=<container>/.git worktree add <container>/main "${DEFAULT}"
-```
-
-A bare clone sets no fetch refspec. Without one, `origin/HEAD` and every other
-remote-tracking ref stays absent, and cut mode reads `origin/HEAD` for its base.
-
-## Convert
-
-Use this mode to turn an existing clone into the layout. It preserves uncommitted work.
-
-**Report first.** Print every absolute path that changes, and the uncommitted state you carry
-over. Change nothing until the user approves. `rules/chat-vocabulary.md` gives the shape of
-that gate.
-
-```
-container   <clone>                stays at this path
-worktree    <clone>          ->    <clone>/main
-bare repo   <clone>/.git     ->    <clone>/.git, core.bare true
-```
-
-Record the state before you move anything:
+Every mode needs the container path, and this skill states the one derivation. Read it from any
+worktree of that repository:
 
 ```bash
-git -C <clone> status --porcelain > <staging>/dirt-before.txt
+CONTAINER="$(dirname "$(git -C "<any-worktree>" \
+  rev-parse --path-format=absolute --git-common-dir)")"
 ```
 
-Move the clone under a container at its own path:
+Two wrong derivations look right. `git rev-parse --show-toplevel` returns the worktree, so
+`<container>/main` reaches a caller that wanted `<container>`. Cut mode then tests
+`<container>/main/.git` for bareness, reads `false`, and refuses a converted container. Verified
+on git 2.50.1.
 
-```bash
-PARENT="$(dirname <clone>)"; NAME="$(basename <clone>)"
-mkdir "${PARENT}/.${NAME}.wt-convert"
-mv <clone> "${PARENT}/.${NAME}.wt-convert/main"
-mv "${PARENT}/.${NAME}.wt-convert" <clone>
-mv <clone>/main/.git <clone>/.git
-git --git-dir=<clone>/.git config core.bare true
-```
+`--path-format=absolute` is load-bearing. Without it `--git-common-dir` may answer the relative
+`.git`, and `dirname` then returns `.`. Verified on git 2.50.1.
 
-The working tree now sits at `<clone>/main`, and its content never moved. Register it as a
-linked worktree:
-
-```bash
-git --git-dir=<clone>/.git worktree add --no-checkout <clone>/main-reg <branch>
-mv <clone>/main-reg/.git <clone>/main/.git
-rmdir <clone>/main-reg
-cp <clone>/.git/index <clone>/.git/worktrees/main-reg/index
-mv <clone>/.git/worktrees/main-reg <clone>/.git/worktrees/main
-printf 'gitdir: %s\n' <clone>/.git/worktrees/main > <clone>/main/.git
-git -C <clone>/main worktree repair
-```
-
-The index copy carries the staged half of the uncommitted work. A new linked worktree starts
-with an empty index, and without the copy every tracked file reads as deleted.
-
-Verify before you remove the staging directory:
-
-```bash
-git -C <clone>/main status --porcelain | diff -u <staging>/dirt-before.txt -
-```
-
-An empty diff means the conversion kept the modified, staged, untracked, and ignored files.
-Stop and report anything else.
+`/plan` records the container with this derivation, so the path it hands `/implement` needs no
+repair.
 
 ## Cut
 
 Use this mode to create a milestone worktree and provision it.
 
-Refuse on a plain clone, and print the convert command:
+Refuse a plain clone. Test the container itself, never `<container>/main`:
 
 ```bash
-if ! git --git-dir=<container>/.git rev-parse --is-bare-repository 2>/dev/null \
+if ! git --git-dir="<container>/.git" rev-parse --is-bare-repository 2>/dev/null \
      | grep -qx true; then
-  echo "error: <container> is a plain clone, not a container" >&2
-  echo "run: /worktree convert <container>" >&2
+  echo "error: <container> holds no bare repository" >&2
   exit 1
 fi
 ```
 
-Then cut the worktree and provision it:
+Report that refusal to the user:
 
-```bash
-git -C <container>/main worktree add \
-  <container>/<plan-slug>-<milestone-slug> -b <type>/<milestone-slug> <base>
-<container>/main/scripts/wt-provision.sh \
-  <container>/main <container>/<plan-slug>-<milestone-slug>
+**Blocked — `<container>` is not a container**
+
+```
+found:      <container>/.git is a plain clone, not a bare repository
+needed:     the bare-plus-worktrees layout, per rules/solo-agent-orchestration.md
+next:       /bare-convert convert <container>
 ```
 
-`<base>` is `origin/HEAD`, or the predecessor milestone's branch when the milestones stack.
-Record the path under `plan:<slug>:milestone:<m>:worktree`, as the orchestration rule requires.
+⏸ waiting on you: run /bare-convert convert <container>, or name another container
+
+Test for the branch before you cut, and tell a resume apart from a collision.
+`rules/solo-agent-orchestration.md` carries that test and the escalation it demands. Follow it
+rather than a second copy here.
+
+Then cut the worktree:
+
+```bash
+git -C "<container>/main" worktree add \
+  "<container>/<plan-slug>-<milestone-slug>" -b "<type>/<milestone-slug>" "<base>"
+```
+
+`<base>` is `origin/HEAD`, or the predecessor milestone's branch when the milestones stack. Pass
+no `-b` on a resume, because the branch already exists.
+
+Record the path under `plan:<slug>:milestone:<m>:worktree:<repo>`, as the orchestration rule
+requires. Then run provision mode against the new worktree.
+
+## Provision
+
+Use this mode to fill a worktree that already exists. Cut mode runs it, and you can run it again
+after a lockfile changes.
+
+```bash
+"<worktree>/scripts/wt-provision.sh" "<container>/main" "<worktree>"
+```
+
+**Run the script from the target worktree, not from `main`.** Pass `main` as the source argument
+only, which is the whole of its role. A milestone whose own branch updates the script must run
+the updated one. A stacked milestone inherits its predecessor's version the same way.
+
+**Clean up after a failed provision.** The worktree and the branch both exist by then, so the
+retry fails on two paths that are already taken:
+
+```bash
+git -C "<container>/main" worktree remove --force "<worktree>"
+git --git-dir="<container>/.git" branch -D "<type>/<milestone-slug>"
+```
+
+Delete the branch only when this cut created it. A resume cut onto an existing branch, and that
+branch carries work the remote holds.
 
 ## The provisioning contract
 
@@ -175,18 +159,35 @@ the correctness.
 
 ### Containers
 
-**Publish no host ports.** Generate a worktree compose override that resets every port list:
+**Publish no host ports.** Generate an override that resets the port list of **every** service
+the base file declares. Read that service list rather than a fixed pair:
+
+```bash
+docker compose -f docker-compose.yml config --services
+```
+
+Emit one `ports: !reset []` entry per service into `docker-compose.worktree.yml`:
 
 ```yaml
 services:
-  app:
-    ports: !reset []
-  db:
+  <each service the command above printed>:
     ports: !reset []
 ```
 
 `ports: !reset []` removes every published port on Compose v5.1.2, verified. Compose discards
 the base port list rather than merging it.
+
+An override that names a subset leaves the rest publishing. The second milestone stack then
+fails to bind, and the gate fails for a reason unrelated to the change. Check the generated
+override before you start anything:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.worktree.yml config \
+  | grep -c published
+```
+
+That count must be 0. Some repositories bind ports that no offset can move, and a shifted
+published port breaks every URL the app generates. Removal is therefore the only safe answer.
 
 **Run the gates inside the compose network.**
 
@@ -197,29 +198,32 @@ docker compose -f docker-compose.yml -f docker-compose.worktree.yml run --rm app
 The compose network sits closer to production than a host-published port, which is what
 `rules/testing-philosophy.md` asks for.
 
-**Name the project explicitly.** Export `COMPOSE_PROJECT_NAME=<repo>-<milestone>`. Compose
-otherwise derives the project name from the directory basename, verified. Two repositories can
-hold a milestone with the same slug, and their stacks then collide on one name.
+**Name the project explicitly.** Export
+`COMPOSE_PROJECT_NAME=<repo>-<plan-slug>-<milestone-slug>`. Compose otherwise derives the
+project name from the directory basename, verified.
 
-This contract is what makes worktrees viable at all. Three of the user's repositories bind
-ports that no offset can move. `exposure`, `reso-data-extractor`, and `alloy` each bind 80,
-443, and one admin port. Shifting 443 breaks every URL the app generates.
+The plan slug matters here, exactly as it does in the worktree path. Two live plans can
+name a milestone `m1`, and `<repo>-m1` then gives both stacks one network and one volume set.
+The worktree paths would stay distinct while the stacks merged.
 
-### Shared infrastructure stays singleton
+### Each milestone stack is fully isolated
 
-LocalStack, Kafka, and OpenSearch run once, as `util-docker-compose` already treats them.
-Isolation there comes from naming buckets, topics, and indices per milestone. It never comes
-from a second instance.
+Its own containers, its own volumes, its own network, and no published ports.
+`COMPOSE_PROJECT_NAME` gives one milestone one Compose project, and a project creates a container
+for every service its base file declares.
 
-Postgres and Valkey run per worktree.
+Isolation therefore needs no naming convention inside the stack. Two milestones can hold a
+bucket, a topic, or a database of the same name. Neither project can see the other's.
+
+The milestone owns those volumes, which is why teardown removes them.
 
 ## The clone helper
 
-Every provisioning script calls one shared helper, so fifteen repositories do not grow fifteen
+Every provisioning script calls one shared helper, so many repositories do not grow many
 dialects:
 
 ```bash
-~/.claude/bin/wt-clone.sh <source> <destination>
+~/.claude/bin/wt-clone.sh "<source>" "<destination>"
 ```
 
 It clones copy-on-write where the filesystem supports one, and it copies plainly everywhere
@@ -229,28 +233,41 @@ The helper checks the filesystem before it copies. `cp -c` on macOS falls back t
 without reporting it, and `cp --reflink=auto` does the same on Linux. A caller that expected a
 clone would otherwise consume the full size of the source with no warning.
 
-Measured on APFS: a 500 MB clone took 0.00s and consumed 0 MB. A plain copy of that file took
-0.19s and consumed 500 MB. Diverging 100 MB of the clone then consumed 100 MB. A recursive
-clone runs at roughly 5,000 files per second. Time therefore scales with file count rather than
-with bytes.
+A clone costs time by file count rather than by bytes, and it consumes no space until the copy
+diverges.
 
 ## Teardown
 
 Tear the stack down at milestone close. Remove the worktree after the push succeeds.
 
 ```bash
-COMPOSE_PROJECT_NAME=<repo>-<milestone> docker compose \
+COMPOSE_PROJECT_NAME="<repo>-<plan-slug>-<milestone-slug>" docker compose \
   -f docker-compose.yml -f docker-compose.worktree.yml down -v --remove-orphans
-git -C <container>/main worktree remove <container>/<plan-slug>-<milestone-slug>
-git --git-dir=<container>/.git worktree prune
 ```
 
 `down -v` removes the named volumes, and `--remove-orphans` removes a container that the
-current file no longer declares. The branch lives on the remote once the push succeeds, so the
-worktree is disposable.
+current file no longer declares. The milestone owns both, so neither removal reaches another
+stack.
 
-## The resource ceiling
+**Check that the tree holds nothing to lose, then force the removal.**
 
-Docker holds 16.8 GB and 11 CPUs on this machine. That bounds concurrent milestone stacks to
-roughly three. `/implement`'s roster gate reads that ceiling when it proposes milestone
-parallelism.
+```bash
+git -C "<worktree>" rev-list --count '@{upstream}..HEAD'
+git -C "<worktree>" status --porcelain
+```
+
+The first must return 0, which proves the push carried every commit. The second must list only
+paths the provisioning contract wrote. Stop and report any other line.
+
+```bash
+git -C "<container>/main" worktree remove --force "<worktree>"
+```
+
+**`--force` is mandatory here, not a fallback.** Plain `git worktree remove` refuses a tree
+holding a modified tracked file, or an untracked file the repository does not ignore. The
+generated `docker-compose.worktree.yml` is exactly such a file, so the plain form exits 128 on
+the first provisioned repository. Verified on git 2.50.1.
+
+`--force` removes the tree and the `worktree list` entry together, so teardown needs no prune.
+The rule sweeps with `git worktree prune` at run close. The branch survives the removal, and it
+lives on the remote once the push succeeds, so the worktree is disposable.

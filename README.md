@@ -17,10 +17,10 @@ One run installs both runtimes.
 | `~/.claude/output-styles/<name>.md` | the output style — **linked per file** | Claude |
 | `~/.claude/settings.json` | the `outputStyle` key only — **merged** | Claude |
 | `~/.claude/skills/<name>/` | slash commands — **linked per skill** | Claude |
-| `~/.claude/references` | adapters — whole directory | Claude |
-| `~/.claude/bin/wt-clone.sh` | the `/worktree` clone helper — **linked per file** | both |
+| `~/.claude/references` | adapters — whole directory, **never pruned** | Claude |
+| `~/.claude/bin/wt-clone.sh` | the `/worktree` clone helper — **linked directly, never pruned** | both |
 | `~/.agents/skills/<name>/` | the same skills — **linked per skill** | Codex |
-| `~/.agents/references` | the same adapters — whole directory | Codex |
+| `~/.agents/references` | the same adapters — whole directory, **never pruned** | Codex |
 | `~/.codex/AGENTS.md` | every rule and the output style concatenated — **generated** | Codex |
 
 The script links one entry at a time, so each destination directory stays a real one you own.
@@ -33,7 +33,7 @@ reach it any other way. A file you wrote yourself is backed up before the first 
 hooks regenerate it after a commit, a checkout, and a merge, so a rule edit you commit reaches
 Codex without a re-run. `./scripts/install.sh --rules-only` does that regeneration alone.
 
-**Codex has no `disable-model-invocation`.** On Claude, `/plan`, `/implement`, `/worktree`,
+**Codex has no `disable-model-invocation`.** On Claude, `/plan`, `/implement`, `/bare-convert`,
 `/stash`, and `/recall` cannot be invoked by the model. On Codex it can invoke all five itself.
 Each still gates on your approval before anything lands, so the guarantee weakens from "you
 start it" to "you approve it".
@@ -55,9 +55,11 @@ whose absence fails silently.
 
 Re-run the script after you **add or rename** a file. An edit to an existing rule or skill takes
 effect immediately. An edit to the output style does not. Claude Code reads a style once per
-session, so see `## Output style`. The script prunes links into this repository whose source is
-gone, and it touches nothing else. It moves anything real in the way to `~/.claude/backups/` first. Override the
-repository root with `AGENTS_REPO=/path/to/agents`.
+session, so see `## Output style`. The script prunes a per-entry link — a rule, an output style,
+or a skill — whose source is gone. It never prunes the two direct links, `references/` and
+`bin/wt-clone.sh`. A renamed source there leaves a dangling link. It moves anything real in the
+way to `~/.claude/backups/` first. Override the repository root with
+`AGENTS_REPO=/path/to/agents`.
 
 **This repository manages one key in `~/.claude/settings.json`: `outputStyle`.** It never
 overwrites a value you set, and it touches nothing else in that file. It does not manage
@@ -151,9 +153,10 @@ Both checks are warnings for that reason: read each one and decide.
 | [`/critique`](skills/critique/SKILL.md) | Adversarial multi-model review of a diff, plan, files, or PR | you or Claude |
 | [`/grill`](skills/grill/SKILL.md) | Interrogate a decision one question at a time | you or Claude |
 | [`/retro`](skills/retro/SKILL.md) | Analyse past sessions for recurring failures and hand the findings to `/plan` | you or Claude |
+| [`/worktree`](skills/worktree/SKILL.md) | Cut, provision, and tear down one milestone worktree | you or Claude |
 | [`/plan`](skills/plan/SKILL.md) | Research, grill, and produce a plan in one Solo scratchpad | **you only** |
 | [`/implement`](skills/implement/SKILL.md) | Compose a plan into milestones, and ship each one as its own PRs | **you only** |
-| [`/worktree`](skills/worktree/SKILL.md) | Set up, convert, and provision a bare-plus-worktrees repository | **you only** |
+| [`/bare-convert`](skills/bare-convert/SKILL.md) | Set up or convert a repository into the bare-plus-worktrees layout | **you only** |
 | [`/stash`](skills/stash/SKILL.md) | Move active work into a durable tracker | **you only** |
 | [`/recall`](skills/recall/SKILL.md) | Pull tracker work back into planning | **you only** |
 
@@ -162,8 +165,10 @@ objects. Each of the five carries `disable-model-invocation: true`, so Claude ca
 run it. Those five do not appear in Claude's skill listing, so they cost no context until you
 invoke them.
 
-The four advisory skills stay model-invocable and carry `when_to_use` trigger phrases. Say
-"grill me on this" or "find the bugs" and the skill runs without a command name.
+The other five stay model-invocable and carry `when_to_use` trigger phrases. Say "grill me on
+this" or "find the bugs" and the skill runs without a command name. `/worktree` is the one that
+also writes: `/implement` calls it per milestone, so it must be callable. Its destructive half
+lives in `/bare-convert`, which keeps the gate.
 
 **No skill overrides the model.** Every skill respects your session's choice, including a `[1m]`
 variant. A skill sets `effort` only where the shape of the work justifies it:
@@ -183,6 +188,7 @@ flowchart LR
     P["/plan"]
     I["/implement"]
     W["/worktree"]
+    BC["/bare-convert"]
     M["milestone loop"]
     C["/critique"]
     S["/stash"]
@@ -201,6 +207,7 @@ flowchart LR
     RC -->|"always re-plans"| P
     RT -->|"proposed changes"| P
     I -->|"milestones in DAG order"| M
+    BC -->|"a container per repo"| W
     M -->|"cut a tree per repo"| W
     M -->|"before the landing"| C
     M --> PR
@@ -226,7 +233,7 @@ Nothing in this repository stores your work. Research and plans live in Solo, no
 | Task todos | — | `plan:<slug>`, `milestone:<m>`, `project:<repo>`, `task:<letter>` |
 | Worker reports | `<slug>/<task>` | — |
 | Orchestration | `plan:<slug>:milestone:<m>:branch:<repo>` | — |
-| Orchestration | `plan:<slug>:milestone:<m>:worktree` | — |
+| Orchestration | `plan:<slug>:milestone:<m>:worktree:<repo>` | — |
 
 Skills use whichever Solo project is currently selected, and say which one in their first
 confirmation.
@@ -289,9 +296,8 @@ your tree.
 **You approve the roster before anything spawns.** `/implement` presents the milestones and
 their PR titles first, then the waves and tiers inside each one. `/implement` writes each summary
 so the tier follows from it. A task described as "three localized edits against precise line
-references" argues for its own tier. The proposed parallelism also respects the container
-ceiling, which is roughly three concurrent milestone stacks on this machine. Adjust any milestone
-boundary, model, effort, or grouping, or approve the roster as proposed.
+references" argues for its own tier. Adjust any milestone boundary, model, effort, or grouping,
+or approve the roster as proposed.
 
 **The permission layer enforces the constraints rather than requesting them.** Every worker launches with git writes denied at the
 permission layer, rather than prohibited in prose. Two workers that stage in one shared tree
