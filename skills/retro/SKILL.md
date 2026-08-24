@@ -88,7 +88,9 @@ Then present the gate, in the shape `rules/chat-vocabulary.md` defines:
   Not included: <area> (<why>)
 ```
 
-Accept, or tell me what to add or cut.
+Accept this corpus scope, or tell me which area to add or cut.
+
+⏸ waiting on you: accept the `/retro` corpus scope, or name what to change
 
 ## Step 2 — Investigate
 
@@ -105,14 +107,17 @@ returned `process_id` — every worker needs it to signal back.
 ```
 spawn_agent(agent_tool_id=<id>, name="retro-<area-slug>", extra_args=[
   <the model and effort arguments, at the tier this area needs>,
-  <the auto-approval and git-denial arguments from the adapter>])
+  <the auto-approval and immutable-target arguments from the adapter>])
   → process_id, agent_instructions
 send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
 
 A read-only assignment is no reason to drop auto-approval, and never a reason to raise it to a
-bypass mode. Denying git writes costs a read-only worker nothing, and it stops one from editing
-the skills it reports on.
+bypass mode.
+
+A retro worker is an immutable-target worker. It reads the corpus and writes only its own
+scratchpad, so it cannot edit the skills it reports on. `solo-agent-orchestration` gives that
+posture, and the adapter gives the arguments. Read what the adapter says its runtime cannot bound.
 
 ```
 Investigate one area of a Claude Code transcript corpus.
@@ -160,7 +165,7 @@ marks a call that failed.
 3. Quote the session id and the entry's `.timestamp` for every claim
 4. Write your findings to a scratchpad named "retro/<slug>/<area-slug>"
 5. Signal completion as your last act:
-     timer_set(delay_ms=0, delivery_process_id=<orchestrator process_id>,
+     timer_set(delay_ms=1, delivery_process_id=<orchestrator process_id>,
                body="Area <area-slug> done. Findings in retro/<slug>/<area-slug>.")
 
 ## Constraints

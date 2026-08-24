@@ -77,7 +77,9 @@ Then present the gate, in the shape `rules/chat-vocabulary.md` defines:
     2. current state of <the area this item touches>
 ```
 
-Accept, or tell me what to add or cut.
+Accept this scope, or tell me which investigation to add or cut.
+
+⏸ waiting on you: accept the `/recall` scope, or name what to change
 
 That first investigation item matters: when recalling a later work item, what earlier ones
 *actually did* may differ from what they said they would.

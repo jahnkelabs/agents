@@ -10,7 +10,7 @@ implement it.
 |---|---|
 | Launch in auto-approval mode | `"--permission-mode", "auto"` |
 | Never use a bypass mode | never `bypassPermissions`, `dontAsk`, or `acceptEdits` |
-| Deny git writes structurally | `"--settings", '{"permissions":{"deny":[…]}}'` |
+| Deny git writes | `"--settings", '{"permissions":{"deny":[…]}}'` — bounds the tools, not the shell |
 | Match the worker to the job | `"--model", "<tier>"` and `"--effort", "<tier>"` |
 | Carry the invariant preamble | `"--append-system-prompt", "<preamble>"` |
 | Carry prose discipline where a project overrides the style | `"--settings", '{"outputStyle":"prose-discipline"}'` |
@@ -34,8 +34,19 @@ posture in silence. You cannot discover this fact by trying it.
                 "Bash(git push:*)","Bash(git checkout:*)"]}}'
 ```
 
-Claude denies per command pattern. This is what makes the git prohibition structural rather than
-requested, and it is finer-grained than any sandbox mode.
+Claude denies per tool and per command pattern, which is finer-grained than any sandbox mode.
+
+**A deny list does not bound shell redirection.** Claude scopes a denial by tool and by pattern,
+never by directory. A worker denied `Edit`, `Write`, and `NotebookEdit` still writes any file
+through Bash, because `cat > <target>` matches no pattern above. This run's critics launched under
+exactly that deny list, and they wrote the target freely.
+
+**On Claude, a brief can only request an immutable target.**
+`rules/solo-agent-orchestration.md` names that inversion: Codex bounds the same worker by
+directory, and Claude cannot. A brief that relies on an unwritable target says so on this runtime.
+
+The deny list still earns its place. It stops each `Bash` call its patterns match, and a denied
+call is visible to a reviewer. What it does not do is make the target unwritable.
 
 ## Model and effort
 

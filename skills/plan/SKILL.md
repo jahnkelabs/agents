@@ -30,8 +30,14 @@ With no arguments:
 
 ## Gate A — Scope and investigation
 
-Do a cheap first pass before you propose anything. Read mentioned files fully, run
-`git rev-parse --show-toplevel`, and skim enough to form a real proposal.
+Do a cheap first pass before you propose anything. Read mentioned files fully, resolve each
+repository's container path, and skim enough to form a real proposal.
+
+**Resolve the container with the one derivation `/worktree` states.** See
+`skills/worktree/SKILL.md`, under `## Derive the container from any worktree`. Use it verbatim and
+write no second copy. `git rev-parse --show-toplevel` is the wrong command here: it returns
+`<container>/main` in a converted repository, and `/worktree cut` then refuses the container as a
+plain clone.
 
 **Solo project:** run `list_projects` and use **whichever project is currently selected**. No
 path matching, no assumed name. State it in the gate.
@@ -73,8 +79,10 @@ Before I investigate — confirm or adjust:
     1. <the decision, in a phrase>
     2. <the decision, in a phrase>
 
-Accept, or tell me what to add or cut.
+Accept this scope, or tell me which repo or question to add or cut.
 ```
+
+⏸ waiting on you: accept the `/plan` scope, or name what to change
 
 ## Research phase
 
@@ -91,6 +99,13 @@ without deleting it, so the pad stays recoverable. Add anything new your investi
 Follow `/grill`. Ask one question at a time, and wait for the answer before you ask the next.
 `rules/chat-vocabulary.md` gives the shape of a question, including the mandatory
 recommendation. Point at that rule rather than restating it, and never batch two questions.
+
+**The heading opens the gate once.** The first question carries `Deciding` for a choice, or
+`Approve` for a proposal you already formed. Every later question inside this open gate carries no
+heading. A grilling asks many questions, and one heading each would stop the heading staying rare.
+
+**Every question carries the footer**, whether or not it carries a heading. Every question waits
+for the user, and the footer is the only mark that says so.
 
 The remaining questions may turn out to be details the user would rather see than specify. In
 that case, propose defaults, flag them as proposals, and move to gate E.
@@ -140,9 +155,10 @@ a mismatch, re-read and retry.
 ```
 # <Feature or task> Plan
 
-**Repos**: `<name>` — <absolute path>
+**Repos**: `<name>` — <absolute container path>
 
-One line per repo when more than one is in scope.
+One line per repo when more than one is in scope. The path is the container gate A derived, not
+`<container>/main`.
 
 ## Overview
 <the outcome we're after, why, and how we will know it was achieved>
@@ -180,7 +196,7 @@ One line per repo when more than one is in scope.
 - Research absorbed from: <pad name and id, if any>
 ```
 
-The plan leads and the evidence follows. One `**Repos**:` line carries the absolute path
+The plan leads and the evidence follows. One `**Repos**:` line carries the container path
 `/implement` needs to cut each milestone's worktree. Each slice verifies itself. There is no
 separate testing section, so unit, integration, and manual checks all sit under that slice's
 `### Verification`.
@@ -239,6 +255,8 @@ Plan: plan/<slug>  (id <n>)
 Approve the plan?
 ```
 
+⏸ waiting on you: approve `plan/<slug>`, or name the slice to change
+
 **No milestones, no waves, no worker count, no models here.** `/implement` composes and
 schedules those at decomposition, against facts that are current then, and gates them
 separately. A plan that fixes the schedule forces an approval on evidence nobody has yet.
@@ -257,6 +275,8 @@ Plan approved. What next?
   2. Stash for later — park it in a tracker via /stash
   3. Leave active    — pad stays in Solo; run /implement plan/<slug> whenever
 ```
+
+⏸ waiting on you: pick one of the three for `plan/<slug>`
 
 Recommend one of the three, and say why. `rules/chat-vocabulary.md` makes the recommendation
 mandatory.

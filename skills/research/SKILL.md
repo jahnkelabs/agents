@@ -53,7 +53,9 @@ Then present the gate, in the shape `rules/chat-vocabulary.md` defines:
     2. <specific question>
 ```
 
-Accept, or tell me what to add or cut.
+Accept this scope, or tell me which area to add or cut.
+
+⏸ waiting on you: accept the `/research` scope, or name what to change
 
 Scale the investigation to the question. A narrow lookup deserves one agent; mapping a
 subsystem deserves several. State what you are *not* looking at, and why. A wrong omission is
@@ -74,7 +76,7 @@ Then, per confirmed area:
 ```
 spawn_agent(agent_tool_id=<id>, name="research-<area-slug>", extra_args=[
   <the model and effort arguments, at the tier this area needs>,
-  <the auto-approval and git-denial arguments from the adapter>])
+  <the auto-approval and immutable-target arguments from the adapter>])
   → process_id, agent_instructions
 send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
@@ -86,9 +88,11 @@ flags between releases, and the adapter is the only current record.
 A read-only assignment is not a reason to drop auto-approval, and never a reason to raise it to
 a bypass mode.
 
-Research is read-only, so denying git writes costs nothing. It also stops a worker from mutating the
-tree it must describe. Tier by area: tracing one call path is not the same job as mapping a
-subsystem's conventions.
+A research worker is an immutable-target worker. It reads the repository and writes only its own
+scratchpad, so it cannot mutate the tree it must describe. `solo-agent-orchestration` gives that
+posture, and the adapter gives the arguments. Read what the adapter says its runtime cannot bound.
+
+Tier by area: tracing one call path is not the same job as mapping a subsystem's conventions.
 
 ```
 Research one area of: <topic>.
@@ -108,7 +112,7 @@ Document what IS, not what SHOULD BE. No improvements, no critique, no proposed 
 3. Note which repo each finding belongs to when more than one is in scope
 4. Write your findings to a scratchpad named "research/<slug>/<area-slug>"
 5. Signal completion as your last act:
-     timer_set(delay_ms=0, delivery_process_id=<orchestrator process_id>,
+     timer_set(delay_ms=1, delivery_process_id=<orchestrator process_id>,
                body="Area <area-slug> done. Findings in research/<slug>/<area-slug>.")
 
 ## Constraints
@@ -206,7 +210,8 @@ Extend the same pad rather than creating another:
 - New material under an existing heading → `scratchpad_append_section`
 - A section replacement → `scratchpad_edit` with
   `target={"type":"section","section_heading":"## ..."` or `"### ..."}` and the current `expected_revision`.
-  `section` and `line_range` are the only valid `target.type` values; nothing else is
+  `section` and `line_range` are the only valid `target.type` values. Any other value fails the
+  call outright, so the edit never reaches the pad
 - A dated addition at the end → `scratchpad_append`
 
 On a revision mismatch, re-read and retry — something else touched the pad.

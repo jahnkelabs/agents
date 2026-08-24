@@ -246,13 +246,13 @@ with `spawn_agent`, never with the host runtime's own sub-agent mechanism.
 reasoning, so the policy also holds for a fan-out that no skill started. Each skill carries only
 its own worker prompt and constraints.
 
-**Every worker launches in auto-approval mode** — `--permission-mode auto` on Claude,
-`--approve-for-me --no-alt-screen` on Codex. A read-only assignment is no exception. No worker
-uses a bypass mode. A `--settings` deny list enforces what a worker must not do, rather than a
-permission mode.
+**Every worker launches in auto-approval mode** — `--permission-mode auto` on Claude, and
+`-a never` or `--approve-for-me` on Codex, each alongside `--no-alt-screen`. A read-only
+assignment is no exception. No worker uses a bypass mode.
 
-**Workers signal their own completion.** Each worker wakes the orchestrator through a zero-delay
-timer as its last act, because only the worker knows that it finished. An idle timer stays as
+**Workers signal their own completion.** Each worker wakes the orchestrator through a
+one-millisecond timer as its last act, because only the worker knows that it finished. Solo
+rejects a zero delay, so that is the smallest legal value. An idle timer stays as
 the fallback that catches a worker which died or hung. An idle timer has no debounce, and a
 worker that reasons at length emits no output and looks finished.
 
@@ -260,11 +260,13 @@ worker that reasons at length emits no output and looks finished.
 get wrong: why these repos, why these investigation areas, why this is out of scope. A bad guess
 is then visible rather than buried. A gate prints a looked-up fact without argument. The
 selected Solo project needs no justification; a repo list inferred from file references needs
-one. Every gate carries the reserved `Approve` heading and fences its block, per
-[chat-vocabulary](rules/chat-vocabulary.md).
+one. A gate's opening message carries a reserved heading and fences its block, per
+[chat-vocabulary](rules/chat-vocabulary.md). `Approve` marks a proposal, and `Deciding` marks a
+choice you cannot rank.
 
-**`/plan` grills you.** One question per message, never two. Each one carries the reserved
-`Deciding` heading, a fenced context block, and a mandatory recommendation. The
+**`/plan` grills you.** One question per message, never two. Each one carries a fenced context
+block, a mandatory recommendation, and the `⏸` footer. Only the first question carries the
+`Deciding` heading, so a long grilling does not become a column of headings. The
 question whose answer changes the most other answers comes first. `/plan` looks up anything the
 filesystem or a tool can tell it, rather than asking you. Its scope gate names the decisions it
 expects to put to you. That gate also reports how far each tree sits behind its default branch.
@@ -299,10 +301,17 @@ so the tier follows from it. A task described as "three localized edits against 
 references" argues for its own tier. Adjust any milestone boundary, model, effort, or grouping,
 or approve the roster as proposed.
 
-**The permission layer enforces the constraints rather than requesting them.** Every worker launches with git writes denied at the
-permission layer, rather than prohibited in prose. Two workers that stage in one shared tree
-cross-commit silently. Workers hold per-path locks, and the orchestrator commits each task's
-declared paths, so history stays granular.
+**A worker's write bound follows what it edits, not which runtime runs it.** An immutable-target
+worker reads the target and writes only scratch. Codex bounds that worker by directory, so the
+denial is structural. A Claude deny list scopes by tool and by command pattern, so the shell still
+reaches the target. There the brief requests that bound, and each runtime adapter says which of
+the two you get.
+
+An editing worker is the harder case. Claude denies `git add` per command, and Codex has no
+per-worker equivalent. The rule requires that gap disclosed rather than restated as a promise.
+Two workers that stage in one shared tree cross-commit silently. Each worker gets its own tree,
+and workers hold per-path locks. The orchestrator commits each task's declared paths, so history
+stays granular.
 
 **Workers escalate on deviation, not on failure.** A worker that cannot self-resolve records
 what it found and stops. So does a worker that would have to depart meaningfully from the
