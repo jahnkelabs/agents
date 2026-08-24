@@ -48,6 +48,14 @@ reads either the preamble or the assignment. A worker asked to introspect its ow
 reported every rule file present, each attributed to its repository path. Neither launch flag
 supplied them.
 
+A second path carries prose discipline. A worker receives it through the `outputStyle` key in
+`~/.claude/settings.json`, not through `~/.claude/rules/`. This works because a Solo worker runs
+as its own `claude` process with its own main conversation. A subagent runs its own system prompt
+instead, so it would not receive a style. The style resolves from the **user** settings tier. A
+project-local `.claude/settings.local.json` that names a different style outranks it, and the
+`/config` picker writes exactly that tier. A worker can therefore silently lack prose discipline
+in a project where someone selected a different style.
+
 Never restate a rule in a Claude worker prompt. State the job and the constraints specific to
 this task.
 

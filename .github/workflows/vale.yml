@@ -24,4 +24,4 @@ jobs:
           vale --version
 
       - name: Run Vale
-        run: vale --minAlertLevel=warning rules/ skills/ references/ README.md
+        run: vale --minAlertLevel=warning rules/ skills/ references/ output-styles/ README.md
