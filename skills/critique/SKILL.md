@@ -25,13 +25,21 @@ This skill runs standalone. `/plan` calls it on a draft plan, and `/implement` c
 | one or more paths | those files |
 | `--pr <N>` | that pull request (`gh pr diff <N>`) |
 | `--base <ref>` | diff against that ref instead |
+| `--integration <slug>` | every landed milestone of that plan, together |
+| `--plan <pad>` | modifier — pairs an approved plan with the target the other arguments resolve |
 
 State what you resolved before you proceed. If the target is empty — clean tree, no changes —
 say so and stop rather than reviewing nothing.
 
-A roster is a real target, because an approved artifact has its own failure modes. Two tasks
-may overlap on a file and race. The grouping may drop a `same-worker` constraint. A tier may
-not match the work it carries.
+`--plan` resolves no target of its own, and it carries the plan the fidelity lens checks against.
+`/implement` always passes it. Resolve the pad before you spawn anything. A pad id you cannot
+read is a stop, never a silent drop — see step 3.
+
+`--integration` is the only target that takes the integration lens set. `/implement`'s `## Close`
+step is its caller.
+
+A roster is a real target, because an approved artifact has its own failure modes. The roster
+fidelity lens in step 3 names them.
 
 ## Step 2 — Choose the models
 
@@ -58,24 +66,29 @@ produce findings nobody can compare.
 
 ## Step 3 — Pick the lenses
 
-Two lens sets exist, and the target picks one. A milestone's diff takes the per-milestone set. A
-pass over a whole plan's landed milestones takes the integration set. Run one set, never both.
+Two lens sets exist. **The per-target set is the default**, and it serves every target step 1
+resolves. The integration set serves `--integration` alone. Run one set, never both.
 
-### Per-milestone lenses
+### Per-target lenses
 
 | Lens | Applies when | Question |
 |---|---|---|
-| **Plan fidelity** | an approved plan exists | Does this milestone do what its slices approved — and nothing more? Did the work quietly skip, expand, or substitute anything? |
+| **Plan fidelity** | `--plan` resolved a plan | Does this target do what its slices approved — and nothing more? Did the work quietly skip, expand, or substitute anything? |
+| **Roster fidelity** | the target is `--roster` | Do two tasks overlap on a file and race? Did the grouping drop a `same-worker` constraint? Does a tier match the work it carries? |
 | **Correctness** | always | Where does this produce a wrong result? Give concrete inputs and the wrong output. |
 | **Edge cases** | always | Empty, null, concurrent, oversized, malformed. What does the code not handle? Which error path has no test? |
 | **Security** | the target touches auth, input handling, secrets, permissions, or shells out | What is exploitable? |
 
-Drop the plan fidelity lens silently when there is no plan. A standalone `/critique src/foo.php`
-has nothing to check fidelity against.
+Correctness, edge cases, and security read a draft plan as readily as a diff. A plan that
+specifies a wrong result carries a correctness defect.
+
+**Plan fidelity drops silently only when the caller offered no `--plan`.** A standalone
+`/critique src/foo.php` has nothing to check fidelity against. When a caller offered `--plan` and
+the pad does not resolve, stop and say so. Never drop the lens quietly on a pad you cannot read.
 
 ### Integration lenses
 
-Run this set only over a whole plan's landed milestones. Each question needs more than one
+`--integration <slug>` selects this set, and nothing else does. Each question needs more than one
 milestone's diff to answer.
 
 | Lens | Question |
@@ -90,9 +103,9 @@ The per-milestone pass already ran that finding through the filter, and the user
 Drop it rather than present it. One run had to drop a finding by hand as
 `re-litigating the disabled-step export semantics, which you and I already settled`.
 
-**No question appears in both sets.** Per-milestone fidelity asks whether one milestone's diff
-matches its own slices. Integration completeness asks whether every slice landed somewhere.
-Neither question answers the other.
+**No question appears in both sets.** Plan fidelity asks whether one target matches its own
+slices. Integration completeness asks whether every slice landed somewhere. Neither question
+answers the other.
 
 ## Step 4 — Run the critics
 
@@ -105,7 +118,9 @@ Call `whoami` first and keep the returned `process_id` — every critic needs it
 ```
 spawn_agent(agent_tool_id=<id>, name="critique-<model>", extra_args=[
   <the effort argument, at high or above — this is judgment work>,
-  <the auto-approval and git-denial arguments from the adapter>])
+  <the auto-approval argument from the adapter>,
+  <the immutable-target arguments from the adapter — writable scratch, unwritable
+   target, unrestricted reads>])
 send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
 
@@ -116,7 +131,13 @@ runtime cannot enforce. Never use a bypass mode, even though a critic only reads
 
 Do not pass a model argument: the roster *is* the model choice. An override would remove the
 independence this skill depends on. Raise the effort: it is a separate setting, and a higher
-effort finds more real defects. The deny list stops a critic from mutating the target it reviews.
+effort finds more real defects.
+
+**Every critic is an immutable-target worker.** `rules/solo-agent-orchestration.md` carries that
+class and what each runtime can enforce for it. Read it, then read the adapter. One runtime scopes
+writes by directory and blocks the target structurally. Another scopes them by tool. A worker
+denied the editing tools still writes the target through the shell. Where the target stays
+writable, say so in the prompt. Never assert a denial the runtime lacks.
 
 Each critic signals when it finishes; arm one idle timer as the dead-worker fallback only:
 
@@ -141,7 +162,7 @@ Review <target> adversarially. Your job is to find what is wrong with it.
 <diff, plan text, or file contents>
 
 ## Approved plan
-<plan text, or "none — this is a standalone review">
+<the plan `--plan` resolved, or "none — the caller offered none">
 
 ## Lenses
 Work through each of these separately:
@@ -161,7 +182,7 @@ Work through each of these separately:
 - A finding you cannot demonstrate is a nit at best. Say which it is.
 - Write your findings to a scratchpad named "critique/<target-slug>/<your model>"
 - Signal completion as your last act:
-    timer_set(delay_ms=0, delivery_process_id=<orchestrator process_id>,
+    timer_set(delay_ms=1, delivery_process_id=<orchestrator process_id>,
               body="Critique <model> done. Findings in critique/<target-slug>/<model>.")
 
 Be specific and be harsh. Vague concerns are noise.
@@ -172,29 +193,41 @@ Be specific and be harsh. Vague concerns are noise.
 Read each worker's scratchpad. Match findings that describe the same defect at the same
 location, even when the wording differs.
 
-**Cross-model agreement is evidence that a finding is real.** Two independent models rarely
-invent one defect. Use agreement to decide what survives the merge.
+**Cross-model agreement raises confidence, and it drops nothing.** Every merged finding enters
+step 6, whether one critic found it or every critic did.
 
-**Agreement does not decide what reaches the user.** Step 6's criteria do that, and none of them
-names agreement. `1b15feba` finding 1 carried three-model agreement, and the user delegated it
-anyway.
+**Agreement cannot gate the merge, because each model misses different defects.** That is why the
+roster holds more than one. A finding one critic found alone carries no agreement. Nothing refutes
+it either, because the refutation pass below covers a one-model roster only. Gating on agreement
+discards exactly the findings a multi-model roster exists to produce.
 
-**When you select only one model**, that evidence does not exist. Run a refutation pass instead.
-Spawn one more worker per finding, and tell it to argue that the finding is *not* real. It
-defaults to refuted when it is uncertain. Drop what it refutes.
+This is not a hypothetical. One run overrode that gate by hand. Following it would have dropped
+most of the findings the fix wave then applied.
+
+**Agreement is no evidence in the other direction either.** Step 6's criteria decide what reaches
+the user, and none of them names agreement. `1b15feba` finding 1 carried three-model agreement,
+and the user delegated it anyway. Two two-model findings turned out to be no findings at all.
+
+**When you select only one model**, no agreement signal exists at all. Run a refutation pass
+instead. Spawn one more worker per finding, and tell it to argue that the finding is *not* real.
+It defaults to refuted when it is uncertain. Drop what it refutes.
 
 ## Step 6 — Filter, then escalate what the user must decide
 
 You decide almost every finding yourself. Six criteria escalate a finding to the user, and three
 grounds never do. The ledger discloses every decision either way.
 
-**Default: fail toward accepting.** Accept any finding that matches no criterion below, and
-apply the remediation it recommends.
+**Default: fail toward accepting.** Accept any finding that matches no criterion below.
 
 Real runs set that default. The user overrode serial triage 13 times between 2026-08-04 and
 2026-08-23, every time as the reply to `Finding 1 of N`. Serial triage cost about 115 human turns
 across 8 runs for about 176 findings. Delegated triage cost about 20 turns across 14 runs for
 about 260.
+
+**What acceptance does depends on who called.** A standalone critique reports the remedy and edits
+nothing, because the request covered a review only. `/critique --pr 42` that rewrites the local
+tree exceeds what the user asked for. When `/implement` calls, apply each accepted fix before that
+skill re-verifies and pushes.
 
 ### The six criteria
 
@@ -251,6 +284,8 @@ Ledger — <target> (<models>)
 Carry the declined alternative wherever more than one fix existed, and give its reason in one
 clause. Omit that line where only one fix existed.
 
+The `fixed:` line reads `remedy:` in a standalone critique, because that run applied nothing.
+
 **The ledger is the only surface where a remedy choice stays correctable.** C6 escalates a
 genuine tie alone, so every other choice between two fixes reaches the user here.
 
@@ -278,6 +313,8 @@ because the stated grounds do not rank the two fixes.
 
 Fix it as proposed, or drop it? I recommend fixing it.
 ```
+
+⏸ waiting on you: fix `src/token.php:88` as proposed, or drop the finding
 
 Every finding carries a severity — `bug` (wrong behavior), `risk` (plausible failure), `nit`
 (style, naming, cleanup). Severity ranks the ledger, so never drop it from a line.

@@ -87,7 +87,7 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what the user
               Three localized edits against precise line references.
 
      M2  give every milestone its own provisioned worktree
-         agents  feat(worktree): add /worktree to set up and provision repositories
+         agents  feat(worktree): cut and provision one worktree per milestone
          after M1 — both touch README.md
          wave 1
            C  skills/worktree/SKILL.md, scripts/wt-clone.sh  opus · xhigh
@@ -105,29 +105,46 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what the user
               Add stacked-PR guidance to a general rule without turning it
               into an appendix.
 
-     Concurrent stacks: 1 of roughly 3. All three milestones touch README.md,
-     so they ship in sequence.
+     Concurrent stacks: 1. All three milestones touch README.md, so they
+     ship in sequence.
 
-     Critique per milestone: <models>.
+     Critique per milestone: <models> — from the plan.
+     Sandbox: <runtime> cannot deny a worker's git writes.
    ```
 
    Adjust any milestone boundary, model, effort, or grouping, or approve as proposed.
+
+   ⏸ waiting on you: approve the roster, or name what to change
 
    **The summary is the justification.** One task reads "three localized edits against precise
    line references". Another reads "a rewrite of two skills onto one vocabulary". Each summary
    argues for a different tier by itself. Write the summary so the tier follows from it, and never
    add a separate rationale field.
 
-   **Bound the parallelism by the machine as well as by the DAG.** `/worktree` states the
-   container ceiling: roughly three concurrent milestone stacks on this machine. Propose no more
-   concurrent milestones than that ceiling holds, even where the DAG allows more. State the count
-   you propose against the ceiling, as the block above does.
+   **Bound the parallelism by the machine as well as by the DAG.** Each milestone stack runs its
+   own containers, volumes, and network. Concurrent stacks therefore consume the machine's memory
+   and disk in proportion. State how many stacks you propose to run at once, as the block above
+   does. The user adjusts that count here.
+
+   State no ceiling. This skill runs on more than one machine, so any figure is false on the
+   others. The user knows what the machine holds; the skill does not.
 
    The user can adjust boundaries, not just tiers. The roster is where a milestone that does two
    things becomes obvious. It is also where two milestones that should be one become obvious.
 
-   Offer the enabled runtimes for the per-milestone critique in the same gate. One stop, not two.
-   Never hardcode a roster.
+   **The critique roster comes from the plan.** `/plan` selects it before it hands off, and the
+   pad records it. Restate it in this gate as a line the user can change, and do not ask again.
+   One run holds one roster, or nobody can compare its milestone findings. Ask for a roster only
+   when a directly invoked plan carries none, and then ask inside this gate. One stop, not two.
+   `list_agent_tools` resolves the enabled runtimes. Never hardcode a roster.
+
+   **Disclose a runtime that cannot deny a worker's git writes.** An editing worker needs that
+   denial per worker. `rules/solo-agent-orchestration.md` carries the posture and the disclosure
+   it demands, and the adapter names what each runtime can enforce. Read both before you propose a
+   runtime. Where one cannot deny them, include the `Sandbox` line above and name the exposure.
+   Two workers in one tree cross-commit each other's work. Omit that line where every runtime in
+   the roster denies them. Do not restate a flag, and never promise a denial the roster cannot
+   give.
 6. **Create the todos** — one per approved task, tagged with its milestone. The body carries the
    **task spec**: the slices it covers, their files, and their verification. This is not a copy of
    the plan. The plan holds slices; the todo holds the grouping, which exists nowhere else. The
@@ -165,8 +182,10 @@ starts again at step 1.
    kv_set(key="plan:<slug>:milestone:<m>:branch:<repo>", value="<branch>")
    ```
 
-   `/worktree` records the tree path under `plan:<slug>:milestone:<m>:worktree`. Both keys carry
-   the milestone, because one plan holds several branches per repository.
+   `/worktree` records the tree path under `plan:<slug>:milestone:<m>:worktree:<repo>`. Both keys
+   carry the milestone and the repository. One plan holds several branches per repository. One
+   milestone cuts one worktree per repository. Omit the repository, and the second cut overwrites
+   the first. Teardown then leaks a worktree with its stack running.
 2. **Re-check the census in the worktree.** The plan's `**Files**:` lists came from a census at
    plan time. Repeat that census now for this milestone's slices, in the tree you just cut.
    `/plan` names what it searches for: the caller, the test, and the standard your change
@@ -174,20 +193,31 @@ starts again at step 1.
 
    **Escalate on drift.** A path the census now returns, and the plan does not declare, is a
    deviation. Stop and put it to the user. Do not widen a task's declared paths yourself.
-3. **Run the milestone's waves.** See [Wave execution](#wave-execution). Every worker in this
-   milestone works inside this milestone's worktree.
-4. **Commit each completed task separately**, staging only its declared paths:
-   ```bash
-   cd <the milestone's worktree>
-   git add <task's declared paths>
-   git commit -m "<type>(<scope>): <task summary>"
+3. **Run the milestone's waves.** See [Wave execution](#wave-execution). Every worker works
+   inside the worktree of the repository its slices belong to. Each wave commits its own tasks at
+   its join, so no task commit follows the last wave.
+4. **Critique this milestone's diff.** Name the base explicitly, and pass the plan:
    ```
-   Never `git add -A` — another task's work may be in the tree.
-5. **Critique this milestone's diff.** Run `/critique` over the diff with the models chosen at the
-   roster gate, and pass the approved plan so the plan-fidelity lens has something to check.
-6. **Apply the filter and present what survives.** `/critique` owns the filter, the ledger, and
+   /critique --base <the milestone's effective base> --plan <the plan pad>
+   ```
+   The effective base is the ref step 1 cut from. That is `origin/HEAD`, or the predecessor
+   milestone's branch where the milestones stack. Without `--base`, `/critique` falls back to the
+   default branch and reviews the predecessor's diff as this milestone's. It then re-raises
+   findings the user already settled.
+
+   Use the roster the plan supplied. `/critique` does not ask again.
+5. **Apply the filter and present what survives.** `/critique` owns the filter, the ledger, and
    the presentation of a finding. Point at it and add nothing. Fix no finding unilaterally.
-7. **Gate the push.** `pr-first-contributions` forbids a push without explicit approval, and this
+
+   **Commit the remedies.** `/critique` applies each accepted fix in this milestone's worktrees,
+   and it leaves them uncommitted. Commit them here, once per repository, before the push gate:
+   ```bash
+   git add <the paths the ledger's fixes touched>
+   git commit -m "fix(<scope>): apply the critique remedies for milestone <m>"
+   ```
+   This is the one commit outside a wave join. Skip it, and the push gate counts commits over a
+   dirty tree.
+6. **Gate the push.** `pr-first-contributions` forbids a push without explicit approval, and this
    gate is where you ask. Re-run its staleness check first.
 
    **Approve — push milestone `<m>`**
@@ -198,10 +228,12 @@ starts again at step 1.
 
      Quality gates: <results>
    ```
-8. **Push and open one PR per repository the milestone touches.** Follow
+
+   ⏸ waiting on you: approve the push for milestone `<m>`
+7. **Push and open one PR per repository the milestone touches.** Follow
    `pr-first-contributions`, which owns the stacked-PR base and the title spec. Update an open PR
    rather than opening a second one.
-9. **Announce the landing.** It reports and does not block.
+8. **Announce the landing.** It reports and does not block.
 
    **Landed — `<milestone>`**
 
@@ -215,8 +247,9 @@ starts again at step 1.
      Critique:      <N> findings, <M> presented, <models>
    ```
 
-   Then the ledger, in the shape `/critique` defines.
-10. **Tear down and clean up.** Do all four, in this order:
+   Then the ledger, in the shape `/critique` defines. `Landed` carries no footer, because the
+   run continues.
+9. **Tear down and clean up.** Do all four, in this order:
     ```
     timer_cancel(timer_id=<each guard armed for this milestone>)
     close_process(process_id=<each worker of this milestone>)
@@ -244,11 +277,12 @@ Call `whoami` once and keep the returned `process_id`. Every worker needs it to 
 For each wave of the current milestone, for each task in it:
 
 1. `todo_update(todo_id, status="in_progress")`
-2. Spawn at the approved tier, with the constraints enforced rather than requested:
+2. Spawn at the approved tier, enforcing every constraint the runtime can enforce:
    ```
    spawn_agent(agent_tool_id=<runtime>, name="<task>-<slug>", extra_args=[
      <the model and effort arguments, at the approved tier>,
-     <the auto-approval and git-denial arguments from the adapter>,
+     <the auto-approval argument from the adapter>,
+     <the editing-worker arguments from the adapter, with any per-command git denial>,
      <the system-prompt argument carrying the preamble below, if the runtime has one>])
    ```
    `list_agent_tools` returns a `tool_type` for each runtime. Read `references/runtime-<tool_type>.md`
@@ -258,23 +292,35 @@ For each wave of the current milestone, for each task in it:
    Auto-approval keeps the worker from stalling on its actual job. It still leaves the requests
    that matter reviewable. Never use a bypass mode.
 
-   Denying git writes, not the approval mode, makes the prohibition structural. A worker that
-   *cannot* stage is safer than one asked not to. Two workers that share a tree cross-commit
-   silently. When a spawn fails, read the adapter, correct the arguments, and retry once. Escalate
-   on the second failure, and never loosen a flag to make a launch succeed.
+   **Every task worker is an editing worker.** `rules/solo-agent-orchestration.md` carries that
+   class and what each runtime can enforce for it. A sandbox that permits a worker's edits permits
+   `git add` in the same tree. Only a per-command deny list denies it, where the runtime scopes one
+   to a single worker. Use that denial where the runtime has one. A worker that *cannot* stage is
+   safer than one asked not to. Two workers that share a tree cross-commit silently.
+
+   Where the runtime has no such denial, the denial does not exist. The roster gate disclosed
+   that. Do not restate it here as a guarantee.
+
+   When a spawn fails, read the adapter, correct the arguments, and retry once. Escalate on the
+   second failure, and never loosen a flag to make a launch succeed.
 3. `send_input(process_id, input=<agent_instructions + the assignment below>)`
 
-The **preamble**, identical for every worker in the milestone. Pass it once through the runtime's
-system-prompt argument, or in every prompt where the runtime has none:
+The **preamble** has two halves. What a worker must not touch, and what to do when stuck, are
+identical for every worker in the milestone. The working directory is not. A milestone spanning
+repositories therefore passes one preamble per repository, and a slice belongs to exactly one
+repository. Each worker's directory is the worktree of the repository holding its slices. Pass the
+preamble through the runtime's system-prompt argument, or in every prompt where the runtime has
+none.
 
 ```
 You are a Solo agent implementing one task of an approved plan.
 
-Working directory: <the milestone's worktree, absolute>. Stay inside it.
+Working directory: <the worktree of the repository this task's slices sit in,
+absolute>. Stay inside it.
 
 Do not write any file outside your task's declared paths — needing to is a deviation.
 Do not create or complete todos, or write KV. Write only your own report scratchpad.
-The permission layer denies git writes; the orchestrator owns git.
+The orchestrator owns git. Run no git write, whatever your permission layer allows.
 
 When stuck, or when finishing would mean departing meaningfully from the task as written:
 record what you found and stop. Do not improvise a fix, expand scope, or proceed down an
@@ -304,14 +350,18 @@ work around it.
 3. Run the task's automated verification. Every check must be able to fail.
    Run each one against the pre-change state first. Where a check already passes, prove it fails
    on a mutated copy under your scratch directory. Never mutate the repository for a proof.
-4. Write your report to scratchpad "<slug>/<task>". Record what you did, the verification
+4. Write your report to scratchpad "<slug>/<milestone>/<task>". Record what you did, the verification
    output, and anything you found that the task did not anticipate. Begin the report with
    "ESCALATION:" if you stop rather than finish.
 5. Release your locks
 6. Signal completion as your last act:
-     timer_set(delay_ms=0, delivery_process_id=<orchestrator process_id>,
-               body="Task <letter> complete. Report in <slug>/<task>. <clean|escalated>.")
+     timer_set(delay_ms=1, delivery_process_id=<orchestrator process_id>,
+               body="Task <letter> complete. Report in <slug>/<milestone>/<task>. <clean|escalated>.")
 ```
+
+**The report pad carries the milestone, not the task letter alone.** A composition may restart
+task letters per milestone, so `<slug>/<task>` lets M2 task A overwrite M1 task A. That destroys
+an escalation record before `## Close` reads it.
 
 4. **Wait for the workers to signal.** Each one wakes this session directly when it finishes.
    Arm one idle timer per wave as the dead-worker fallback only:
@@ -330,8 +380,23 @@ work around it.
    run `scratchpad_find` for `ESCALATION` across the wave's report pads. Do this before you read
    any pad in full. If nothing matches, read only what you need for the commit messages.
 
-Then commit the wave's tasks, `todo_complete` each one, and start the next wave of this
-milestone.
+Then commit the wave's tasks. **Commit each task separately, staging only its declared paths:**
+
+```bash
+cd <the worktree of the repository that task wrote in>
+git add <task's declared paths>
+git commit -m "<type>(<scope>): <task summary>"
+```
+
+Never `git add -A` — another task's work may be in the tree. A task that wrote in two
+repositories commits once per repository. Then `todo_complete` each task, and start the next wave
+of this milestone.
+
+**The wave join is the only place a task commits.** No step after the last wave commits a task
+again. A second task commit instruction stops on `nothing to commit`. Deferring it instead lets a
+later wave's changes enter an earlier task's diff.
+
+The milestone loop's critique remedies are the one exception, and step 5 owns that commit.
 
 ## Escalation
 
@@ -358,6 +423,8 @@ The plan assumed <X>; the code actually does <Y>.
 Options: <adjust the plan / a different approach / drop the slice>
 ```
 
+⏸ waiting on you: pick one option for task `B`
+
 Do not start the next wave until you resolve this. If the plan needs a change, update the pad so
 it stays the record of what the user actually agreed.
 
@@ -369,11 +436,28 @@ within the plan's intent should. It escalates when the fix would require departi
 Close the run after the last milestone lands. Every milestone already pushed its own PRs and tore
 down its own worktrees, so nothing here opens a PR.
 
-- `scratchpad_archive(scratchpad_id=<plan pad>)` — it has served its purpose
-- `kv_delete` every `plan:<slug>:*` key
-- `close_process` any surviving worker
-- `git worktree prune` in each container, per `solo-agent-orchestration`
-- Return every PR URL the run opened, grouped by milestone
+1. **Run the integration critique.** This is a step, not an option:
+   ```
+   /critique --integration <slug> --plan <the plan pad>
+   ```
+   It runs the four integration lenses with the roster the plan supplied. One of them is the
+   reason this step exists: did every slice the plan declared land in some milestone? A
+   per-milestone critique cannot answer that, because it sees one milestone's diff.
+
+   Every milestone already pushed its branch, so the diffs live on the remote. Run this from the
+   stable `main` worktree of each container. Step 9 of the loop removed the milestone worktrees.
+
+   Present what survives, through `/critique`'s filter and ledger. A finding here reaches a
+   milestone that already shipped. It lands as a follow-up rather than as a fix to a closed
+   milestone. Escalate it as `Blocked` where it invalidates a PR the run already opened.
+2. `scratchpad_archive(scratchpad_id=<plan pad>)` — it has served its purpose
+3. `kv_delete` every `plan:<slug>:*` key
+4. `close_process` any surviving worker
+5. `git worktree prune` in each container, per `solo-agent-orchestration`
+6. Return every PR URL the run opened, grouped by milestone
+
+**The order matters.** The integration critique compares the landed branches against the plan
+pad. Archive the pad first, and you remove half of that comparison.
 
 ## Notes
 
