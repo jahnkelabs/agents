@@ -70,9 +70,41 @@ Idle detection cannot do more than that, for three reasons:
 
 **An adapter also records what its runtime cannot do.** A policy here is a requirement, not a promise that every runtime can meet it. A runtime may have no way to express one of them, and the adapter says so. Read it before you rely on a guarantee.
 
+**Escalate a launch failure. Never loosen a flag.** When `spawn_agent` fails, read the runtime's adapter, correct the arguments, and retry once. When the second attempt fails, stop and escalate. Never relax a sandbox, drop a deny list, or reach for a bypass mode to make a launch succeed. Escalation is the terminal action, and this rule offers no fallback below it.
+
+One session already paid for this. The third spawn attempt abandoned `spawn_agent` and launched Codex directly. It used the exact bypass flag this rule and `references/runtime-codex.md` both prohibit by name. Nothing told the retry loop when to stop, so the loop found the prohibited flag on its own.
+
 **Deny git writes at the permission layer.** A worker that cannot run `git add` is safer than a worker you asked not to. Two workers that share a tree can cross-commit each other's work. That failure is silent, and it costs a lot of time to undo. Where a runtime denies per command for one worker, deny the git write commands and nothing broader. A runtime whose denial cannot be scoped to a single worker cannot make this structural, whatever else it offers. Give each worker its own tree, or accept the risk knowingly and say so.
 
 **Carry the invariant preamble once, where the runtime allows it.** Three things are identical across every worker in a wave. They are the working directory, what a worker must not touch, and what to do when stuck. Only the assignment differs. A runtime with a system-prompt argument takes the constant half there, which shortens each `send_input` and makes the constraints harder to drop by accident. A runtime without one carries the preamble in every prompt.
+
+## One worktree per milestone
+
+A worker never shares a working tree with the user. Cut one worktree per milestone and per repository. Cut it from a bare-plus-worktrees layout, and use these paths:
+
+```
+  container   /Users/you/Code/<repo>                      the converted clone's own path
+  bare repo   /Users/you/Code/<repo>/.git                 `git rev-parse --is-bare-repository` returns true
+  worktree    /Users/you/Code/<repo>/<milestone-slug>
+  branch      <type>/<milestone-slug>
+  create      git worktree add <worktree> -b <branch> <base>
+                base = origin/HEAD, or the predecessor milestone's branch when stacked
+  record      kv_set plan:<slug>:milestone:<m>:worktree
+  remove      at milestone close, after a successful push
+  sweep       git worktree prune at run close
+```
+
+The milestone slug is lowercase, because the KV key carries it.
+
+A plain clone fails loudly. Test the layout before you cut anything, and print the conversion command rather than a worktree path.
+
+The worktree is disposable once the push succeeds, because the branch then lives on the remote. Remove it at milestone close.
+
+A worker's working directory is its worktree, so its lock keys carry the worktree path.
+
+**Why a worktree.** The user sits on a branch in their own tree. A worker that cannot take that branch cannot trample the user's working state. Git refuses to check out one branch in two worktrees, so the guarantee is structural rather than requested.
+
+**The safety comes from the worktree, not from the bare repository.** A plain clone that adds worktrees beside it earns the same guarantee. This standard still requires the bare layout, for symmetry and grouping. Every tree is a peer, and one container holds them all.
 
 ## Every worker prompt carries
 
@@ -94,6 +126,8 @@ Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, an
 
 **Reports go to scratchpads.** Solo splits the two surfaces. Todos carry ownership, blockers, locks, and state. Scratchpads carry findings and reports. Give each worker one scratchpad. Run `scratchpad_find` for the escalation marker across all of them before you read any in full.
 
+**`scratchpad_edit` takes two target types.** They are `section` and `line_range`, and nothing else. An invented type fails the call outright, so the report never reaches the surface. Across one session corpus 11 of 205 calls failed, and none was a revision mismatch. Four of them invented `str_replace`, `string`, or `append`.
+
 ## Anti-patterns
 
 | Anti-pattern | Why it fails |
@@ -107,3 +141,6 @@ Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, an
 | Every worker at the session's model and effort | A one-line edit and a contract-preserving rewrite are not the same job |
 | Spawning without an explicit approval mode | The runtime default is a prompt nobody watches, and the worker stalls unattended |
 | Reaching for a runtime's bypass mode | Removes review from the one process nobody watches |
+| Loosening a flag after a failed spawn | The retry loop reaches a bypass mode instead of escalating |
+| A worker sharing the user's working tree | The worker edits the tree the user sits in, and their working state is collateral |
+| A `scratchpad_edit` target outside `section` and `line_range` | The call fails, and the report never reaches its durable surface |
