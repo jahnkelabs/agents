@@ -190,7 +190,11 @@ select_output_style() {
   [[ -f "${f}" ]] || echo '{}' > "${f}"
 
   local current
-  current="$(jq -r '.outputStyle // ""' "${f}")"
+  if ! current="$(jq -r '.outputStyle // ""' "${f}" 2>/dev/null)"; then
+    echo "  cannot read settings.json -- it is not valid JSON"
+    echo "  fix it and re-run, or pick prose-discipline in /config"
+    return
+  fi
 
   if [[ "${current}" == "prose-discipline" ]]; then
     echo "  already selected: outputStyle"

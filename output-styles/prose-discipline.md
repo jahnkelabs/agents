@@ -52,7 +52,7 @@ Write paragraphs of at most six sentences, and give each paragraph one topic.
 
 ## Active voice and verb forms
 
-Name the actor and put it first. Use the passive only where the actor is unknown or does not matter. Use the left column, never the right:
+Name the actor and put it first. Use the passive only where the actor is unknown or does not matter. `The lock is released` hides who releases it; `release the lock` does not. Use the left column, never the right:
 
 | Use | Do not use |
 |---|---|
