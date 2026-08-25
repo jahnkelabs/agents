@@ -274,7 +274,8 @@ install_git_hooks() {
   local hook
   for hook in post-commit post-checkout post-merge; do
     local path="${hooks}/${hook}"
-    if [[ -e "${path}" ]] && ! grep -qF "${GEN_MARKER}" "${path}" 2>/dev/null; then
+    if [[ -L "${path}" ]] \
+       || { [[ -e "${path}" ]] && ! grep -qF "${GEN_MARKER}" "${path}" 2>/dev/null; }; then
       echo "  kept your ${hook} hook -- add scripts/install.sh --rules-only to it"
       continue
     fi

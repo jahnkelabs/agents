@@ -36,11 +36,13 @@ it dangles. The script also refuses a symlinked directory in the
 destination's path, and names that component.
 
 The copy lands in a temporary sibling and is renamed into place, so a
-failed copy leaves no partial destination to block a retry. The script
-then checks that the renamed object is the one it staged. A destination
-that appears during the copy makes the rename land inside it. The script
-removes what it wrote there and exits non-zero. Exit status is 0 only
-when the copy reached the destination.
+failed copy leaves no partial destination to block a retry. The rename
+neither follows nor overwrites the destination, so a destination that
+appears during the copy is left as it is. The script then checks that
+the staged path is gone, and that the destination is the object it
+staged. On macOS a directory that appears during the copy still takes
+the rename inside it. The script removes what it wrote there. Exit
+status is 0 only when the copy reached the destination.
 USAGE
   exit 0
 fi
@@ -257,8 +259,19 @@ fi
 
 STAGE_ID="$(object_id "${STAGE}")"
 
-if ! mv -- "${STAGE}" "${DEST}"; then
+case "$(uname -s)" in
+  Darwin) MV_ARGS=(-n -h) ;;
+  *) MV_ARGS=(-n -T) ;;
+esac
+
+if ! mv "${MV_ARGS[@]}" -- "${STAGE}" "${DEST}"; then
   echo "error: ${MODE} could not be renamed into place: ${DEST}" >&2
+  exit 1
+fi
+
+if [[ -e "${STAGE}" || -L "${STAGE}" ]]; then
+  echo "error: the destination appeared during the ${MODE}, so the rename was refused" >&2
+  echo "error: ${DEST} is not ours, and it stays as it is" >&2
   exit 1
 fi
 
