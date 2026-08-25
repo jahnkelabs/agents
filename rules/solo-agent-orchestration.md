@@ -78,7 +78,11 @@ One session already paid for this. The third spawn attempt abandoned `spawn_agen
 
 **Bound a worker's writes by whether it edits the target.** Two classes exist. An immutable-target worker reads the target and writes only scratch. An editing worker changes the target, and its working directory is its milestone worktree. One posture does not fit both. Decide the class first, then read the runtime's adapter for the arguments.
 
-**The immutable-target worker.** Every critic, every research agent, and every retro agent is one. Give it a writable scratch directory, an unwritable target, and unrestricted reads. A runtime that scopes writes by directory makes that structural.
+**The immutable-target worker.** Every critic, every research agent, and every retro agent is one. It writes only its own scratch directory, it reads the whole disk, and it never writes the target. A runtime that scopes writes by directory makes that bound structural. A runtime that cannot leaves the bound to the prompt, and its adapter says so.
+
+**Derive the scratch directory once, here.** A worker's scratch directory is `<the session scratchpad directory>/<worker name>`, where `<worker name>` is the `name` you pass `spawn_agent`. Create it before you spawn, because a launch argument cannot name a path that does not exist. Every worker gets its own, so two workers never overwrite one file.
+
+**Name that path in the prompt of any worker that writes a file.** One runtime takes it as a launch argument and bounds writes to it. Another has no such argument, so the prompt is the only channel that carries it. An editing worker needs it too, because a verification proof mutates a copy rather than the target. A worker that writes only its Solo scratchpad needs no path.
 
 **Here Codex enforces what Claude can only request.** That reverses what the two adapters otherwise suggest, so treat it as a measurement. Verified on codex-cli 0.149.0. The worker ran with its working directory set to a scratch directory, writes scoped there, and reads unrestricted:
 

@@ -179,8 +179,12 @@ none. The waves inside one milestone still run their tasks concurrently — that
    records the container path on its `**Repos**:` line for this call. `<repo>` stays the short
    name, and it names the same repository in every KV key here.
 
-   That skill owns the layout, the provisioning, the container naming, and the refusal on a plain
-   clone. Add nothing to its procedure and do not paraphrase it.
+   That skill owns the layout, the provisioning, the container naming, and every refusal it
+   states. Add nothing to its procedure and do not paraphrase it.
+
+   **A `Blocked` from `/worktree` stops this milestone.** It refuses a plain clone, and it refuses
+   a repository that carries no provisioning script. Pass that report to the user as it stands, and
+   cut no second worktree. The tree it kept is the one the retry reuses.
 
    The branch is `<type>/<slug>-<milestone>` — the plan slug, then the milestone slug, per
    `solo-agent-orchestration`. The base is
@@ -262,9 +266,13 @@ none. The waves inside one milestone still run their tasks concurrently — that
    reason this step exists: did every slice the plan declared land in some milestone? A
    per-milestone critique cannot answer that, because it sees one milestone's diff.
 
-   Every milestone pushed its branch, so the diffs live on the remote. Run it from this
-   milestone's worktree, which step 10 has not yet removed. Never run it from the stable `main`
-   worktree of a container. That is the tree the user sits in, on the default branch.
+   Every milestone pushed its branch, so the diffs live on the remote. `/critique` step 1 states
+   how it resolves them, and it reads each one through that container's bare repository. Pass the
+   slug and the plan, and add nothing to that procedure.
+
+   **This pass needs no worktree, and that is why it can run.** Step 10 of an earlier milestone
+   removed the worktree of every repository this milestone leaves alone. A pass confined to one
+   milestone's tree could not see them at all.
 
    **The integration pass edits nothing, and `/critique` owns that.** Its ledger line reads
    `remedy:` rather than `fixed:`. Every milestone it reviews already shipped its PRs, so an
@@ -318,7 +326,7 @@ sub-agent cannot hold a lock, own a todo, or wake this session when it finishes.
 
 Call `whoami` once and keep the returned `process_id`. Every worker needs it to signal back.
 
-For each wave of the current milestone, for each task in it:
+Take the waves of the current milestone in order. For each task in the wave:
 
 1. `todo_update(todo_id, status="in_progress")`
 2. Spawn at the approved tier, enforcing every constraint the runtime can enforce:
@@ -398,7 +406,8 @@ work around it.
 2. Make the changes
 3. Run the task's automated verification. Every check must be able to fail.
    Run each one against the pre-change state first. Where a check already passes, prove it fails
-   on a mutated copy under your scratch directory. Never mutate the repository for a proof.
+   on a mutated copy under <this worker's scratch directory, absolute>. Never mutate the repository
+   for a proof.
 4. Write your report to scratchpad "<slug>/<milestone>/<task>". Record what you did, the verification
    output, and anything you found that the task did not anticipate. Begin the report with
    "ESCALATION:" if you stop rather than finish.
@@ -412,7 +421,13 @@ work around it.
 task letters per milestone, so `<slug>/<task>` lets M2 task A overwrite M1 task A. That destroys
 an escalation record that nothing recreates.
 
-4. **Wait for the workers to signal.** Each one wakes this session directly when it finishes.
+Those three steps run once per task. **Spawn every task in the wave before you wait for any of
+them.** The roster gate approved the wave as concurrent, and waiting after each spawn serialises
+it. One guard then covers one task instead of the wave.
+
+Then, once you have spawned every task in the wave:
+
+1. **Wait for the workers to signal.** Each one wakes this session directly when it finishes.
    Arm one idle timer per wave as the dead-worker fallback only:
    ```
    timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
@@ -425,7 +440,7 @@ an escalation record that nothing recreates.
    length is indistinguishable from a finished one — see `solo-agent-orchestration`.
 
    Keep the returned `timer_id`. One guard per wave means one id to hold.
-5. When every task in the wave signals, `timer_cancel(timer_id=<id>)` for that wave's guard. Then
+2. When every task in the wave signals, `timer_cancel(timer_id=<id>)` for that wave's guard. Then
    run `scratchpad_find` for `ESCALATION` across the wave's report pads. Do this before you read
    any pad in full. If nothing matches, read only what you need for the commit messages.
 
@@ -494,9 +509,15 @@ own worktrees. Step 8 of the loop ran the integration critique, and step 9 repor
 here opens a PR, and nothing here speaks.
 
 1. `scratchpad_archive(scratchpad_id=<plan pad>)` — it has served its purpose
-2. `kv_delete` every `plan:<slug>:*` key
-3. `close_process` any surviving worker
-4. `git worktree prune` in each container, per `solo-agent-orchestration`
+2. `todo_delete` every todo tagged `plan:<slug>` — the run ended, so nothing reads the grouping now
+3. `kv_delete` every `plan:<slug>:*` key
+4. `close_process` any surviving worker
+5. `git worktree prune` in each container, per `solo-agent-orchestration`
+
+**Delete the todos rather than leaving them completed.** `todo_complete` sets a status and keeps
+the todo, so a closed run otherwise leaves one per task in Solo forever. The README says todos
+exist only while this skill runs a plan, and step 2 is what makes that true. Each report scratchpad
+already holds what the task did, and the PRs hold the work.
 
 **Close is silent.** Each `Landed` already carried its own PR URLs and quality gates. The last one
 carried the integration ledger. Repeat none of it here. `rules/chat-vocabulary.md` reserves four

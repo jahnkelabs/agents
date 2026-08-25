@@ -21,6 +21,7 @@ creates no Solo todos. `/implement` composes the slices into milestones when it 
 
 - A topic or question — plan from scratch
 - A research pad (`research/<slug>` or a numeric id) — from a standalone `/research`
+- A retro pad (`retro/<slug>` or a numeric id) — from `/retro`
 - File paths — read fully before anything else
 - A recall payload — when invoked by `/recall`
 
@@ -102,6 +103,12 @@ document what exists and write only their own per-area scratchpad; you own the p
 `### Research` in the appendix. Then `scratchpad_archive` the source. The archive hides the pad
 without deleting it, so the pad stays recoverable. Add anything new your investigation found.
 
+**If the user supplied a retro pad:** absorb its findings and its `## Proposed changes` the same
+way, and **do not archive it**. The next `/retro` run reads that pad's `## Corpus scope` to learn
+what an earlier run examined. Archiving hides it from the `scratchpad_list(tags=["retro"])` that
+looks for it, so the next run re-examines the same sessions. `skills/retro/SKILL.md` states that
+reason once, and this is the one input this skill leaves active.
+
 ## Gate B — Grill the user
 
 Follow `/grill`. Ask one question at a time, and wait for the answer before you ask the next.
@@ -147,7 +154,12 @@ forces them into sequence.
 
 ## Write the pad
 
-Slug from `date +%Y-%m-%dT%H%M` plus a short topic.
+Slug from `date +%Y-%m-%dt%H%M` plus a short topic.
+
+**The `t` is lowercase, and that is load-bearing.** This slug builds two KV keys, a branch name, a
+worktree path, and `COMPOSE_PROJECT_NAME`. Solo rejects an uppercase KV key outright. A rejected
+key reads exactly like a key nobody wrote. `/worktree` then takes its collision branch, and the
+run escalates over its own branch.
 
 ```
 scratchpad_write(
@@ -203,6 +215,7 @@ One line per repo when more than one is in scope. The path is the container gate
 
 ### References
 - Research absorbed from: <pad name and id, if any>
+- Retro absorbed from: <pad name and id, if any — that pad stays active>
 - Critique roster: <model · effort, one per critic>
 ```
 

@@ -107,6 +107,15 @@ Run these five in order. Each step reads state a later step removes.
    uncommitted work    leave it standing, and record its path
    ```
 
+   **Clean means here what it means to `/worktree`.** A provisioned worktree always carries the
+   untracked files the provisioning contract wrote, so `git status --porcelain` is never empty in
+   one. Count a worktree clean when those are the only paths it lists, per `/worktree`'s teardown
+   checks. Stop on any other line, exactly as that mode does.
+
+   Without that exemption every provisioned worktree sorts as `uncommitted work`. A stash then
+   tears none down, and every Compose stack keeps running. The report below also claims those
+   trees hold work no remote has.
+
    **A stash discards no code.** A run that escalated before its push gate leaves commits nowhere
    else, so removing that worktree destroys them. `/worktree teardown` ends in
    `git worktree remove --force`, which deletes a dirty tree without asking. Run the two checks

@@ -74,8 +74,8 @@ easier to catch than a wrong inclusion.
 Fan out with Solo agents, per `solo-agent-orchestration`. Never use the host runtime's own
 sub-agent mechanism.
 
-Build the slug first — `date +%Y-%m-%dT%H%M` plus a short topic, e.g.
-`2026-04-05T1423-jwt-auth`. Workers name their pads under it, and step 4 reuses it.
+Build the slug first — `date +%Y-%m-%dt%H%M` plus a short topic, e.g.
+`2026-04-05t1423-jwt-auth`. Workers name their pads under it, and step 4 reuses it.
 
 Resolve the runtime once with `list_agent_tools`. Use the entry the user named, or the only
 enabled entry. Ask when more than one is enabled and the user named none. Call `whoami` and keep the returned `process_id` — every worker needs it to signal back.
@@ -105,9 +105,6 @@ Tier by area: tracing one call path is not the same job as mapping a subsystem's
 ```
 Research one area of: <topic>.
 
-## Working directory
-<absolute repo path>
-
 ## Your area
 <the one specific question this worker owns>
 
@@ -126,8 +123,8 @@ Document what IS, not what SHOULD BE. No improvements, no critique, no proposed 
 ## Constraints
 - Read-only: no edits, no branches, no commits, no other git write command
 - Do not create todos or write KV
+- Read only inside <absolute repo path>
 - Write only your own scratchpad — the orchestrator owns the research pad
-- Stay inside <absolute repo path>
 ```
 
 Workers signal when they finish. Arm one idle timer per run as the dead-worker fallback only.

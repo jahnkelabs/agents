@@ -26,11 +26,12 @@ or `danger-full-access`. `workspace-write` scopes writes to the working director
 working directory at a scratch directory, then restore reads across the whole disk:
 
 ```
--C <scratch dir> -s workspace-write -c 'sandbox_permissions=["disk-full-read-access"]'
+-C <the worker's scratch directory> -s workspace-write -c 'sandbox_permissions=["disk-full-read-access"]'
 ```
 
 `rules/solo-agent-orchestration.md` calls this the immutable-target worker, and it says which
-workers are one.
+workers are one. It also derives the path `-C` takes, and it says to create that path before you
+spawn. Name the same path in the prompt, because the worker reports against it.
 
 **The measurement, and nothing beyond it.** One worker launched exactly that way, on codex-cli
 0.149.0, produced these five results:

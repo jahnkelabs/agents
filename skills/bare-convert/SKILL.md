@@ -1,24 +1,28 @@
 ---
 name: bare-convert
 description: Set up or convert a repository into the bare-plus-worktrees layout that milestone worktrees need
-argument-hint: "[set-up | convert] [url or clone path]"
+argument-hint: "[set-up | convert | script] [url or clone path]"
 disable-model-invocation: true
 ---
 
 # Bare convert
 
-Turn a repository into a container, so `/worktree` can cut a milestone tree inside it. Two
-modes: **set up** and **convert**.
+Turn a repository into a container, so `/worktree` can cut a milestone tree inside it. Three
+modes: **set up**, **convert**, and **script**.
 
 Set up clones a repository this machine does not hold yet. Convert rewrites a clone you already
 work in, and it preserves uncommitted work. Convert is the destructive mode. It moves the tree
 you work in, so it reports every path before it acts.
 
+Script writes the repository's provisioning script, or updates one that went stale. Set up and
+convert both end there. Run it alone against a container that already exists.
+
 `rules/solo-agent-orchestration.md` carries the worktree standard. This skill implements that
 standard and invents no second convention.
 
-`/worktree` owns cut, provision, and teardown. It also owns the provisioning contract. This
-skill hands over once the container exists, and it restates none of that contract.
+`/worktree` owns cut, provision, and teardown, and it defines the provisioning contract. This
+skill writes the script that satisfies that contract. It reads the definition there rather than
+restating it.
 
 ## The layout
 
@@ -48,6 +52,8 @@ git --git-dir="<container>/.git" worktree add "<container>/main" "${DEFAULT}"
 
 A bare clone sets no fetch refspec. Without one, `origin/HEAD` and every other
 remote-tracking ref stays absent, and cut mode reads `origin/HEAD` for its base.
+
+Then run `## Script` below. The container is not ready until that step finishes.
 
 ## Convert
 
@@ -175,7 +181,80 @@ Remove `<staging>` once the diff is empty:
 rm -rf "${STAGING}"
 ```
 
+Then run `## Script` below. The container is not ready until that step finishes.
+
+## Script
+
+Use this mode to write `scripts/wt-provision.sh`, or to update one that no longer matches the
+repository. Set up and convert both end here. Run it alone when `/worktree provision` reports that
+the repository carries no script.
+
+Its one argument is the container path, which convert calls `<clone>` above.
+
+`/bare-convert` runs per repository, and `/worktree` runs per milestone. A repository's own script
+therefore belongs with this skill.
+
+### Read the contract, then read the repository
+
+`/worktree`'s `## The provisioning contract` states the script's arguments and its three
+responsibilities. Read it there, and copy none of it here. Then ask the repository what it holds:
+
+```bash
+git -C "<container>/main" cat-file -e HEAD:scripts/wt-provision.sh   # committed already?
+git -C "<container>/main" status --porcelain --ignored               # machine-local and derived
+test -f "<container>/main/docker-compose.yml"                        # a stack to isolate
+```
+
+Each answer decides one part of the script. An ignored file such as `.env` or `auth.json` is a
+machine-local file to copy. An ignored directory such as `vendor/` or `node_modules/` holds
+derived state to clone and reconcile. A base compose file means the script generates the port
+override.
+
+**A repository may need none of the three.** A documentation repository has no derived tree and
+no compose stack. Its script validates its two arguments and exits 0. Write that, rather than
+steps the repository does not need.
+
+**A stale script is the same job.** Compare what the script copies against what the repository now
+ignores. A dependency manager the repository added since, and a service the compose file gained,
+both leave the script behind.
+
+**Say so and stop where the script is present and current.** That is the common answer on a second
+run, and it needs no gate.
+
+### Propose it, then write it
+
+**Approve — write `<container>/main/scripts/wt-provision.sh`**
+
+```
+script      absent                            (or: present, and stale — <what changed>)
+copies      <the machine-local files found>
+derives     <each derived directory, and the reconcile command for it>
+compose     <the base file, and the services its override resets>       (or: none)
+
+Write this script?
+```
+
+⏸ waiting on you: approve the script, or tell me what this repository actually needs
+
+**Ask about what the repository cannot tell you.** A reconcile command, a certificate path, and a
+service nobody runs are all judgment. Propose an answer and let the user correct it.
+
+Write the file, make it executable, and check that it parses:
+
+```bash
+chmod +x "<container>/main/scripts/wt-provision.sh"
+bash -n "<container>/main/scripts/wt-provision.sh"
+```
+
+**The user commits the script, and this skill never does.** A milestone worktree is a fresh
+checkout, so a script outside `HEAD` reaches none of them. `rules/pr-first-contributions.md` owns
+how that commit lands. This skill writes the file and stops.
+
 ## Then hand over
 
-The container is ready. `/worktree cut` takes it from here, and it derives the container path
-itself from any worktree inside it.
+The container is ready once `HEAD` carries its provisioning script. `/worktree cut` takes it from
+here, and it derives the container path itself from any worktree inside it.
+
+**Say so plainly where `HEAD` carries no script yet.** `/worktree cut` provisions every tree it
+creates, and it stops on an absent script. A hand-over that calls the container ready sends the
+user straight into that stop.

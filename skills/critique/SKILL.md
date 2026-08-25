@@ -38,6 +38,29 @@ read is a stop, never a silent drop — see step 3.
 `--integration` is the only target that takes the integration lens set. `/implement`'s milestone
 loop is its caller, and it calls once the last milestone has pushed.
 
+**Resolve `--integration <slug>` before you spawn anything.** No other target names its refs
+indirectly, so this is the one target you assemble:
+
+1. Read every `plan:<slug>:milestone:<m>:branch:<repo>` key. Each value is one branch, and the key
+   names the milestone and the repository it belongs to. `/implement` deletes these keys at Close,
+   which runs after this pass.
+2. Take each repository's container path from the plan pad's `**Repos**:` line. `--plan` carries
+   that pad, and `/implement` always passes it.
+3. Fetch, then diff each branch against the base its own milestone cut from:
+   ```bash
+   git --git-dir="<container>/.git" fetch origin
+   git --git-dir="<container>/.git" diff <base>..<branch>
+   ```
+   That base is `origin/HEAD`, or the predecessor milestone's branch where the milestones stack in
+   that repository. One ref cannot serve two repositories that stack differently.
+
+The target is every one of those diffs together. **Use the bare repository, never a worktree.**
+An earlier milestone's teardown removed the worktree of every repository the last milestone did
+not touch. A bare repository reads a branch without a checkout, so it reaches all of them.
+
+Stop and say so where a key is absent, or where a branch does not resolve. A partial target
+answers `Plan completeness` wrongly, and that lens is why this pass exists.
+
 **Resolve the critic report pad name here.** Each critic writes to
 `critique/<slug>/<milestone-or-integration>/<model>`. The three segments resolve like this:
 
@@ -212,7 +235,7 @@ Work through each of these separately:
 - Do not suggest features, refactors, or improvements beyond the target's scope
 - Do not report "consider adding tests" without naming the specific untested path
 - A finding you cannot demonstrate is a nit at best. Say which it is.
-- Write no file outside your own scratch directory. Your Solo scratchpad is the one exception.
+- Write no file outside <the critic's scratch directory, absolute>. Your Solo scratchpad is the one exception.
 - The target is immutable. Read it; never edit it, add a file to it, or delete one from it.
 - Run no git write anywhere — no `add`, no `commit`, no `checkout`, no `stash`.
 - Your permission layer may not enforce these three rules. They hold whether it enforces them or not.

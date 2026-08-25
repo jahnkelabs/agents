@@ -137,10 +137,41 @@ this milestone's branch, reuse that worktree and cut nothing.
 Record the path under `plan:<slug>:milestone:<m>:worktree:<repo>`, as the orchestration rule
 requires. Then run provision mode against the new worktree.
 
+**Provision mode can refuse, and cut then ends `Blocked` with the worktree standing.** Report that
+refusal as provision mode writes it. The recorded path stays correct, so the retry reuses the tree
+rather than cutting a second one.
+
 ## Provision
 
 Use this mode to fill a worktree that already exists. Cut mode runs it, and you can run it again
 after a lockfile changes.
+
+**Refuse a worktree that carries no provisioning script.** Test it first, because the command
+below runs the script directly:
+
+```bash
+test -x "<worktree>/scripts/wt-provision.sh"
+```
+
+Report that refusal to the user:
+
+**Blocked — `<repo>` carries no provisioning script**
+
+```
+found:      <worktree>/scripts/wt-provision.sh is missing, or it is not executable
+needed:     the script this repository commits, per ## The provisioning contract below
+next:       /bare-convert script <container>
+kept:       <worktree>, so the script can land on this milestone's branch
+```
+
+⏸ waiting on you: run /bare-convert script <container>, or commit the script yourself
+
+**Keep the worktree and the branch here.** The cleanup below undoes a script that ran and failed.
+A script that never existed leaves nothing to undo. Remove the tree, and the retry meets the same
+absence, so the run loops instead of reporting.
+
+**A milestone worktree is a checkout, so `HEAD` must carry the script.** A script left untracked
+in `<container>/main` reaches no worktree cut afterwards. `/bare-convert` states that too.
 
 ```bash
 "<worktree>/scripts/wt-provision.sh" "<container>/main" "<worktree>"
@@ -274,8 +305,14 @@ Tear the stack down at milestone close. Remove the worktree after the push succe
 
 ```bash
 COMPOSE_PROJECT_NAME="<repo>-<plan-slug>-<milestone-slug>" docker compose \
-  -f docker-compose.yml -f docker-compose.worktree.yml down -v --remove-orphans
+  --project-directory "<worktree>" \
+  -f "<worktree>/docker-compose.yml" \
+  -f "<worktree>/docker-compose.worktree.yml" down -v --remove-orphans
 ```
+
+**Every path here is absolute, and that is load-bearing.** Teardown's callers reach this block
+from somewhere else, and none of them sets a working directory. A relative `-f` then finds no
+file, or it finds another repository's stack.
 
 `down -v` removes the named volumes, and `--remove-orphans` removes a container that the
 current file no longer declares. The milestone owns both, so neither removal reaches another

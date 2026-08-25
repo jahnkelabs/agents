@@ -228,8 +228,8 @@ Nothing in this repository stores your work. Research and plans live in Solo, no
 
 | Kind | Name / key | Tags |
 |---|---|---|
-| Research pad | `research/<YYYY-MM-DD>T<HHMM>-<topic>` | `research`, `project:<repo>` |
-| Plan pad | `plan/<YYYY-MM-DD>T<HHMM>-<topic>` | `plan`, `project:<repo>` |
+| Research pad | `research/<YYYY-MM-DD>t<HHMM>-<topic>` | `research`, `project:<repo>` |
+| Plan pad | `plan/<YYYY-MM-DD>t<HHMM>-<topic>` | `plan`, `project:<repo>` |
 | Task todos | — | `plan:<slug>`, `milestone:<m>`, `project:<repo>`, `task:<letter>` |
 | Worker reports | `<slug>/<milestone>/<task>` | — |
 | Orchestration | `plan:<slug>:milestone:<m>:branch:<repo>` | — |

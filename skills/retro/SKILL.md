@@ -105,8 +105,8 @@ Accept this corpus scope, or tell me which area to add or cut.
 Fan out with Solo agents, per `solo-agent-orchestration`. Never use the host runtime's own
 sub-agent mechanism.
 
-Build the slug first — `date +%Y-%m-%dT%H%M` plus a short topic, such as
-`2026-08-24T0930-escalations`. Workers name their pads under it, and step 3 reuses it.
+Build the slug first — `date +%Y-%m-%dt%H%M` plus a short topic, such as
+`2026-08-24t0930-escalations`. Workers name their pads under it, and step 3 reuses it.
 
 Resolve the runtime once with `list_agent_tools`, and read `references/runtime-<tool_type>.md` for
 the arguments it needs. Never write a launch argument from memory. Call `whoami` and keep the
