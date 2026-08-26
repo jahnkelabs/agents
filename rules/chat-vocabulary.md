@@ -141,7 +141,8 @@ restating it.
 2. A fenced context block, carrying the three things below.
 3. One short question, and a recommendation. The recommendation is mandatory. An `Approve`
    proposal is its own, so it needs no separate line.
-4. The footer, as the last line. Every question waits, so every question carries it.
+4. The footer, as the last line of a prose question. A question the tool delivers needs
+   none, because the tool blocks on its own.
 
 **A question that offers nothing to rank drops part 2 and the recommendation.** It has no option to
 cost and nothing to recommend. The heading, the question, and the footer are the whole message.
@@ -163,6 +164,41 @@ one disappears.
 Real runs justify each part. 43 of 273 questions carried no recommendation, and two runs
 recommended nothing at all. 78 of 273 arrived with no prose around them, and 12 calls batched
 more than one question.
+
+## Which surface carries a question
+
+A heading names what a message is. It does not say how that message reaches the user, and this
+rule now says both.
+
+**A `Deciding` that offers options goes through the interactive question tool.** The tool renders
+selectable options and waits. A `Deciding` is a choice you cannot rank, which is the shape the
+tool exists for.
+
+**Everything else is prose.** `Approve`, `Landed`, `Blocked`, and `Failed` stay in the message
+text. An `Approve` proposes one course, and a user often answers with a refinement rather than a
+pick. A fixed option set would remove that refinement.
+
+**A `Deciding` that offers nothing to rank is prose too.** The tool needs two options or more, and
+that question has none.
+
+Map the shape onto the tool:
+
+```
+part 1, the heading          the prose above the call
+part 2, the context block    the prose above the call
+each option and its cost     that option's description
+part 3, the question         the question field
+the recommendation           the first option, labelled (Recommended)
+part 4, the footer           omit it, because the tool waits on its own
+```
+
+**Put the context above the call, never inside the options.** One run answered a rejected question
+on the second try, once the background arrived first. The user said so: "The context was helpful.
+Represent the question." An option carries its own cost, and the situation belongs above them all.
+
+Real runs justify this section. One session sent 23 tool calls, and 8 reached the clarify path.
+That is 35 percent, against a 6 percent baseline across 273 questions. Every one of those 8 packed
+the situation into the options.
 
 ## Anti-patterns
 
