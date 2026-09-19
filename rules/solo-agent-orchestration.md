@@ -15,40 +15,86 @@ When you delegate work to a parallel worker, that worker is a **Solo agent**. Sp
 
 ## Why
 
+Two reasons survive. Every claim in this section holds on 2026-09-19, against Claude Code 2.1.278.
+
 | | |
 |---|---|
-| **Visible and addressable** | A Solo worker appears in the UI and survives the turn that spawned it. You can inspect it, re-prompt it, or kill it later. A vendor sub-agent returns one block of text and then exits. You cannot inspect it. |
-| **Model choice** | A Solo agent launches with the model and effort its job needs. It can also run a different runtime than the session. A vendor sub-agent runs only the session's vendor and settings. |
-| **Coordination primitives** | Solo workers hold locks, comment on todos, and write KV and scratchpads. Those primitives make parallel writes to a shared tree safe, and they make an escalation visible. |
-| **Portability** | The workflow does not become a dependency on one vendor's agent features. |
+| **A different runtime** | A Solo worker runs Codex, or any other runtime the roster holds. A Claude Code subagent runs Claude Code only. |
+| **Longer than the turn** | A Solo process outlives the turn that spawned it. You inspect it, re-prompt it, or kill it later. A subagent returns a summary and then exits. |
+
+**Do not argue from a capability a subagent now has.** A subagent takes `model`, `effort`, `permissionMode`, `maxTurns` and `isolation: worktree`. Named subagents message each other. Agent teams carry a mailbox file, a shared task list with file locking, and an automatic completion notification. Agent teams stay experimental, and `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` turns them on.
 
 ## The shape
 
 1. `list_agent_tools` — resolve the runtime. Never hardcode a roster or an id.
-2. `spawn_agent(agent_tool_id=<id>, name="<role>-<slug>", extra_args=[…])` → `process_id`, `agent_instructions`. See **Capability, not compliance** below for what belongs in `extra_args`.
-3. `send_input(process_id, input=<agent_instructions + the assignment>)` — prepend the returned instructions, or the worker does not know that it is a Solo agent.
-4. The worker does its job and writes its report to the **durable surface** you gave it. It signals completion as its last act.
-5. On the signal, read the durable surface. Never scrape process output for content.
-6. `close_process(process_id)` for every worker. A join that leaves processes open leaks them.
+2. `spawn_agent(agent_tool_id=<id>, name="<role>-<slug>", extra_args=[…])` returns `process_id` and `agent_instructions`. See **Capability, not compliance** for what belongs in `extra_args`.
+3. Write the brief pad. See **The worker brief pad**.
+4. `send_input(process_id, input=<pointer>)` — the pointer names the pad. See **The pointer shape**.
+5. The worker does its job, writes its report pad, and signals completion as its last act.
+6. On the signal, read the report pad. Never scrape process output for content.
+7. `close_process(process_id)` for every worker. A join that leaves processes open leaks them.
+
+## The PTY ceiling
+
+Every payload Solo injects into a PTY stays at or under 1,000 bytes. That covers a `send_input` body, a worker's completion body, and a guard body. Anything longer names a scratchpad and stops there.
+
+The corpus recorded 802 `send_input` calls from 2026-08-23 to 2026-09-19. Fifty failed, or 8.35%. No failure occurred at or under 1,000 bytes. Claude workers lost 50 of 456 sends, and Codex workers lost 0 of 143. Short pointers lost 0 of 231. Solo reported `Sent 8848 bytes` for a send the worker received as 670 bytes. The loss therefore sits after Solo accepts the bytes, at a boundary this corpus does not isolate.
+
+### The pointer shape
+
+Put the pad name last, because a truncated message arrives as its tail.
+
+```
+You are Solo process <pid> (<name>) in project <project>, id <project id>.
+Call whoami() first. If Solo MCP is unavailable, say so and stop.
+
+Do nothing until you have read your brief in full. It carries your job,
+your constraints, your reporting target, and your completion signal.
+
+Read this scratchpad now:
+<brief pad title>
+```
+
+## The worker brief pad
+
+Write the brief to a scratchpad, and send the pointer. One pad holds one worker's brief. A mid-run amendment edits that pad in place, so no second file accumulates.
+
+`spawn_agent` returns `agent_instructions`. Paste them into `## Solo context`, or the worker never learns that it is a Solo agent.
+
+The brief carries six sections, in this order:
+
+```
+  ## Solo context     the worker's process id, the project, and the whoami() instruction
+  ## Objective        the one job, or a pointer to the todo that states it
+  ## Boundaries       working directory, branch, declared paths, scratch directory,
+                      what the worker must not touch, and what to do when stuck
+  ## Tool guidance    the locks to take, and the prior waves to read
+  ## Output format    the report pad, and the escalation marker
+  ## Completion       the timer_set call, with the orchestrator's process id
+```
+
+**A worker without Solo MCP cannot read its brief pad.** Three Codex workers hit this, and their guards collected stdout instead. `whoami()` surfaces the failure first, before the worker starts the job. The pointer therefore calls `whoami()` first, and it tells the worker to stop when Solo is unavailable.
 
 ## Workers signal completion
 
-A worker's last act is to wake the orchestrator directly:
+A worker's last act wakes the orchestrator directly:
 
 ```
 timer_set(delay_ms=1, delivery_process_id=<orchestrator process_id>,
-          body="<task> complete. Report in <scratchpad>. <clean|escalated>.")
+          body="<task> complete, <clean|escalated>. Report in <report pad>.")
 ```
 
-Solo rejects a zero delay, so `1` is the smallest legal value.
+Solo rejects a zero delay, so `1` is the smallest legal value. The body obeys the ceiling, and the pad name sits last.
 
-**The worker knows when it is finished, and nothing else does.** Push the signal, and do not watch for its absence. The orchestrator receives completions rather than infers them.
+**Only the worker knows when it finishes.** Push the signal, and do not watch for its absence. The orchestrator receives completions rather than infers them.
 
-Every worker prompt therefore carries the orchestrator's own `process_id`, which `whoami` returns.
+Every worker brief therefore carries the orchestrator's own `process_id`, which `whoami` returns.
 
 ## Idle timers are the fallback, not the signal
 
-`timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<guard>, body=…)` has one job. It catches the worker that dies, hangs, or never signals. Give `max_wait_ms` a real guard value. In the body, state that a worker which never signalled is a failure to investigate, not a completion.
+`timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<guard>, body=…)` has one job. It catches the worker that dies, hangs, or never signals. Give `max_wait_ms` a real guard value.
+
+**Treat every firing as a question, never as a verdict.** Of 35 firings in one corpus, 28 caught a worker still at work. Nine fired on a stale premise, because a watched worker signalled first.
 
 Idle detection cannot do more than that, for three reasons:
 
@@ -56,9 +102,27 @@ Idle detection cannot do more than that, for three reasons:
 - **A thinking worker looks finished.** Solo derives idle state from terminal output, and a worker that reasons at length emits none.
 - **Solo treats an already-idle process as satisfied.** For `..._all`, a process that is already idle when you schedule the timer counts as satisfied. An entirely idle watch list returns `already_satisfied` and creates **no timer**. Schedule the timer immediately after `spawn_agent`, before the workers produce output, and you may never wake at all. For `..._any` the opposite holds: Solo ignores an already-idle process, and the timer waits for a new transition.
 
-**The timer body is an instruction, not a note.** It arrives as a fresh turn, and the orchestrator acts on it literally. Every branch the orchestrator must take on wake belongs inside the body. The orchestrator never reads guidance that lives only in the surrounding prose.
+**Cancel the guard when the last worker signals.** `timer_fire_when_idle_all` returns a `timer_id`. Hold it, and call `timer_cancel(timer_id=<id>)` at the join. An armed guard still fires. It then arrives as a fresh turn about workers that finished long ago. Arm one guard, hold its id, and cancel it at the join.
 
-**Cancel the guard the moment the last worker signals.** `timer_fire_when_idle_all` returns a `timer_id`. Keep it, and call `timer_cancel(timer_id=<id>)` at the join, before you commit anything. A guard you leave armed still fires. It arrives as a fresh turn carrying an instruction about workers that finished long ago, and the orchestrator then acts on a stale premise. Arm one guard, hold its id, cancel it at the join: that is the whole lifecycle.
+### The guard pad
+
+The guard body names a pad and obeys the ceiling. Write the branches into the pad, never into the body. Every line of the body reads correctly alone, and the pad name sits last.
+
+```
+Guard fired for <milestone>, wave <n>.
+A worker that never signalled is a failure to investigate, not a completion.
+Procedure: <guard pad title>
+```
+
+The pad carries the watch list and one branch per outcome:
+
+```
+  opening               the guard fired, and this is a failure to investigate
+  ## The watch list     one row per worker: process id, name, todo, report pad
+  ## Do this, in order  cancel every other guard, then read status and output,
+                        then branch on running, exited, and idle with a pad
+  ## Only then          the escalation sweep, and what the orchestrator may commit
+```
 
 ## Capability, not compliance
 
@@ -78,25 +142,18 @@ One session already paid for this. The third spawn attempt abandoned `spawn_agen
 
 **Bound a worker's writes by whether it edits the target.** Two classes exist. An immutable-target worker reads the target and writes only scratch. An editing worker changes the target, and its working directory is its milestone worktree. One posture does not fit both. Decide the class first, then read the runtime's adapter for the arguments.
 
-**The immutable-target worker.** Every critic, every research agent, and every retro agent is one. It writes only its own scratch directory, it reads the whole disk, and it never writes the target. A runtime that scopes writes by directory makes that bound structural. A runtime that cannot leaves the bound to the prompt, and its adapter says so.
+**The immutable-target worker.** Every critic, every research agent, and every retro agent is one. It writes only its own scratch directory, it reads the whole disk, and it never writes the target.
 
 **Derive the scratch directory once, here.** A worker's scratch directory is `<the session scratchpad directory>/<worker name>`, where `<worker name>` is the `name` you pass `spawn_agent`. Create it before you spawn, because a launch argument cannot name a path that does not exist. Every worker gets its own, so two workers never overwrite one file.
 
-**Name that path in the prompt of any worker that writes a file.** One runtime takes it as a launch argument and bounds writes to it. Another has no such argument, so the prompt is the only channel that carries it. An editing worker needs it too, because a verification proof mutates a copy rather than the target. A worker that writes only its Solo scratchpad needs no path.
+**Name that path in the brief of any worker that writes a file.** Each adapter names the argument that bounds writes to that directory. An editing worker needs the path too, because a verification proof mutates a copy rather than the target. A worker that writes only its Solo scratchpad needs no path.
 
-**Here Codex enforces what Claude can only request.** That reverses what the two adapters otherwise suggest, so treat it as a measurement. Verified on codex-cli 0.149.0. The worker ran with its working directory set to a scratch directory, writes scoped there, and reads unrestricted:
+**Both runtimes bound a worker's writes by directory.** Claude Code ships a Bash sandbox that the operating system enforces. `sandbox.filesystem.allowWrite` and `denyWrite` name the writable paths, for every Bash command and its child processes. Codex scopes writes to its working directory. Each adapter carries the arguments and the date of its last measurement. This paragraph holds on 2026-09-19, against codex-cli 0.155.1 and Claude Code 2.1.278.
 
-```
-  read the target        OK
-  write scratch          OK
-  write the target       BLOCKED — Operation not permitted
-  git add in the target  BLOCKED
-  man cp                 OK
-```
+Two limits survive on Claude, at the same version and date:
 
-`references/runtime-codex.md` carries the arguments that produce this.
-
-Claude scopes writes by tool rather than by directory. **A tool deny list does not bound shell redirection.** A worker denied the file-editing tools still writes the target through the shell. This run's critics launched under exactly that deny list, and they wrote freely. On Claude the immutable target is a request rather than a structure. A brief that relies on it says so.
+- **Read, Edit and Write bypass the sandbox.** They use the permission system instead, so a tool deny list still governs them.
+- **A linked worktree keeps `.git` writable.** The sandbox allows writes to the main repository's shared `.git`, so it does not deny git.
 
 **The editing worker.** A sandbox that permits its edits permits `git add` in its milestone worktree. No directory-scoped posture denies git there. A per-command deny list does, where the runtime scopes one to a single worker.
 
@@ -156,44 +213,48 @@ A worker's working directory is a worktree, so its lock keys carry that worktree
 
 ## Every worker prompt carries
 
-Split the prompt by what varies.
+Split what you send by what varies.
 
 Pass the **preamble** through the runtime's system-prompt argument, or in every prompt where the runtime has none. It carries the working directory as an absolute path, with an instruction to stay inside it. That path names one repository's worktree. A task writing in two repositories therefore receives two preambles, one per repository. Its lock keys come from the matching worktree.
 
 The preamble names what the worker must not touch: git writes, undeclared paths, todos it does not own, and KV. It also says what to do when stuck, which is to record what it found and stop. A worker that improvises past its brief is the expensive failure. A worker that stops behaves correctly.
 
-Pass the **assignment** via `send_input`. It carries the one job this worker owns and where to write its report. It also carries the orchestrator's `process_id`, which the worker signals on completion. A todo or a work item may already state the job. The assignment then points at it rather than restating it.
+The **assignment** lives in the brief pad, and `send_input` carries only the pointer. It names the one job this worker owns and where to write its report. It also carries the orchestrator's `process_id`. A todo or a work item may already state the job. The brief then points at it rather than restating it.
 
 **Check whether the worker already has the rules.** A runtime that loads these rules on its own makes restating them in a prompt a waste. A runtime that does not means every rule the worker must follow reaches it only through its prompt. The adapter says which, and it names the path that runtime reads. Assume nothing here: a worker that silently lacks a constraint you believe it has is the failure this check prevents.
 
 Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, and the synthesized artifact.
 
-**A lock key carries the absolute path.** Solo scopes a lock to the project, and one project can hold many repositories. A key built from a repository-relative path such as `path:readme.md` therefore names one lock that every repository in the project shares. Two unrelated runs then collide on a file neither one touches, and the loser escalates over nothing. Build the key from the absolute path: `path:/absolute/path/to/the/file`. It needs no lookup, because the worker already knows its working directory.
+## Locks and reports
 
-**Lock and KV keys are lowercase.** Solo rejects uppercase in both. A key from `path:/Users/you/Code/repo/SKILL.md` or from a timestamped slug fails outright. Normalize the key to lowercase when you generate it, and pin that normalization in the preamble. Two workers could lowercase one path differently and hold two locks on one file. The mutual exclusion would then fail silently.
+**Take a lock only where a second writer may exist.** Decomposition gives every worker in a wave a disjoint file scope, so workers in one wave never contend. Across 700 acquisitions in four weeks, no acquisition failed on contention. The machinery cost 94 failed calls, 147 malformed keys, and 53 locks nobody released. Lock a file when a second orchestration run, or a person, may edit the same tree. Otherwise take no lock.
 
-**A lock catches the writer the schedule does not know about.** Decomposition already gives every worker in a wave a disjoint file scope, so workers in one wave never contend. The lock earns its place against a second orchestration run, or a person editing the same tree. It converts a silent overwrite into a loud stop, which is why a worker that cannot acquire one escalates rather than waiting.
+**A lock key is the absolute path, lowercased.** The shape is `path:/absolute/path/to/the/file`. Solo scopes a lock to the project, and one project holds many repositories. A relative key such as `path:readme.md` therefore collides across repositories. Solo rejects an uppercase key outright, in a lock key and in a KV key.
 
-**Reports go to scratchpads.** Solo splits the two surfaces. Todos carry ownership, blockers, locks, and state. Scratchpads carry findings and reports. Give each worker one scratchpad. Run `scratchpad_find` for the escalation marker across all of them before you read any in full.
+**Reports go to scratchpads.** Solo splits the two surfaces. Todos carry ownership, blockers, locks, and state. Scratchpads carry findings and reports. Give each worker one report pad. Run `scratchpad_find` for the escalation marker across all of them before you read any in full.
 
-**`scratchpad_edit` takes two target types.** They are `section` and `line_range`, and nothing else. An invented type fails the call outright, so the report never reaches the surface. Across one session corpus 11 of 205 calls failed, and none was a revision mismatch. Four of them invented `str_replace`, `string`, or `append`.
+**`scratchpad_edit` takes a target object, never a bare string.** The two legal objects are `{"type": "section", "section_heading": "<heading>"}` and `{"type": "line_range", "offset": <n>, "limit": <n>}`. Across one corpus of 210 calls, 37 malformed the target. Nineteen passed `null` or omitted it, thirteen passed a bare string, and four passed an object with no `type`. One invented a type, and the call failed outright.
 
 ## Anti-patterns
 
 | Anti-pattern | Why it fails |
 |---|---|
-| Vendor sub-agent for fan-out | Invisible, unaddressable, single-vendor, no locks or todos |
+| Vendor sub-agent for fan-out | It runs only the session's runtime, and it dies with the turn that spawned it |
 | "Spawn N parallel agents" with no mechanism named | The runtime uses its own default, so name `spawn_agent` explicitly |
 | Workers running git writes in a shared tree | `git add` from two workers cross-commits their work |
-| A tool deny list treated as a sandbox | Denying the editing tools leaves `cat > <target>` open through the shell |
+| A tool deny list treated as a sandbox | Without the Bash sandbox, `cat > <target>` still writes the target through the shell |
+| An inline brief over 1,000 bytes | Claude workers lost 50 of 456 sends, and a truncated brief loses its head |
+| A pointer that names the pad first | Truncation keeps the tail, so the pad name goes last |
 | Cutting a milestone branch with `-b` and no existence test | A resumed run fails outright, because teardown left the branch behind |
 | Cutting onto a recorded worktree path with no existence test | `/stash` leaves the worktree standing, so `git worktree add` exits 128 |
 | Treating an idle timer as the completion signal | No debounce, and a thinking worker looks like a finished one |
 | Scheduling an idle timer before workers produce output | An all-idle watch list returns `already_satisfied` and creates no timer |
+| A guard body that carries the branches inline | It exceeds the ceiling, and the orchestrator wakes to a truncated instruction |
 | Reading a worker's result from process output | Rendered rows, capped and wrapped: fine for a sentinel, incomplete for a report |
 | Every worker at the session's model and effort | A one-line edit and a contract-preserving rewrite are not the same job |
 | Spawning without an explicit approval mode | The runtime default is a prompt nobody watches, and the worker stalls unattended |
 | Reaching for a runtime's bypass mode | Removes review from the one process nobody watches |
 | Loosening a flag after a failed spawn | The retry loop reaches a bypass mode instead of escalating |
 | A worker sharing the user's working tree | The worker edits the tree the user sits in, and their working state is collateral |
+| A lock on every file a worker touches | 700 acquisitions produced no contention failure and 94 self-inflicted ones |
 | A `scratchpad_edit` target outside `section` and `line_range` | The call fails, and the report never reaches its durable surface |
