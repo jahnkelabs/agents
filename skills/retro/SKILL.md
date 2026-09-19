@@ -130,19 +130,19 @@ Write the worker's brief to a scratchpad, per `solo-agent-orchestration`'s **The
 pad**. Fill its six sections:
 
 ```
-  Solo context   agent_instructions, pasted verbatim
-  Objective      the one specific question this worker owns, plus the confirmed corpus scope
-                 (directories, date range, session list)
-  Boundaries     read-only against the corpus; never edit a skill, a rule, or any other file
-                 in any repository; no todos, no KV; when stuck, record what you found and stop
-  Tool guidance  the corpus mechanics below, plus: work from the extracted event log, never
-                 from a grep over raw JSONL; report every count with the command that produced
-                 it; quote the session id and the entry's `.timestamp` for every claim; report
-                 what the corpus shows, never the fix — `/plan` owns that
-  Output format  write findings to scratchpad "retro/<slug>/<area-slug>" — the orchestrator
-                 owns the retro pad
-  Completion     timer_set per `solo-agent-orchestration`'s **Workers signal completion**,
-                 delivery_process_id=<orchestrator process_id>
+  ## Solo context   agent_instructions, pasted verbatim
+  ## Objective      the one specific question this worker owns, plus the confirmed corpus scope
+                    (directories, date range, session list)
+  ## Boundaries     read-only against the corpus; never edit a skill, a rule, or any other file
+                    in any repository; no todos, no KV; when stuck, record what you found and stop
+  ## Tool guidance  the corpus mechanics below, plus: work from the extracted event log, never
+                    from a grep over raw JSONL; report every count with the command that produced
+                    it; quote the session id and the entry's `.timestamp` for every claim; report
+                    what the corpus shows, never the fix — `/plan` owns that
+  ## Output format  write findings to scratchpad "retro/<slug>/<area-slug>" — the orchestrator
+                    owns the retro pad
+  ## Completion     timer_set per `solo-agent-orchestration`'s **Workers signal completion**,
+                    delivery_process_id=<orchestrator process_id>
 ```
 
 ### Corpus mechanics — paste this into the brief's Tool guidance section
@@ -184,8 +184,10 @@ send_input(process_id, input=<pointer to the brief pad, naming its id>)
 
 Workers signal when they finish. Before arming the guard, write a guard pad per
 `solo-agent-orchestration`'s **The guard pad**. It carries the watch list — process id, name,
-area, report pad id — and the branches. Then arm one idle timer per run as the dead-worker
-fallback only:
+area, report pad id — and the branches. Arm the timer only once the workers produce output.
+`implement-waves.md`'s **The join** gives the reason: an entirely idle watch list returns
+`already_satisfied` and creates no timer. Check the return value for that case, then arm one
+idle timer per run as the dead-worker fallback only:
 
 ```
 timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
@@ -261,6 +263,6 @@ on approval. That gate is why this skill edits nothing itself.
 ## Notes
 
 - Read-only against the corpus: no edits, in any repository
-- Model-invocable, unlike `/plan` and `/implement`, because it has no side effect to gate
+- Model-invocable, because it has no side effect to gate
 - No todos — a retro precedes tracked work
 - The pad must stand alone. `/plan` may read it in a session with none of this context

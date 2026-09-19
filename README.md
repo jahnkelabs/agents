@@ -310,8 +310,9 @@ or approve the roster as proposed.
 **Both runtimes bound an immutable-target worker's writes by directory.** That worker reads the
 target and writes only scratch, and the operating system enforces the bound. On Claude the
 sandbox covers Bash alone. `Read`, `Edit` and `Write` use the permission system, so the brief
-also needs a tool deny list. Each runtime adapter carries the arguments and the date of its last
-measurement.
+also needs a tool deny list. Codex keeps `/tmp` and `$TMPDIR` writable, so it does not isolate
+one worker's scratch directory from another's. Each runtime adapter carries the arguments and
+the date of its last measurement.
 
 An editing worker is the harder case. No directory-scoped posture denies git in the worktree the
 worker edits. Claude denies `git add` per command, and Codex has no per-worker equivalent. The

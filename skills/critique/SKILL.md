@@ -74,8 +74,7 @@ answers `Plan completeness` wrongly, and that lens is why this pass exists.
 ```
 
 `/implement` calls this skill once per repository per milestone, and once more after the last one
-pushes. A three-milestone, one-repository run with a two-critic roster therefore writes eight
-critic pads. The repository belongs in the middle segment for the same reason the milestone does.
+pushes. The repository belongs in the middle segment for the same reason the milestone does.
 Two repositories in one milestone would otherwise write one pad twice.
 
 Omit the middle segment, and M2's pad overwrites M1's. Step 6 archives every pad after the merge,
@@ -198,17 +197,20 @@ Write the worker's brief to a scratchpad, per `solo-agent-orchestration`'s **The
 pad**:
 
 ```
-  Solo context — agent_instructions, pasted verbatim
-  Objective — review <target> adversarially; the applicable lenses (step 3); the approved
-    plan `--plan` resolved, or "none"; the adversarial-review caveat above
-  Boundaries — the target is immutable; run no git write command; write only the critic's
-    scratch directory (absolute) or its Solo scratchpad; when stuck, record and stop
-  Tool guidance — per finding: severity (bug | risk | nit), location (file:line), claim,
+  ## Solo context   agent_instructions, pasted verbatim
+  ## Objective      review the target adversarially — carry what step 1 resolved: the diff
+    text itself, or the exact refs and container paths, never `<target>`'s name alone; the
+    applicable lenses (step 3); the approved plan `--plan` resolved, or "none"; the
+    adversarial-review caveat above
+  ## Boundaries     the repository path the target belongs to; the target is immutable; run
+    no git write command; write only the critic's scratch directory (absolute) or its Solo
+    scratchpad; when stuck, record and stop
+  ## Tool guidance  per finding: severity (bug | risk | nit), location (file:line), claim,
     a concrete failure or a statement that none exists, and a fix; never suggest a feature,
     a refactor, or scope growth; never say "add tests" without naming the untested path;
     be specific and harsh — vague concerns are noise
-  Output format — write to the scratchpad step 1 resolved
-  Completion — timer_set per `solo-agent-orchestration`'s Workers signal completion
+  ## Output format  write to the scratchpad step 1 resolved
+  ## Completion     timer_set per `solo-agent-orchestration`'s Workers signal completion
 ```
 
 Send only the pointer, per **The pointer shape** under **The PTY ceiling**:
@@ -218,8 +220,10 @@ send_input(process_id, input=<pointer to the brief pad, naming its id>)
 ```
 
 Before arming the guard, write a guard pad per `solo-agent-orchestration`'s **The guard pad**.
-It carries the watch list — process id, model, report pad id — and the branches. Then arm one
-idle timer as the dead-worker fallback only:
+It carries the watch list — process id, model, report pad id — and the branches. Arm the timer
+only once the critics produce output. `implement-waves.md`'s **The join** gives the reason: an
+entirely idle watch list returns `already_satisfied` and creates no timer. Check the return
+value for that case, then arm one idle timer as the dead-worker fallback only:
 
 ```
 timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
@@ -245,9 +249,6 @@ roster holds more than one. A finding one critic found alone carries no agreemen
 it either, because the refutation pass below covers a one-model roster only. Gating on agreement
 discards exactly the findings a multi-model roster exists to produce.
 
-This is not a hypothetical. One run overrode that gate by hand. Following it would have dropped
-most of the findings the fix wave then applied.
-
 **Agreement is no evidence in the other direction either.** Step 6's criteria decide what reaches
 the user, and none of them names agreement. `1b15feba` finding 1 carried three-model agreement,
 and the user delegated it anyway. Two two-model findings turned out to be no findings at all.
@@ -263,10 +264,8 @@ grounds never do. The ledger discloses every decision either way.
 
 **Default: fail toward accepting.** Accept any finding that matches no criterion below.
 
-Real runs set that default. The user overrode serial triage 13 times between 2026-08-04 and
-2026-08-23, every time as the reply to `Finding 1 of N`. Serial triage cost about 115 human turns
-across 8 runs for about 176 findings. Delegated triage cost about 20 turns across 14 runs for
-about 260.
+Real runs back this default. Serial triage cost about 115 human turns across 8 runs for about
+176 findings. Delegated triage cost about 20 turns across 14 runs for about 260.
 
 **What acceptance does depends on who called.** A standalone critique reports the remedy and edits
 nothing, because the request covered a review only. `/critique --pr 42` that rewrites the local
@@ -301,8 +300,7 @@ Each criterion is a test you apply to one finding. Escalate only on a yes.
 
 **C6 covers a genuine tie and nothing wider.** When you can argue for one fix, take it and
 disclose the alternative in the ledger. `More than one plausible fix exists` holds for roughly a
-third of findings, and that reading would rebuild serial triage. The corpus's largest cluster was
-a different remedy than the one recommended — 15 findings, 7 of them in `9fd97382`.
+third of findings, and that reading would rebuild serial triage.
 
 ### The three anti-criteria
 
@@ -310,8 +308,7 @@ Each one is a prohibition. Never escalate a finding on one of these grounds.
 
 - **Severity `nit`.** The corpus presented 16 nits and fixed 16. The user questioned none.
 - **Cross-model agreement.** `1b15feba` finding 1 carried three-model agreement, and the user
-  delegated it anyway. Two two-model findings turned out to be no findings at all. Both critics
-  lacked context the user had already given.
+  delegated it anyway. Two two-model findings turned out to be no findings at all.
 - **A verifiable mismatch between two artifacts with one mechanical fix.** The user accepted
   about 60 of about 120 individually presented findings with a single word.
 

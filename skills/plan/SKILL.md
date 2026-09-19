@@ -1,7 +1,7 @@
 ---
 name: plan
 description: Research, grill, and produce an implementation plan in a Solo scratchpad
-argument-hint: "[topic | research/<slug> | paths]"
+argument-hint: "[topic | research/<slug> | recall/<issue-ref> | paths]"
 ---
 
 # Plan
@@ -22,7 +22,7 @@ creates no Solo todos. `/implement` composes the slices into milestones when it 
 - A research pad (`research/<slug>` or a numeric id) — from a standalone `/research`
 - A retro pad (`retro/<slug>` or a numeric id) — from `/retro`
 - File paths — read fully before anything else
-- A recall payload — when invoked by `/recall`
+- A recall pad (`recall/<issue-ref>` or a numeric id) — from `/recall`
 
 With no arguments:
 
@@ -241,7 +241,6 @@ the criteria of the items it carries, and it asks the user nothing in between.
 `skills/implement/SKILL.md` states that under `## The exit criterion`.
 
 Write a command, never a description. `the tests pass` proves nothing, because nobody can run it.
-That command also counts as an automated check, so do not repeat it under `### Verification`.
 
 One corpus attributed 40 of 109 escalations to plan ambiguity. The two most frequent self-imposed
 pauses were decisions the plan left open. An exit criterion is what closes them.

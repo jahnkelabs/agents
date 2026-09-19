@@ -96,27 +96,31 @@ order, and put this task's content in each:
 ```
   ## Solo context     the worker's process id, this project, and the agent_instructions
                       that spawn_agent returned
-  ## Objective        Solo todo <id>, which carries the slices, their files, and their
-                      verification. Name the plan pad for surrounding context.
+  ## Objective        Solo todo <id>, which carries the slices, their files, their
+                      verification, and their proof commands. Name the plan pad for
+                      surrounding context.
   ## Boundaries       the worktree of each repository this task writes in, the branch, the
                       declared paths, the worker's scratch directory, and the preamble above
   ## Tool guidance    the prior waves, or "this is the first wave of this milestone", plus
                       any lock this task needs
   ## Output format    the report pad "<slug>/<milestone>/<task>", and the ESCALATION: marker
-  ## Completion       the timer_set call below, with this session's process_id
+  ## Completion       the rule's timer_set call, with this session's process_id
 ```
 
 A mid-run amendment edits that pad in place. Never write a second pad for one worker.
 
-**Write no H1 heading into a brief pad or a guard pad.** Solo replaces the pad name with the first
-H1, and the pointer then names a pad nobody can find. Keep the id `scratchpad_write` returns,
-because the pointer carries it.
+`## Completion` carries the body text, and the rule gives the call:
+
+```
+body="Task <letter> complete, <clean|escalated>. Report in scratchpad <the report pad id>."
+```
+
+**A brief pad, a guard pad, and a report pad carry no H1.** The rule's `## The worker brief pad`
+says why.
 
 **Take a lock only where a second writer may exist.** The rule's `## Locks and reports` carries
-that test. A wave's tasks hold disjoint file scopes, so they never contend with each other. Where
-this task does need one, the key is the absolute path inside the worktree that holds the file,
-lowercased. A relative key collides with every tree that has a file of that name. Tell the worker
-to report the holding actor and escalate where a lock is unavailable, rather than wait.
+that test and the key shape. Tell the worker to report the holding actor and escalate where a
+lock is unavailable, rather than wait.
 
 **The report pad carries the milestone, not the task letter alone.** A composition may restart
 task letters per milestone, so `<slug>/<task>` lets M2 task A overwrite M1 task A. That destroys
@@ -127,17 +131,16 @@ an escalation record that nothing recreates.
 ```
 1. Read every file your task names, fully, before you change anything
 2. Make the changes
-3. Run the task's automated verification. Every check must be able to fail.
+3. Run the task's automated verification, then each proof command your todo names.
+   Every check must be able to fail.
    Run each one against the pre-change state first. Where a check already passes, prove it fails
    on a mutated copy under <this worker's scratch directory, absolute>. Never mutate the
    repository for a proof.
-4. Write your report to scratchpad "<slug>/<milestone>/<task>", and keep the id it returns.
-   Record what you did, the verification output, and anything you found that the task did not
-   anticipate. Begin the report with "ESCALATION:" if you stop rather than finish.
-5. Release any lock you took
-6. Signal completion as your last act:
-     timer_set(delay_ms=1, delivery_process_id=<this session's process_id>,
-               body="Task <letter> complete, <clean|escalated>. Report in scratchpad <the report pad id>.")
+4. Write your report to scratchpad "<slug>/<milestone>/<task>", with no H1, and keep the id it
+   returns. Record what you did, the verification output, each proof command and its result, and
+   anything you found that the task did not anticipate. Begin the report with "ESCALATION:" if
+   you stop rather than finish.
+5. Release any lock you took, then signal completion per `## Completion`
 ```
 
 ## The pointer
@@ -150,7 +153,13 @@ message arrives as its tail.
 ## The join
 
 1. **Wait for the workers to signal.** Each one wakes this session directly when it finishes.
-   Arm one idle timer per wave as the dead-worker fallback only:
+   One idle timer per wave is the dead-worker fallback, and nothing more.
+
+   Write the guard pad before you arm that timer, in the shape `### The guard pad` gives. The
+   body names the pad id and stops there. The 1,000-byte ceiling covers a guard body too.
+
+   Then arm the timer, once the workers produce output. An entirely idle watch list returns
+   `already_satisfied` and creates no timer at all.
    ```
    timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
      body="Guard fired for milestone <m>, wave <N>.
@@ -158,11 +167,6 @@ message arrives as its tail.
            Procedure: scratchpad_read(scratchpad_id=<the guard pad id>)")
      → timer_id
    ```
-   Write that guard pad first, in the shape `### The guard pad` gives. The body names the pad id
-   and stops there. The 1,000-byte ceiling covers a guard body too.
-
-   Arm the timer once the workers produce output. An entirely idle watch list returns
-   `already_satisfied` and creates no timer at all.
 
    Do not treat that timer as the completion signal. It has no debounce, and a worker that thinks
    at length looks like a finished one — see `solo-agent-orchestration`.
@@ -181,8 +185,9 @@ git commit -m "<type>(<scope>): <task summary>"
 ```
 
 Never `git add -A` — another task's work may be in the tree. A task that wrote in two
-repositories commits once per repository. Then `todo_complete` each task, emit the wave state
-block below, and start the next wave of this milestone.
+repositories commits once per repository. Then `todo_complete` each task and start the next wave
+of this milestone, which marks its todos in progress. Emit the wave state block below after that
+wave starts. After the last wave, emit one final block with every task committed.
 
 **The wave join is the only place a task commits.** No step after the last wave commits a task
 again. A second task commit instruction stops on `nothing to commit`. Deferring it instead lets a
@@ -195,6 +200,9 @@ The milestone loop's critique remedies are the one exception, and its step 5 own
 Every wave join emits one block, and this is the only place a wave speaks.
 `rules/chat-vocabulary.md` reserves the `Running` heading for it. It stops nothing and carries
 no footer.
+
+**Emit it after the next wave starts, never before.** A block that shows the next wave as pending
+goes stale immediately, and the user must ask.
 
 **It carries every wave in the milestone, not the wave that just ended.** The user's need is to
 read where the run is without asking. A block that covers one wave answers that for ten minutes,
@@ -212,7 +220,7 @@ and then the reader asks again.
   wave 6    G  decision record         opus · high
 ```
 
-<what the plan did not anticipate, in one or two sentences. Then the guard's id and its kind.>
+<what the plan did not anticipate, in one or two sentences. Then the guard's id.>
 
 Each row names its wave, the task letter, and a short task name. The state follows:
 

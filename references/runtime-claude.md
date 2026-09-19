@@ -12,7 +12,6 @@ Every measurement here ran on 2026-09-19, against Claude Code **2.1.278**.
 |---|---|
 | Launch in auto-approval mode | `"--permission-mode", "auto"` |
 | Never use a loosening mode | never `bypassPermissions` and never `acceptEdits` |
-| Deny everything not pre-approved | `"--permission-mode", "dontAsk"` — stricter than `auto` |
 | Bound a worker's writes by directory | `"--settings", '{"sandbox":{…}}'` — see **The Bash sandbox** |
 | Stop the editing tools reaching the target | `"--settings", '{"permissions":{"deny":["Edit","Write","NotebookEdit"]}}'` |
 | Deny an editing worker's git writes | `"--settings", '{"permissions":{"deny":["Bash(git add:*)", …]}}'` — per command |
@@ -81,8 +80,9 @@ the command exited 0. Naming that path in `denyWrite` changed the result to
 `operation not permitted`, and the file kept its contents.
 
 **Name the target in `denyWrite`.** That is the key the sandbox enforces, and it outranks
-`allowWrite`. A worker launched with `denyWrite` naming `/Users/devenj/Code/jahnkelabs/agents`
-also failed to read it: `cat: …/README.md: Operation not permitted`.
+`allowWrite`. It blocks every write to the target, and it leaves reads intact. A worker under
+that posture read the target's `README.md` at exit 0. Its append to the same directory failed
+with `operation not permitted`. Two probes measured this pair on Claude Code 2.1.278.
 
 Two limits survive at this version and date:
 
@@ -127,37 +127,12 @@ A sandbox that permits the worker's edits permits `git add` in the same worktree
 is therefore the only per-worker control here. `references/runtime-codex.md` records that Codex
 has no per-worker equivalent.
 
-## Denying a prompt nobody can answer
+## Two flags a Solo worker cannot use
 
-`--permission-prompts` takes `host` or `none`, and the CLI documents it for `--print`. Under
-`none`, Claude Code denies anything that would prompt. The permission mode still decides
-everything else.
-
-One denied worker read this tool result:
-
-```
-Permission required to write to `target.txt`, but this session has no approval surface — nobody
-can answer a permission prompt in a non-interactive session, so the write was denied
-automatically and cannot be retried.
-```
-
-`none` also removes `AskUserQuestion`. A worker launched with it reported the tool absent from its
-own list.
-
-**A Solo worker runs interactively in a PTY, not under `--print`.** Treat this flag as the control
-for a `--print` run, and do not assume it applies to an ordinary `spawn_agent` worker. The
-documentation names a `PermissionRequest` hook as the way to allow a call under `none`. This task
-measured neither that hook nor the release that first carried the flag.
-
-## The output contract
-
-`--output-format json` with `--json-schema <schema>` returns a validated result in
-`structured_output`. A run given
-`{"type":"object","properties":{"status":{"type":"string"},"count":{"type":"integer"}},"required":["status","count"]}`
-returned `structured_output` as `{"status": "clean", "count": 3}`.
-
-Both flags work with `--print` only. Use them when an orchestrator parses a worker's result rather
-than reading a report scratchpad.
+`--permission-prompts none` makes Claude Code deny anything that would prompt, and it works under
+`--print` only. `--output-format json` with `--json-schema` returns a validated
+`structured_output`, and it works under `--print` only. A Solo worker runs interactively in a
+PTY, so neither flag reaches it.
 
 ## The one policy Claude cannot implement
 

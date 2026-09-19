@@ -145,9 +145,9 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what the user
    every runtime in the roster denies them. Do not restate a flag, and never promise a denial the
    roster cannot give.
 6. **Create the todos** — one per approved task, tagged with its milestone. The body carries the
-   **task spec**: the slices it covers, their files, and their verification. The plan holds
-   slices; the todo holds the grouping, which exists nowhere else. The worker reads its own todo,
-   so this is the only place the spec belongs.
+   **task spec**: the slices it covers, their files, their verification, and their proof
+   commands. The plan holds slices; the todo holds the grouping, which exists nowhere else. The
+   worker reads its own todo, so this is the only place the spec belongs.
    ```
    todo_create(title="<task>: <name>", body=<task spec>,
                tags=["plan:<slug>", "milestone:<m>", "project:<repo>", "task:<letter>"])

@@ -62,7 +62,8 @@ would hit. So the 0.149.0 result stands as consistent, not as independently reco
 banner states `sandbox: workspace-write [workdir, /tmp, $TMPDIR]`. A write inside `/tmp` but
 outside the `-C` directory still succeeded. A target that lives under `/tmp` would not get this
 posture's protection. This repository's targets live under `/Users/...`, so the guarantee above
-holds for them.
+holds for them. It does not hold for scratch. Every worker's scratch directory also lives under
+`/tmp`, so `workspace-write` does not isolate one Codex worker's scratch from another's.
 
 Each test ran once, on one version. Treat any wider claim as untested. Re-run the five checks on
 the version you have, rather than quoting either block.

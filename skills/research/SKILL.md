@@ -105,19 +105,19 @@ Write the worker's brief to a scratchpad, per `solo-agent-orchestration`'s **The
 pad**. Fill its six sections:
 
 ```
-  Solo context   agent_instructions, pasted verbatim
-  Objective      the one specific question this worker owns; document what exists, not what
-                 should be — no improvements, no critique, no proposed work
-  Boundaries     read-only: no edits, no branches, no commits, no other git write command;
-                 read only inside <absolute repo path>; no todos, no KV; when stuck, record
-                 what you found and stop
-  Tool guidance  read the files you need fully, no limit or offset; report file paths, line
-                 numbers, and factual descriptions of how the pieces connect; note which repo
-                 each finding belongs to when more than one is in scope
-  Output format  write findings to scratchpad "research/<slug>/<area-slug>" — the orchestrator
-                 owns the research pad
-  Completion     timer_set per `solo-agent-orchestration`'s **Workers signal completion**,
-                 delivery_process_id=<orchestrator process_id>
+  ## Solo context   agent_instructions, pasted verbatim
+  ## Objective      the one specific question this worker owns; document what exists, not what
+                    should be — no improvements, no critique, no proposed work
+  ## Boundaries     read-only: no edits, no branches, no commits, no other git write command;
+                    read only inside <absolute repo path>; no todos, no KV; when stuck, record
+                    what you found and stop
+  ## Tool guidance  read the files you need fully, no limit or offset; report file paths, line
+                    numbers, and factual descriptions of how the pieces connect; note which repo
+                    each finding belongs to when more than one is in scope
+  ## Output format  write findings to scratchpad "research/<slug>/<area-slug>" — the orchestrator
+                    owns the research pad
+  ## Completion     timer_set per `solo-agent-orchestration`'s **Workers signal completion**,
+                    delivery_process_id=<orchestrator process_id>
 ```
 
 Send only the pointer, per **The pointer shape** under **The PTY ceiling**:
@@ -128,8 +128,10 @@ send_input(process_id, input=<pointer to the brief pad, naming its id>)
 
 Workers signal when they finish. Before arming the guard, write a guard pad per
 `solo-agent-orchestration`'s **The guard pad**. It carries the watch list — process id, name,
-area, report pad id — and the branches. Then arm one idle timer per run as the dead-worker
-fallback only:
+area, report pad id — and the branches. Arm the timer only once the workers produce output.
+`implement-waves.md`'s **The join** gives the reason: an entirely idle watch list returns
+`already_satisfied` and creates no timer. Check the return value for that case, then arm one
+idle timer per run as the dead-worker fallback only:
 
 ```
 timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,

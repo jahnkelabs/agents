@@ -75,7 +75,7 @@ The brief carries six sections, in this order:
   ## Completion       the timer_set call, with the orchestrator's process id
 ```
 
-**A brief pad and a guard pad carry no H1 heading.** Solo replaces the `name` you pass `scratchpad_write` with the content's first H1. Without one the name survives, which keeps the pad legible in a listing. Two probe pads measured this on 2026-09-19.
+**A brief pad, a guard pad, and a report pad carry no H1 heading.** Solo replaces the `name` you pass `scratchpad_write` with the content's first H1. Without one the name survives, which keeps the pad legible in a listing and resolvable by name. Two probe pads measured this on 2026-09-19.
 
 **A worker without Solo MCP cannot read its brief pad.** Three Codex workers hit this, and their guards collected stdout instead. `whoami()` surfaces the failure first, before the worker starts the job. The pointer therefore calls `whoami()` first, and it tells the worker to stop when Solo is unavailable.
 
@@ -122,11 +122,13 @@ The pad carries the watch list and one branch per outcome:
 
 ```
   opening               the guard fired, and this is a failure to investigate
-  ## The watch list     one row per worker: process id, name, todo, report pad id
+  ## The watch list     one row per worker: process id, name, todo, report pad name
   ## Do this, in order  cancel every other guard, then read status and output,
                         then branch on running, exited, and idle with a pad
   ## Only then          the escalation sweep, and what the orchestrator may commit
 ```
+
+**The watch list names each report pad, because no id exists yet.** The worker writes that pad after you arm the guard. It writes the pad with no H1, so the name you assigned survives. A guard that fires resolves the id from the name with `scratchpad_list`.
 
 ## Capability, not compliance
 
@@ -152,7 +154,7 @@ One session already paid for this. The third spawn attempt abandoned `spawn_agen
 
 **Name that path in the brief of any worker that writes a file.** Each adapter names the argument that bounds writes to that directory. An editing worker needs the path too, because a verification proof mutates a copy rather than the target. A worker that writes only its Solo scratchpad needs no path.
 
-**Both runtimes bound a worker's writes by directory.** Claude Code ships a Bash sandbox that the operating system enforces. `sandbox.filesystem.allowWrite` and `denyWrite` name the writable paths, for every Bash command and its child processes. Codex scopes writes to its working directory. Each adapter carries the arguments and the date of its last measurement. This paragraph holds on 2026-09-19, against codex-cli 0.155.1 and Claude Code 2.1.278.
+**Both runtimes bound a worker's writes by directory.** Claude Code ships a Bash sandbox that the operating system enforces. `sandbox.filesystem.allowWrite` and `denyWrite` name the writable paths, for every Bash command and its child processes. Codex scopes writes to its working directory. **Codex also keeps `/tmp` and `$TMPDIR` writable.** Every worker's scratch directory lives there, so `workspace-write` does not isolate one Codex worker's scratch from another's. A target under a temp root loses this posture's protection too. Each adapter carries the arguments and the date of its last measurement. This paragraph holds on 2026-09-19, against codex-cli 0.155.1 and Claude Code 2.1.278.
 
 Two limits survive on Claude, at the same version and date:
 
@@ -165,7 +167,7 @@ Where no runtime in the roster can, the denial does not exist. **Disclose the ga
 
 **Carry the invariant preamble once, where the runtime allows it.** Two things are identical across every worker in a wave. They are what a worker must not touch, and what to do when stuck.
 
-The working directory is not one of them. A milestone that spans repositories cuts one worktree per repository. **A task receives one preamble per repository it writes in.** Each one names that repository's own worktree, and it scopes the task's declared paths to that repository. Most tasks write in one repository and take one preamble. A `same-worker` task may span two, and it then takes two. A runtime with a system-prompt argument takes the preamble there. That shortens each `send_input` and makes the constraints harder to drop by accident. A runtime without one carries the preamble in every prompt.
+The working directory is not one of them. A milestone that spans repositories cuts one worktree per repository. **A task receives one preamble per repository it writes in.** Each one names that repository's own worktree, and it scopes the task's declared paths to that repository. Most tasks write in one repository and take one preamble. A `same-worker` task may span two, and it then takes two. A runtime with a system-prompt argument takes the preamble there. That shortens each `send_input` and makes the constraints harder to drop by accident. A runtime without one carries the preamble in the brief pad's `## Boundaries`. `send_input` still carries the pointer alone.
 
 ## One worktree per milestone
 
