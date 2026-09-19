@@ -117,7 +117,6 @@ spawn_agent(agent_tool_id=<id>, name="retro-<area-slug>", extra_args=[
   <the model and effort arguments, at the tier this area needs>,
   <the auto-approval and immutable-target arguments from the adapter>])
   → process_id, agent_instructions
-send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
 
 A read-only assignment is no reason to drop auto-approval, and never a reason to raise it to a
@@ -127,16 +126,26 @@ A retro worker is an immutable-target worker. It reads the corpus and writes onl
 scratchpad, so it cannot edit the skills it reports on. `solo-agent-orchestration` gives that
 posture, and the adapter gives the arguments. Read what the adapter says its runtime cannot bound.
 
+Write the worker's brief to a scratchpad, per `solo-agent-orchestration`'s **The worker brief
+pad**. Fill its six sections:
+
 ```
-Investigate one area of a Claude Code transcript corpus.
+  Solo context   agent_instructions, pasted verbatim
+  Objective      the one specific question this worker owns, plus the confirmed corpus scope
+                 (directories, date range, session list)
+  Boundaries     read-only against the corpus; never edit a skill, a rule, or any other file
+                 in any repository; no todos, no KV; when stuck, record what you found and stop
+  Tool guidance  the corpus mechanics below, plus: work from the extracted event log, never
+                 from a grep over raw JSONL; report every count with the command that produced
+                 it; quote the session id and the entry's `.timestamp` for every claim; report
+                 what the corpus shows, never the fix — `/plan` owns that
+  Output format  write findings to scratchpad "retro/<slug>/<area-slug>" — the orchestrator
+                 owns the retro pad
+  Completion     timer_set per `solo-agent-orchestration`'s **Workers signal completion**,
+                 delivery_process_id=<orchestrator process_id>
+```
 
-## Your area
-<the one specific question this worker owns>
-
-## Corpus scope
-<the confirmed directories, the date range, and the session list>
-
-## Corpus mechanics — read this before your first command
+### Corpus mechanics — paste this into the brief's Tool guidance section
 
 Each transcript is JSONL, and one line is one entry. The fields you need are `.type`,
 `.message.content`, and `.timestamp`.
@@ -167,31 +176,21 @@ Extract one event log with `jq` first, then work from that file:
 Pair a call to its return on `tool_use.id` and `tool_result.tool_use_id`. The `is_error` field
 marks a call that failed.
 
-## Instructions
-1. Work from the extracted event log, never from a grep over raw JSONL
-2. Report every count with the command that produced it, so the orchestrator can re-run it
-3. Quote the session id and the entry's `.timestamp` for every claim
-4. Write your findings to a scratchpad named "retro/<slug>/<area-slug>"
-5. Signal completion as your last act:
-     timer_set(delay_ms=1, delivery_process_id=<orchestrator process_id>,
-               body="Area <area-slug> done. Findings in retro/<slug>/<area-slug>.")
+Send only the pointer, per **The pointer shape** under **The PTY ceiling**:
 
-## Constraints
-- Read-only: no edits, no branches, no commits, no other git write command
-- Never edit a skill, a rule, or any other file in any repository
-- Do not create todos or write KV
-- Write only your own scratchpad — the orchestrator owns the retro pad
-- Report what the corpus shows. Never propose the fix, because /plan owns that
+```
+send_input(process_id, input=<pointer to the brief pad>)
 ```
 
-Workers signal when they finish. Arm one idle timer per run as the dead-worker fallback only.
-The timer has no debounce, and it cannot tell a thinking worker from a finished one, per
-`solo-agent-orchestration`:
+Workers signal when they finish. Before arming the guard, write a guard pad per
+`solo-agent-orchestration`'s **The guard pad**. It carries the watch list — process id, name,
+area, report pad — and the branches. Then arm one idle timer per run as the dead-worker
+fallback only:
 
 ```
 timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
-  body="Retro guard expired. Any area that has not signalled has died or hung —
-        check its scratchpad and process status before synthesizing without it.")
+  body="Retro guard fired. A worker that never signalled is a failure to investigate,
+        not a completion. Procedure: <guard pad title>")
   → timer_id
 ```
 

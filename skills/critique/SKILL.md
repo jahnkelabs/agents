@@ -160,8 +160,8 @@ answers the other.
 
 ## Step 4 — Run the critics
 
-Spawn one Solo worker per selected model. Each worker runs all applicable lenses over the whole
-target. Use `spawn_agent`, per `solo-agent-orchestration`. A vendor sub-agent can run only the
+Spawn one Solo worker per selected model, each running all applicable lenses over the whole
+target. Use `spawn_agent`, per `solo-agent-orchestration` — a vendor sub-agent runs only the
 session's model, and this skill needs more than one.
 
 Call `whoami` first and keep the returned `process_id` — every critic needs it to signal back.
@@ -172,80 +172,65 @@ spawn_agent(agent_tool_id=<id>, name="critique-<model>", extra_args=[
   <the auto-approval argument from the adapter>,
   <the immutable-target arguments from the adapter — writable scratch, unwritable
    target, unrestricted reads>])
-send_input(process_id, input=<agent_instructions + the prompt below>)
+  → process_id, agent_instructions
 ```
 
-The roster spans runtimes, so read an adapter per critic rather than once. `list_agent_tools`
-returns a `tool_type` for each. Read `references/runtime-<tool_type>.md` and use the arguments it lists.
-Each adapter also names the startup behavior that eats a worker's first input, and what its
-runtime cannot enforce. Never use a bypass mode, even though a critic only reads.
+The roster spans runtimes, so read an adapter per critic. `list_agent_tools` returns a
+`tool_type` for each, and `references/runtime-<tool_type>.md` lists its arguments. Each adapter
+also names the startup behavior that eats a worker's first input. Never use a bypass mode, even
+though a critic only reads.
 
-Do not pass a model argument: the roster *is* the model choice. An override would remove the
-independence this skill depends on. Raise the effort: it is a separate setting, and a higher
-effort finds more real defects.
+Do not pass a model argument — the roster *is* the model choice. An override would remove the
+independence this skill depends on. Raise the effort instead; it finds more real defects.
 
-**Every critic is an immutable-target worker.** `rules/solo-agent-orchestration.md` carries that
-class and what each runtime can enforce for it. Read it, then read the adapter. One runtime scopes
-writes by directory and blocks the target structurally. Another scopes them by tool. A worker
-denied the editing tools still writes the target through the shell. Where the target stays
-writable, say so in the prompt. Never assert a denial the runtime lacks.
+**Every critic is an immutable-target worker.** `solo-agent-orchestration` gives that posture,
+and the adapter gives what each runtime can enforce for it. Where the target stays writable,
+say so in the prompt rather than asserting a denial the runtime lacks.
 
-The prompt below carries the immutable-target, scratch-only, and no-git rules in its `## Rules`
-block. They reach the critic whether the runtime enforces them or not. On a runtime that cannot
-bound them, the prompt is the only place they exist. Never drop them from it.
+Give each worker only the target and the approved plan, not the reasoning behind them.
+A critic that already knows why the code is good is no longer a critic.
 
-Each critic signals when it finishes; arm one idle timer as the dead-worker fallback only:
+**The adversarial-review caveat.** A reviewer asked to find gaps reports some even when the
+work is sound, because that is the assignment. Tell the critic to flag only what affects
+correctness or the stated requirements, and to treat the rest as optional.
+
+Write the worker's brief to a scratchpad, per `solo-agent-orchestration`'s **The worker brief
+pad**:
+
+```
+  Solo context — agent_instructions, pasted verbatim
+  Objective — review <target> adversarially; the applicable lenses (step 3); the approved
+    plan `--plan` resolved, or "none"; the adversarial-review caveat above
+  Boundaries — the target is immutable; run no git write command; write only the critic's
+    scratch directory (absolute) or its Solo scratchpad; when stuck, record and stop
+  Tool guidance — per finding: severity (bug | risk | nit), location (file:line), claim,
+    a concrete failure or a statement that none exists, and a fix; never suggest a feature,
+    a refactor, or scope growth; never say "add tests" without naming the untested path;
+    be specific and harsh — vague concerns are noise
+  Output format — write to the scratchpad step 1 resolved
+  Completion — timer_set per `solo-agent-orchestration`'s Workers signal completion
+```
+
+Send only the pointer, per **The pointer shape** under **The PTY ceiling**:
+
+```
+send_input(process_id, input=<pointer to the brief pad>)
+```
+
+Before arming the guard, write a guard pad per `solo-agent-orchestration`'s **The guard pad**.
+It carries the watch list — process id, model, report pad — and the branches. Then arm one
+idle timer as the dead-worker fallback only:
 
 ```
 timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
-  body="Critique guard expired. Any critic that has not signalled has died or hung —
-        check its scratchpad and process status before merging without it.")
+  body="Critique guard fired. A critic that never signalled is a failure to investigate,
+        not a completion. Procedure: <guard pad title>")
   → timer_id
 ```
 
 Keep the returned `timer_id`. When the last critic signals, `timer_cancel(timer_id=<id>)` before
 you merge findings. A guard you leave armed fires later and arrives as an instruction about
 critics that finished long ago.
-
-Give each worker only the target and the approved plan — not the reasoning that produced them.
-A critic that already knows why the code is good is no longer a critic.
-
-```
-Review <target> adversarially. Your job is to find what is wrong with it.
-
-## Target
-<diff, plan text, or file contents>
-
-## Approved plan
-<the plan `--plan` resolved, or "none — the caller offered none">
-
-## Lenses
-Work through each of these separately:
-<the applicable lenses and their questions>
-
-## For each finding, report
-- severity: bug (wrong behavior) | risk (plausible failure) | nit (style, naming, cleanup)
-- location: file:line
-- claim: what is wrong, in one sentence
-- failure: concrete inputs or state → the wrong result. If you cannot produce one, say so —
-  it is probably not a bug.
-- fix: the specific change
-
-## Rules
-- Do not suggest features, refactors, or improvements beyond the target's scope
-- Do not report "consider adding tests" without naming the specific untested path
-- A finding you cannot demonstrate is a nit at best. Say which it is.
-- Write no file outside <the critic's scratch directory, absolute>. Your Solo scratchpad is the one exception.
-- The target is immutable. Read it; never edit it, add a file to it, or delete one from it.
-- Run no git write anywhere — no `add`, no `commit`, no `checkout`, no `stash`.
-- Your permission layer may not enforce these three rules. They hold whether it enforces them or not.
-- Write your findings to the scratchpad named "<the pad name step 1 resolved>"
-- Signal completion as your last act:
-    timer_set(delay_ms=1, delivery_process_id=<orchestrator process_id>,
-              body="Critique <model> done. Findings in <that same pad name>.")
-
-Be specific and be harsh. Vague concerns are noise.
-```
 
 ## Step 5 — Merge
 

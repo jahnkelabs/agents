@@ -86,7 +86,6 @@ spawn_agent(agent_tool_id=<id>, name="research-<area-slug>", extra_args=[
   <the model and effort arguments, at the tier this area needs>,
   <the auto-approval and immutable-target arguments from the adapter>])
   → process_id, agent_instructions
-send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
 
 `list_agent_tools` returns a `tool_type` for each runtime. Read `references/runtime-<tool_type>.md` and
@@ -102,39 +101,40 @@ posture, and the adapter gives the arguments. Read what the adapter says its run
 
 Tier by area: tracing one call path is not the same job as mapping a subsystem's conventions.
 
+Write the worker's brief to a scratchpad, per `solo-agent-orchestration`'s **The worker brief
+pad**. Fill its six sections:
+
 ```
-Research one area of: <topic>.
-
-## Your area
-<the one specific question this worker owns>
-
-## Your only job is to document what exists
-Document what IS, not what SHOULD BE. No improvements, no critique, no proposed work.
-
-## Instructions
-1. Read the files you need fully — no limit/offset
-2. Report file paths, line numbers, and factual descriptions of how the pieces connect
-3. Note which repo each finding belongs to when more than one is in scope
-4. Write your findings to a scratchpad named "research/<slug>/<area-slug>"
-5. Signal completion as your last act:
-     timer_set(delay_ms=1, delivery_process_id=<orchestrator process_id>,
-               body="Area <area-slug> done. Findings in research/<slug>/<area-slug>.")
-
-## Constraints
-- Read-only: no edits, no branches, no commits, no other git write command
-- Do not create todos or write KV
-- Read only inside <absolute repo path>
-- Write only your own scratchpad — the orchestrator owns the research pad
+  Solo context   agent_instructions, pasted verbatim
+  Objective      the one specific question this worker owns; document what exists, not what
+                 should be — no improvements, no critique, no proposed work
+  Boundaries     read-only: no edits, no branches, no commits, no other git write command;
+                 read only inside <absolute repo path>; no todos, no KV; when stuck, record
+                 what you found and stop
+  Tool guidance  read the files you need fully, no limit or offset; report file paths, line
+                 numbers, and factual descriptions of how the pieces connect; note which repo
+                 each finding belongs to when more than one is in scope
+  Output format  write findings to scratchpad "research/<slug>/<area-slug>" — the orchestrator
+                 owns the research pad
+  Completion     timer_set per `solo-agent-orchestration`'s **Workers signal completion**,
+                 delivery_process_id=<orchestrator process_id>
 ```
 
-Workers signal when they finish. Arm one idle timer per run as the dead-worker fallback only.
-The timer has no debounce. It cannot distinguish a thinking worker from a finished one, per
-`solo-agent-orchestration`:
+Send only the pointer, per **The pointer shape** under **The PTY ceiling**:
+
+```
+send_input(process_id, input=<pointer to the brief pad>)
+```
+
+Workers signal when they finish. Before arming the guard, write a guard pad per
+`solo-agent-orchestration`'s **The guard pad**. It carries the watch list — process id, name,
+area, report pad — and the branches. Then arm one idle timer per run as the dead-worker
+fallback only:
 
 ```
 timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
-  body="Research guard expired. Any area that has not signalled has died or hung —
-        check its scratchpad and process status before synthesizing without it.")
+  body="Research guard fired. A worker that never signalled is a failure to investigate,
+        not a completion. Procedure: <guard pad title>")
   → timer_id
 ```
 
@@ -213,10 +213,9 @@ Next: /plan research/<slug> to plan from it, or /critique research/<slug> to cha
 Extend the same pad rather than creating another:
 
 - New material under an existing heading → `scratchpad_append_section`
-- A section replacement → `scratchpad_edit` with
-  `target={"type":"section","section_heading":"## ..."` or `"### ..."}` and the current `expected_revision`.
-  `section` and `line_range` are the only valid `target.type` values. Any other value fails the
-  call outright, so the edit never reaches the pad
+- A section replacement → `scratchpad_edit` with the target object `solo-agent-orchestration`'s
+  **Locks and reports** section defines, and the current `expected_revision`. Any other shape
+  fails the call outright, so the edit never reaches the pad
 - A dated addition at the end → `scratchpad_append`
 
 On a revision mismatch, re-read and retry — something else touched the pad.
