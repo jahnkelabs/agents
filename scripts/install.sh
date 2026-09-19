@@ -345,5 +345,5 @@ echo "/research, /plan, /implement, /critique, /retro, /worktree, /stash and /re
 echo "require the Solo MCP server."
 echo "/stash and /recall additionally require a tracker MCP (see references/)."
 echo ""
-echo "Codex has no disable-model-invocation, so it can invoke /plan, /implement,"
-echo "/bare-convert, /stash and /recall itself. Their approval gates still hold."
+echo "Codex has no disable-model-invocation, so it can invoke /bare-convert and"
+echo "/stash itself. Their approval gates still hold."
