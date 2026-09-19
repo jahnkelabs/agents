@@ -37,32 +37,43 @@ Shape follows the payload:
 
 **A loose idea** → one issue. No project, no milestones.
 
-```
-Stash to <tracker>:
+**Approve — stash an idea to `<tracker>`**
 
+```
   issue  "<title>"
     team        <team>
     state       <triage/backlog state>
     description <the idea, plus where it came from>
-
-Confirm?
 ```
+
+Create this issue, or tell me what to change? I recommend creating it as shown.
+
+⏸ waiting on you: approve the `/stash` shape for this idea
 
 **A plan with work items** → a project, a document holding the plan body, and one issue per work
 item with `after` constraints preserved as dependencies.
 
-```
-Stash to <tracker>:
+**Present the issues by slice.** A plan declares slices and nothing above them. An approved plan
+that nobody implemented therefore has no milestones to group by. A grouping you invent here fixes
+a schedule `/implement` has not decided.
 
+Group by milestone only where the plan reached implementation and its todos already carry a
+`milestone:<m>` tag. Read the grouping from those todos, and never derive one yourself.
+
+**Approve — stash `plan/<slug>` to `<tracker>`**
+
+```
   project   "<plan title>"
   document  plan body (research + plan)
   issues
     ☐ <work item>              <repo>
     ☐ <work item>              <repo>   blocked by <item>
     ☐ <work item>              <repo>   blocked by <item>
-
-Confirm?
 ```
+
+Create this project and its issues, or tell me what to change? I recommend creating them as shown.
+
+⏸ waiting on you: approve the `/stash` shape for `plan/<slug>`
 
 Read work items **from the pad**, not from Solo todos. An approved plan that was never
 implemented has no todos. A plan mid-implementation has todos that hold a task grouping, an
@@ -84,21 +95,49 @@ not roll back silently.
 
 The work has left the active set.
 
-1. Append the refs to the pad so it records where the work went:
+Run these five in order. Each step reads state a later step removes.
+
+1. **Settle every live worktree first.** A plan may have landed several milestones, each with its
+   own branch, worktree, and PR across several repositories. Read
+   `plan:<slug>:milestone:<m>:worktree:<repo>` for each one, then sort it by what it holds:
+
+   ```
+   pushed and clean    tear it down, per /worktree teardown. Its branch stays on the remote.
+   unpushed commits    leave it standing, and record its path
+   uncommitted work    leave it standing, and record its path
+   ```
+
+   **Clean means here what it means to `/worktree`.** A provisioned worktree always carries the
+   untracked files the provisioning contract wrote, so `git status --porcelain` is never empty in
+   one. Count a worktree clean when those are the only paths it lists, per `/worktree`'s teardown
+   checks. Stop on any other line, exactly as that mode does.
+
+   Without that exemption every provisioned worktree sorts as `uncommitted work`. A stash then
+   tears none down, and every Compose stack keeps running. The report below also claims those
+   trees hold work no remote has.
+
+   **A stash discards no code.** A run that escalated before its push gate leaves commits nowhere
+   else, so removing that worktree destroys them. `/worktree teardown` ends in
+   `git worktree remove --force`, which deletes a dirty tree without asking. Run the two checks
+   that mode states first. Read either failure as a stop, never as a reason to force.
+
+   Report every open PR the plan produced rather than closing one. Closing a PR discards code too.
+2. Append the refs to the pad so it records where the work went, and where anything left standing
+   sits:
    ```
    ## Stashed
    <date> → <tracker>
-   project  <ref or name>
-   <ID>     <work item>
-   <ID>     <work item>
+   project   <ref or name>
+   <ID>      <work item>
+   <ID>      <work item>
+   standing  <absolute worktree path> — <unpushed commits | uncommitted work>
    ```
-2. `scratchpad_archive(scratchpad_id=<pad>)` — hidden, not deleted, recoverable
-3. **Delete task todos only if they exist.** A freshly approved plan has none. A plan stashed
+3. `scratchpad_archive(scratchpad_id=<pad>)` — hidden, not deleted, recoverable
+4. **Delete task todos only if they exist.** A freshly approved plan has none. A plan stashed
    mid-implementation does — `todo_delete` each one. Do not mark them complete; the work did
    not get done, it moved.
-4. `kv_delete` every `plan:<slug>:*` key
-5. If a branch exists with committed work, say so and leave it alone. A stash does
-   not discard code.
+5. `kv_delete` every `plan:<slug>:*` key. This runs last, because step 1 reads those keys. Delete
+   one first and no step can find the worktree it names.
 
 ## Step 6 — Report
 
@@ -108,7 +147,11 @@ can do next. Do not repeat the per-item list:
 ```
 Stashed to <tracker> — project <link>, <N> issues, refs appended to the pad.
 Solo: pad archived, <N> todos removed. Recall any of it with /recall <ID>.
+Left standing: <N> worktrees holding work no remote has. Paths are in the pad.
 ```
+
+Drop the last line when every worktree came down. Never drop it when one stands, because that
+worktree holds the only copy of its work.
 
 ## Notes
 

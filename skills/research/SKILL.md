@@ -21,7 +21,15 @@ it is also the research phase inside `/plan`.
 
 If the user invokes it with no arguments:
 
+> **Deciding — what to research**
+>
 > What would you like me to research? Give me a question or an area of the codebase.
+>
+> ⏸ waiting on you: name a question or an area of the codebase
+
+That question opens a `Deciding` gate, so it carries the heading and the footer. It offers nothing
+to rank, so it carries no context block and no recommendation. `rules/chat-vocabulary.md` states
+all three.
 
 ## Step 1 — Establish scope, and confirm it
 
@@ -36,11 +44,11 @@ wrong scope before you write anything.
 Check for prior work before you investigate: `scratchpad_list(query="<topic keywords>")`. If an
 existing research pad covers this, read it and extend it. Do not duplicate it.
 
-Then present the gate:
+Then present the gate, in the shape `rules/chat-vocabulary.md` defines:
+
+**Approve — /research scope**
 
 ```
-Before I investigate — confirm or adjust:
-
   Solo project: <name>  (<path>)
 
   Repos in scope:
@@ -51,9 +59,11 @@ Before I investigate — confirm or adjust:
   I plan to investigate (<N> parallel Solo agents):
     1. <specific question>
     2. <specific question>
-
-Accept, or tell me what to add or cut.
 ```
+
+Accept this scope, or tell me which area to add or cut.
+
+⏸ waiting on you: accept the `/research` scope, or name what to change
 
 Scale the investigation to the question. A narrow lookup deserves one agent; mapping a
 subsystem deserves several. State what you are *not* looking at, and why. A wrong omission is
@@ -64,8 +74,8 @@ easier to catch than a wrong inclusion.
 Fan out with Solo agents, per `solo-agent-orchestration`. Never use the host runtime's own
 sub-agent mechanism.
 
-Build the slug first — `date +%Y-%m-%dT%H%M` plus a short topic, e.g.
-`2026-04-05T1423-jwt-auth`. Workers name their pads under it, and step 4 reuses it.
+Build the slug first — `date +%Y-%m-%dt%H%M` plus a short topic, e.g.
+`2026-04-05t1423-jwt-auth`. Workers name their pads under it, and step 4 reuses it.
 
 Resolve the runtime once with `list_agent_tools`. Use the entry the user named, or the only
 enabled entry. Ask when more than one is enabled and the user named none. Call `whoami` and keep the returned `process_id` — every worker needs it to signal back.
@@ -74,7 +84,7 @@ Then, per confirmed area:
 ```
 spawn_agent(agent_tool_id=<id>, name="research-<area-slug>", extra_args=[
   <the model and effort arguments, at the tier this area needs>,
-  <the auto-approval and git-denial arguments from the adapter>])
+  <the auto-approval and immutable-target arguments from the adapter>])
   → process_id, agent_instructions
 send_input(process_id, input=<agent_instructions + the prompt below>)
 ```
@@ -86,15 +96,14 @@ flags between releases, and the adapter is the only current record.
 A read-only assignment is not a reason to drop auto-approval, and never a reason to raise it to
 a bypass mode.
 
-Research is read-only, so denying git writes costs nothing. It also stops a worker from mutating the
-tree it must describe. Tier by area: tracing one call path is not the same job as mapping a
-subsystem's conventions.
+A research worker is an immutable-target worker. It reads the repository and writes only its own
+scratchpad, so it cannot mutate the tree it must describe. `solo-agent-orchestration` gives that
+posture, and the adapter gives the arguments. Read what the adapter says its runtime cannot bound.
+
+Tier by area: tracing one call path is not the same job as mapping a subsystem's conventions.
 
 ```
 Research one area of: <topic>.
-
-## Working directory
-<absolute repo path>
 
 ## Your area
 <the one specific question this worker owns>
@@ -108,14 +117,14 @@ Document what IS, not what SHOULD BE. No improvements, no critique, no proposed 
 3. Note which repo each finding belongs to when more than one is in scope
 4. Write your findings to a scratchpad named "research/<slug>/<area-slug>"
 5. Signal completion as your last act:
-     timer_set(delay_ms=0, delivery_process_id=<orchestrator process_id>,
+     timer_set(delay_ms=1, delivery_process_id=<orchestrator process_id>,
                body="Area <area-slug> done. Findings in research/<slug>/<area-slug>.")
 
 ## Constraints
 - Read-only: no edits, no branches, no commits, no other git write command
 - Do not create todos or write KV
+- Read only inside <absolute repo path>
 - Write only your own scratchpad — the orchestrator owns the research pad
-- Stay inside <absolute repo path>
 ```
 
 Workers signal when they finish. Arm one idle timer per run as the dead-worker fallback only.
@@ -205,7 +214,9 @@ Extend the same pad rather than creating another:
 
 - New material under an existing heading → `scratchpad_append_section`
 - A section replacement → `scratchpad_edit` with
-  `target={"type":"section","section_heading":"## ..."` or `"### ..."}` and the current `expected_revision`
+  `target={"type":"section","section_heading":"## ..."` or `"### ..."}` and the current `expected_revision`.
+  `section` and `line_range` are the only valid `target.type` values. Any other value fails the
+  call outright, so the edit never reaches the pad
 - A dated addition at the end → `scratchpad_append`
 
 On a revision mismatch, re-read and retry — something else touched the pad.

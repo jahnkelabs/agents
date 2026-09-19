@@ -16,10 +16,13 @@ grilled.
 
 Interview the user relentlessly about every aspect of this until you reach a shared
 understanding. Walk down each branch of the decision tree, resolving dependencies between
-decisions one-by-one. For each question, provide your recommended answer.
+decisions one-by-one.
 
-Ask the questions one at a time, waiting for feedback on each question before continuing.
-Multiple questions at once bewilder the user.
+Every question takes the question shape that `rules/chat-vocabulary.md` defines. Read the shape
+there. This skill does not restate it.
+
+Ask one question per message. Never batch two into one call. The user answers the first, and the
+second one disappears.
 
 If you can find a *fact* by exploring the environment (filesystem, tools, etc.), look it up
 rather than asking. The *decisions*, though, are the user's — put each one to them and wait
@@ -32,8 +35,8 @@ Do not act on it until the user confirms you have reached a shared understanding
 - **Order by dependency.** Ask the question whose answer changes the most other answers first.
   When an answer invalidates something already decided, say so and revisit it rather than
   quietly building on a contradiction.
-- **Recommend, do not survey.** Every question carries your recommended answer and why. A list
-  of options with no opinion pushes the work back onto the user.
+- **Recommend, always.** A recommendation is mandatory, not expected. Every question carries
+  one, with the reason for it. A question without a recommendation is incomplete.
 - **Look it up.** Anything discoverable from the filesystem, git, an API, or a tool is yours to
   find. Do not ask the user for a fact you could have read. That wastes a turn.
 - **Show the consequence.** State what each option costs and what it forecloses. Options that

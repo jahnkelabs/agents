@@ -17,9 +17,10 @@ One run installs both runtimes.
 | `~/.claude/output-styles/<name>.md` | the output style — **linked per file** | Claude |
 | `~/.claude/settings.json` | the `outputStyle` key only — **merged** | Claude |
 | `~/.claude/skills/<name>/` | slash commands — **linked per skill** | Claude |
-| `~/.claude/references` | adapters — whole directory | Claude |
+| `~/.claude/references` | adapters — whole directory, **never pruned** | Claude |
+| `~/.claude/bin/wt-clone.sh` | the `/worktree` clone helper — **linked directly, never pruned** | both |
 | `~/.agents/skills/<name>/` | the same skills — **linked per skill** | Codex |
-| `~/.agents/references` | the same adapters — whole directory | Codex |
+| `~/.agents/references` | the same adapters — whole directory, **never pruned** | Codex |
 | `~/.codex/AGENTS.md` | every rule and the output style concatenated — **generated** | Codex |
 
 The script links one entry at a time, so each destination directory stays a real one you own.
@@ -32,10 +33,10 @@ reach it any other way. A file you wrote yourself is backed up before the first 
 hooks regenerate it after a commit, a checkout, and a merge, so a rule edit you commit reaches
 Codex without a re-run. `./scripts/install.sh --rules-only` does that regeneration alone.
 
-**Codex has no `disable-model-invocation`.** On Claude, `/plan`, `/implement`, `/stash`, and
-`/recall` cannot be invoked by the model. On Codex it can invoke all four itself. Each still
-gates on your approval before anything lands, so the guarantee weakens from "you start it" to
-"you approve it".
+**Codex has no `disable-model-invocation`.** On Claude, `/plan`, `/implement`, `/bare-convert`,
+`/stash`, and `/recall` cannot be invoked by the model. On Codex it can invoke all five itself.
+Each still gates on your approval before anything lands, so the guarantee weakens from "you
+start it" to "you approve it".
 
 `references/` is a whole-directory link because it is not a Claude Code directory. It exists so
 a skill or a rule can read an adapter from a stable path, and nothing else writes there. It
@@ -54,9 +55,11 @@ whose absence fails silently.
 
 Re-run the script after you **add or rename** a file. An edit to an existing rule or skill takes
 effect immediately. An edit to the output style does not. Claude Code reads a style once per
-session, so see `## Output style`. The script prunes links into this repository whose source is
-gone, and it touches nothing else. It moves anything real in the way to `~/.claude/backups/` first. Override the
-repository root with `AGENTS_REPO=/path/to/agents`.
+session, so see `## Output style`. The script prunes a per-entry link — a rule, an output style,
+or a skill — whose source is gone. It never prunes the two direct links, `references/` and
+`bin/wt-clone.sh`. A renamed source there leaves a dangling link. It moves anything real in the
+way to `~/.claude/backups/` first. Override the repository root with
+`AGENTS_REPO=/path/to/agents`.
 
 **This repository manages one key in `~/.claude/settings.json`: `outputStyle`.** It never
 overwrites a value you set, and it touches nothing else in that file. It does not manage
@@ -66,20 +69,21 @@ overwrites a value you set, and it touches nothing else in that file. It does no
 
 | | |
 |---|---|
-| Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/stash`, `/recall` |
+| Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/retro`, `/worktree`, `/stash`, `/recall` |
 | A tracker MCP | `/stash`, `/recall` — Linear adapter included |
 | Vale 3.0 or later | checking the sentence-level half of `prose-discipline` — `brew install vale`. CI pins 3.17.1 |
 | jq | selecting the output style at install time — without it the install prints the instruction instead |
-| Nothing | `/grill` and the rules |
+| Nothing | `/grill`, `/bare-convert`, and the rules |
 
 ## Rules
 
-All five rules load into every session.
+All six rules load into every session.
 
 | Rule | Description |
 |---|---|
+| [chat-vocabulary](rules/chat-vocabulary.md) | Five reserved headings and one footer mark every message the user must act on; nothing else gets a heading |
 | [comment-discipline](rules/comment-discipline.md) | Comments are disallowed by default; after the implementation, propose only the few that pass the admission test |
-| [pr-first-contributions](rules/pr-first-contributions.md) | PR-first git workflow with conventional titles, draft PRs, and squash-merge descriptions |
+| [pr-first-contributions](rules/pr-first-contributions.md) | PR-first git workflow with conventional titles, draft PRs, stacked bases, and squash-merge descriptions |
 | [solo-agent-orchestration](rules/solo-agent-orchestration.md) | Fan out with Solo agents, never a vendor's native sub-agent mechanism. Workers signal their own completion and report to a durable surface |
 | [testing-philosophy](rules/testing-philosophy.md) | Contract-first tests through production entry points; refactor-resistant |
 | [yagni](rules/yagni.md) | Build for the present need; defer what is cheap to add later |
@@ -148,17 +152,23 @@ Both checks are warnings for that reason: read each one and decide.
 | [`/research`](skills/research/SKILL.md) | Investigate a codebase with parallel Solo agents and write the findings to a Solo scratchpad | you or Claude |
 | [`/critique`](skills/critique/SKILL.md) | Adversarial multi-model review of a diff, plan, files, or PR | you or Claude |
 | [`/grill`](skills/grill/SKILL.md) | Interrogate a decision one question at a time | you or Claude |
+| [`/retro`](skills/retro/SKILL.md) | Analyse past sessions for recurring failures and hand the findings to `/plan` | you or Claude |
+| [`/worktree`](skills/worktree/SKILL.md) | Cut, provision, and tear down one milestone worktree | you or Claude |
 | [`/plan`](skills/plan/SKILL.md) | Research, grill, and produce a plan in one Solo scratchpad | **you only** |
-| [`/implement`](skills/implement/SKILL.md) | Decompose a plan into workers, run them, critique, present | **you only** |
+| [`/implement`](skills/implement/SKILL.md) | Compose a plan into milestones, and ship each one as its own PRs | **you only** |
+| [`/bare-convert`](skills/bare-convert/SKILL.md) | Set up or convert a repository into the bare-plus-worktrees layout | **you only** |
 | [`/stash`](skills/stash/SKILL.md) | Move active work into a durable tracker | **you only** |
 | [`/recall`](skills/recall/SKILL.md) | Pull tracker work back into planning | **you only** |
 
-Four skills have side effects: they write code, commit, or create tracker objects. Each of the
-four carries `disable-model-invocation: true`, so Claude cannot decide to run it. Those four do
-not appear in Claude's skill listing, so they cost no context until you invoke them.
+Five skills have side effects: they write code, commit, convert a repository, or create tracker
+objects. Each of the five carries `disable-model-invocation: true`, so Claude cannot decide to
+run it. Those five do not appear in Claude's skill listing, so they cost no context until you
+invoke them.
 
-The three advisory skills stay model-invocable and carry `when_to_use` trigger phrases. Say
-"grill me on this" or "find the bugs" and the skill runs without a command name.
+The other five stay model-invocable and carry `when_to_use` trigger phrases. Say "grill me on
+this" or "find the bugs" and the skill runs without a command name. `/worktree` is the one that
+also writes: `/implement` calls it per milestone, so it must be callable. Its destructive half
+lives in `/bare-convert`, which keeps the gate.
 
 **No skill overrides the model.** Every skill respects your session's choice, including a `[1m]`
 variant. A skill sets `effort` only where the shape of the work justifies it:
@@ -177,11 +187,15 @@ flowchart LR
     R["/research"]
     P["/plan"]
     I["/implement"]
+    W["/worktree"]
+    BC["/bare-convert"]
+    M["milestone loop"]
     C["/critique"]
     S["/stash"]
     RC["/recall"]
+    RT["/retro"]
     T[("tracker")]
-    PR["draft PR"]
+    PR["draft PRs<br/>one per repo"]
 
     R -->|"research pad"| P
     P -->|"1. implement now"| I
@@ -191,8 +205,13 @@ flowchart LR
     S --> T
     T --> RC
     RC -->|"always re-plans"| P
-    I -->|"before presenting"| C
-    I --> PR
+    RT -->|"proposed changes"| P
+    I -->|"milestones in DAG order"| M
+    BC -->|"a container per repo"| W
+    M -->|"cut a tree per repo"| W
+    M -->|"before the landing"| C
+    M --> PR
+    M -->|"next milestone"| M
 ```
 
 ## How the system divides state
@@ -209,30 +228,31 @@ Nothing in this repository stores your work. Research and plans live in Solo, no
 
 | Kind | Name / key | Tags |
 |---|---|---|
-| Research pad | `research/<YYYY-MM-DD>T<HHMM>-<topic>` | `research`, `project:<repo>` |
-| Plan pad | `plan/<YYYY-MM-DD>T<HHMM>-<topic>` | `plan`, `project:<repo>` |
-| Task todos | — | `plan:<slug>`, `project:<repo>`, `task:<letter>` |
-| Worker reports | `<slug>/<task>` | — |
-| Orchestration | `plan:<slug>:branch:<repo>` | — |
+| Research pad | `research/<YYYY-MM-DD>t<HHMM>-<topic>` | `research`, `project:<repo>` |
+| Plan pad | `plan/<YYYY-MM-DD>t<HHMM>-<topic>` | `plan`, `project:<repo>` |
+| Task todos | — | `plan:<slug>`, `milestone:<m>`, `project:<repo>`, `task:<letter>` |
+| Worker reports | `<slug>/<milestone>/<task>` | — |
+| Orchestration | `plan:<slug>:milestone:<m>:branch:<repo>` | — |
+| Orchestration | `plan:<slug>:milestone:<m>:worktree:<repo>` | — |
 
 Skills use whichever Solo project is currently selected, and say which one in their first
 confirmation.
 
 ## How the workflow behaves
 
-**Every worker is a Solo agent.** `/research`, `/plan`, `/implement`, and `/critique` fan out
-with `spawn_agent`, never with the host runtime's own sub-agent mechanism.
+**Every worker is a Solo agent.** `/research`, `/plan`, `/implement`, `/critique`, and `/retro`
+fan out with `spawn_agent`, never with the host runtime's own sub-agent mechanism.
 [solo-agent-orchestration](rules/solo-agent-orchestration.md) carries the policy and the
 reasoning, so the policy also holds for a fan-out that no skill started. Each skill carries only
 its own worker prompt and constraints.
 
-**Every worker launches in auto-approval mode** — `--permission-mode auto` on Claude,
-`--approve-for-me --no-alt-screen` on Codex. A read-only assignment is no exception. No worker
-uses a bypass mode. A `--settings` deny list enforces what a worker must not do, rather than a
-permission mode.
+**Every worker launches in auto-approval mode.** A read-only assignment is no exception, and no
+worker uses a bypass mode. Each runtime names its own flags, and it renames them between releases.
+Read `references/runtime-<tool_type>.md` for the arguments rather than a list here.
 
-**Workers signal their own completion.** Each worker wakes the orchestrator through a zero-delay
-timer as its last act, because only the worker knows that it finished. An idle timer stays as
+**Workers signal their own completion.** Each worker wakes the orchestrator through a
+one-millisecond timer as its last act, because only the worker knows that it finished. Solo
+rejects a zero delay, so that is the smallest legal value. An idle timer stays as
 the fallback that catches a worker which died or hung. An idle timer has no debounce, and a
 worker that reasons at length emits no output and looks finished.
 
@@ -240,29 +260,59 @@ worker that reasons at length emits no output and looks finished.
 get wrong: why these repos, why these investigation areas, why this is out of scope. A bad guess
 is then visible rather than buried. A gate prints a looked-up fact without argument. The
 selected Solo project needs no justification; a repo list inferred from file references needs
-one.
+one. A gate's opening message carries a reserved heading and fences its block, per
+[chat-vocabulary](rules/chat-vocabulary.md). `Approve` marks a proposal, and `Deciding` marks a
+question you cannot answer yourself.
 
-**`/plan` grills you.** Questions come one at a time, each with a recommended answer. The
+**`/plan` grills you.** One question per message, never two. Each one carries a fenced context
+block, a mandatory recommendation, and the `⏸` footer. Only the first question carries the
+`Deciding` heading, so a long grilling does not become a column of headings. The
 question whose answer changes the most other answers comes first. `/plan` looks up anything the
-filesystem or a tool can tell it, rather than asking you. It stops when the questions left are
-details you would rather see than specify.
+filesystem or a tool can tell it, rather than asking you. Its scope gate names the decisions it
+expects to put to you. That gate also reports how far each tree sits behind its default branch.
+It stops when the questions left are details you would rather see than specify.
 
-**The plan says what changes; `/implement` decides how it runs.** A plan declares work items
-with their file scopes. It also declares the two constraints only it knows: which items must
-share a worker, and which must follow another. Grouping items into workers, ordering them into
-waves, and choosing a model and effort are scheduling. `/implement` decides the schedule at
+**`/plan` censuses the inbound references before it writes the pad.** It searches for three
+kinds of reference to every file a slice changes. Those kinds are the caller, the test, and the
+standard whose text the change makes false. The third kind is the one that gets missed, because
+no import points to it. Nineteen of thirty sessions shipped an incomplete file list before this
+step existed.
+
+**Three words carry the delivery model, and each means one thing.** A **slice** is one worker's
+unit of work: narrow, vertical, one repository. A **milestone** is a consumable chunk of a plan
+and the unit of delivery, and it may span repositories. A **wave** is the concurrency schedule
+inside a milestone, taken from file overlap.
+
+**The plan declares slices; `/implement` composes the milestones.** A plan declares slices with
+their file scopes. It also declares the two constraints only it knows: which slices must share a
+worker, and which must follow another. Composing slices into milestones, ordering those
+milestones, and choosing a model and effort are scheduling. `/implement` decides the schedule at
 execution time, against facts that are current then.
 
-**You approve the roster before anything spawns.** `/implement` presents the worker count, the
-job of each worker, and the model and effort it requests. `/implement` writes each summary so
-the tier follows from it. A task described as "three localized edits against precise line
-references" argues for its own tier. Adjust any model, effort, or grouping, or approve the
-roster as proposed. You decide cost and parallelism here.
+**A milestone lands one PR per repository it touches.** Its outcome is one sentence with no
+`and`, and each of its PR titles states that outcome scoped to its repository. Two milestones
+that touch one file ship in sequence, because their branches would otherwise conflict. A
+milestone gets its own worktree per repository through `/worktree`, so no worker ever shares
+your tree.
 
-**The permission layer enforces the constraints rather than requesting them.** Every worker launches with git writes denied at the
-permission layer, rather than prohibited in prose. Two workers that stage in one shared tree
-cross-commit silently. Workers hold per-path locks, and the orchestrator commits each task's
-declared paths, so history stays granular.
+**You approve the roster before anything spawns.** `/implement` presents the milestones and
+their PR titles first, then the waves and tiers inside each one. `/implement` writes each summary
+so the tier follows from it. A task described as "three localized edits against precise line
+references" argues for its own tier. Adjust any milestone boundary, model, effort, or grouping,
+or approve the roster as proposed.
+
+**A worker's write bound follows what it edits, not which runtime runs it.** An immutable-target
+worker reads the target and writes only scratch. Codex bounds that worker by directory, so the
+denial is structural. A Claude deny list scopes by tool and by command pattern, so the shell still
+reaches the target. There the brief requests that bound, and each runtime adapter says which of
+the two you get.
+
+An editing worker is the harder case. Claude denies `git add` per command, and Codex has no
+per-worker equivalent. The rule requires that gap disclosed rather than restated as a promise.
+`/worktree` cuts one tree per milestone and per repository, so several workers share one. Two
+Codex workers that stage in that tree cross-commit silently. `/implement` discloses the exposure
+at the roster gate, and it does not close it. Workers hold per-path locks, and the orchestrator
+commits each task's declared paths, so history stays granular.
 
 **Workers escalate on deviation, not on failure.** A worker that cannot self-resolve records
 what it found and stops. So does a worker that would have to depart meaningfully from the
@@ -272,15 +322,42 @@ wave finish, and everything appears together at the join.
 
 **Critique is adversarial and multi-model.** `/critique` spawns one worker per model you select:
 Claude, Copilot, Kimi, or anything else enabled in Solo. Each worker tries to break the target
-rather than survey it. Cross-model agreement is the confidence signal, because a defect that two
-models independently find is probably real. One model gives no such signal, so a refutation pass
-takes its place and drops what it refutes.
+rather than survey it. Cross-model agreement is evidence that a defect is real, because two
+models rarely invent one defect. One model gives no such evidence, so a refutation pass takes its
+place and drops what it refutes. Agreement raises confidence, and it drops nothing. Every merged
+finding reaches the filter, whether one critic found it or every critic did.
 
-**You triage findings one at a time.** Each surviving finding arrives with its evidence and the
-decision it needs. The next finding waits until you make that decision. Severity orders the
-findings, and agreement breaks a tie. There is no batch report to read back through.
-`/implement` hands its critique findings over in the same shape, so nobody triages a finding
-twice.
+**A filter decides which findings reach you.** `/critique` accepts a finding by default. What
+acceptance does then depends on who called. A milestone critique inside `/implement` applies the
+fix; a standalone or `--integration` pass reports the remedy and edits nothing. Six criteria
+escalate a finding to you instead:
+
+```
+C1  the fix rests on a fact the orchestrator cannot verify
+C2  the fix needs you to act outside the repository
+C3  the fix is irreversible, or visible outside the repository
+C4  the fix changes a default posture
+C5  the fix changes who decides, or who merges
+C6  two fixes exist, and neither one ranks above the other on stated grounds
+```
+
+Three grounds never escalate: a nit, cross-model agreement, and a mechanical fix to a verifiable
+mismatch. Serial triage cost about 115 of your turns across 8 runs. Delegated triage cost about
+20 across 14.
+
+**The ledger discloses every decision.** One line per finding, ranked by criticality. Each line
+carries the claim, the action, and the alternative the orchestrator declined. The ledger is where
+you correct a remedy choice, because C6 covers a genuine tie alone. `/implement` reports it with
+each milestone landing, so nobody triages a finding twice.
+
+**`/implement` critiques each milestone, not the whole run.** That critique and any escalation
+block the next milestone, because a finding may change what it should do. Your review of the PR
+blocks nothing. The run opens the PR, reports the landing, and starts the next milestone.
+
+**A separate integration pass sees only what one milestone cannot.** Its lenses are
+cross-milestone contract drift, plan completeness, claim consistency, and stack coherence. It may
+not raise a finding that lives wholly inside one milestone's diff. That milestone already put the
+finding through the filter.
 
 ## Adding a tracker
 

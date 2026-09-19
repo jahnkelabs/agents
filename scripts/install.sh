@@ -37,13 +37,20 @@ Rules and skills are linked one at a time, so the directories stay real ones
 you own. Anything else you keep there is left alone, and nothing you create
 locally lands in this repo.
 
+The /worktree clone helper links to a stable path, so a per-repository
+provisioning script can call it without knowing where this repo lives:
+
+  ~/.claude/bin/wt-clone.sh     -> scripts/wt-clone.sh
+
 The install also sets "outputStyle": "prose-discipline" in
 ~/.claude/settings.json. That key selects the prose style for every Claude
 session. An outputStyle you set yourself is left alone, and the step is
 skipped when jq is absent.
 
-Re-run after adding or renaming a file. Links pointing into this repo whose
-source has gone are pruned; nothing else is touched.
+Re-run after adding or renaming a file. The per-entry links -- rules, output
+styles, and skills -- are pruned once their source has gone, and nothing else
+is touched. The two direct links, references/ and bin/wt-clone.sh, are not
+pruned, so renaming either source leaves the old link dangling.
 
 A generated ~/.codex/AGENTS.md is the one file this repository writes rather
 than links, because Codex gives it no other shape. An existing file that we
@@ -51,6 +58,10 @@ did not generate is backed up first. Git hooks in this repository regenerate
 it after a commit, checkout, or merge, so an edit you commit takes effect
 without a re-run. --rules-only does just that regeneration, and the hooks
 call it.
+
+The install writes those hooks only when AGENTS_REPO is the root of a git
+repository. It writes them where core.hooksPath points, because that is where
+git reads them. It names the directory it wrote, and it says so when it skips.
 
 Override the repo root with AGENTS_REPO=/path/to/agents.
 USAGE
@@ -234,13 +245,37 @@ select_output_style() {
 # Regenerate after the tree changes, so a committed rule edit reaches Codex
 # without a re-run. Only hooks we wrote are replaced; yours are left alone.
 install_git_hooks() {
-  local hooks="${REPO_ROOT}/.git/hooks"
-  [[ -d "${hooks}" ]] || return 0
+  local toplevel root_real top_real hooks
+  if ! toplevel="$(git -C "${REPO_ROOT}" rev-parse --show-toplevel 2>/dev/null)" \
+     || [[ -z "${toplevel}" ]]; then
+    echo "  no git repository at ${REPO_ROOT} -- skipped the hooks"
+    return 0
+  fi
+
+  root_real="$(cd -P "${REPO_ROOT}" 2>/dev/null && pwd -P)" || return 0
+  top_real="$(cd -P "${toplevel}" 2>/dev/null && pwd -P)" || return 0
+  if [[ "${root_real}" != "${top_real}" ]]; then
+    echo "  ${REPO_ROOT} is not the root of a git repository -- skipped the hooks"
+    echo "  it sits inside ${top_real}, whose hooks are not ours to write"
+    return 0
+  fi
+
+  if ! hooks="$(git -C "${REPO_ROOT}" rev-parse --path-format=absolute --git-path hooks 2>/dev/null)" \
+     || [[ -z "${hooks}" ]]; then
+    echo "  git could not resolve the hooks directory -- skipped the hooks"
+    return 0
+  fi
+
+  if ! mkdir -p "${hooks}"; then
+    echo "  cannot create ${hooks} -- skipped the hooks"
+    return 0
+  fi
 
   local hook
   for hook in post-commit post-checkout post-merge; do
     local path="${hooks}/${hook}"
-    if [[ -e "${path}" ]] && ! grep -qF "${GEN_MARKER}" "${path}" 2>/dev/null; then
+    if [[ -L "${path}" ]] \
+       || { [[ -e "${path}" ]] && ! grep -qF "${GEN_MARKER}" "${path}" 2>/dev/null; }; then
       echo "  kept your ${hook} hook -- add scripts/install.sh --rules-only to it"
       continue
     fi
@@ -251,7 +286,7 @@ exec "${REPO_ROOT}/scripts/install.sh" --rules-only >/dev/null
 HOOK
     chmod +x "${path}"
   done
-  echo "  installed git hooks: post-commit, post-checkout, post-merge"
+  echo "  installed git hooks in ${hooks}: post-commit, post-checkout, post-merge"
 }
 
 if [[ "${1:-}" == "--rules-only" ]]; then
@@ -267,6 +302,13 @@ link_entries output-styles files
 select_output_style
 link_entries skills dirs
 link "${REPO_ROOT}/references" "${DEST}/references"
+if [[ -L "${DEST}/bin" || ( -e "${DEST}/bin" && ! -d "${DEST}/bin" ) ]]; then
+  mkdir -p "${BACKUP_DIR}"
+  mv "${DEST}/bin" "${BACKUP_DIR}/bin.$(date +%s)"
+  echo "  backed up something blocking bin/ -> backups/"
+fi
+mkdir -p "${DEST}/bin"
+link "${REPO_ROOT}/scripts/wt-clone.sh" "${DEST}/bin/wt-clone.sh"
 
 echo "Installing for Codex..."
 mkdir -p "${AGENTS_DEST}"
@@ -299,8 +341,9 @@ echo "Installed for both runtimes. Rules apply to every session; skills are"
 echo "slash commands on Claude and \$-invoked skills on Codex."
 echo "Claude's prose style lives in the outputStyle key of"
 echo "your ~/.claude/settings.json. Start a new claude session to load it."
-echo "/plan, /implement, /critique, /stash and /recall require the Solo MCP server."
+echo "/research, /plan, /implement, /critique, /retro, /worktree, /stash and /recall"
+echo "require the Solo MCP server."
 echo "/stash and /recall additionally require a tracker MCP (see references/)."
 echo ""
 echo "Codex has no disable-model-invocation, so it can invoke /plan, /implement,"
-echo "/stash and /recall itself. Their approval gates still hold."
+echo "/bare-convert, /stash and /recall itself. Their approval gates still hold."

@@ -12,7 +12,7 @@ skeptical, thorough, and collaborative.
 
 Three gates: **scope**, **grilling**, **approval**. The output is exactly one artifact — a
 plan scratchpad. It leads with the plan and keeps the research in an appendix. This skill
-creates no Solo todos. `/implement` groups the work items into tasks when it starts, or
+creates no Solo todos. `/implement` composes the slices into milestones when it starts, or
 `/stash` turns them into tracker issues.
 
 ## Input
@@ -21,17 +21,32 @@ creates no Solo todos. `/implement` groups the work items into tasks when it sta
 
 - A topic or question — plan from scratch
 - A research pad (`research/<slug>` or a numeric id) — from a standalone `/research`
+- A retro pad (`retro/<slug>` or a numeric id) — from `/retro`
 - File paths — read fully before anything else
 - A recall payload — when invoked by `/recall`
 
 With no arguments:
 
+> **Deciding — what to plan**
+>
 > What should I plan? Give me a topic, a research pad from `/research`, or relevant context.
+>
+> ⏸ waiting on you: name what to plan
+
+That question opens a `Deciding` gate, so it carries the heading and the footer. It offers nothing
+to rank, so it carries no context block and no recommendation. `rules/chat-vocabulary.md` states
+all three.
 
 ## Gate A — Scope and investigation
 
-Do a cheap first pass before you propose anything. Read mentioned files fully, run
-`git rev-parse --show-toplevel`, and skim enough to form a real proposal.
+Do a cheap first pass before you propose anything. Read mentioned files fully, resolve each
+repository's container path, and skim enough to form a real proposal.
+
+**Resolve the container with the one derivation `/worktree` states.** See
+`skills/worktree/SKILL.md`, under `## Derive the container from any worktree`. Use it verbatim and
+write no second copy. `git rev-parse --show-toplevel` is the wrong command here: it returns
+`<container>/main` in a converted repository, and `/worktree cut` then refuses the container as a
+plain clone.
 
 **Solo project:** run `list_projects` and use **whichever project is currently selected**. No
 path matching, no assumed name. State it in the gate.
@@ -40,12 +55,19 @@ path matching, no assumed name. State it in the gate.
 repos a research pad's target list names. Draw on repos implied by `file:line` references in
 findings, and on the `path` of each known Solo project. Say what you excluded and why.
 
+**Tree staleness:** run a real `git fetch` in each repo in scope. Report how far each tree sits
+behind its default branch, as a number of commits. Report `0` for a current tree. A claim that
+the tree is current is not a number, so it does not count.
+
 **Investigation:** describe what you intend to look into, not a tier. If the user supplied a
 research pad, read it fully first. Scope the investigation to the gaps, and do not re-derive
 what you already know.
 
-**Question count:** estimate how many questions gate B will ask. The user needs that number
-before agreeing.
+**Decisions:** name each decision you expect to put to the user at gate B. A list of decisions
+tells the user what the grilling costs. A count of questions does not, and the count ran 1.43×
+low across twenty runs.
+
+**Approve — /plan scope**
 
 ```
 Before I investigate — confirm or adjust:
@@ -53,8 +75,8 @@ Before I investigate — confirm or adjust:
   Solo project: <name>  (<path>)
 
   Repos in scope:
-    <repo>  ─ <evidence>
-    <repo>  ─ <evidence>
+    <repo>  ─ <evidence>                    <N> commits behind <default>
+    <repo>  ─ <evidence>                    <N> commits behind <default>
 
   Not included: <repo> (<why>)
 
@@ -62,10 +84,14 @@ Before I investigate — confirm or adjust:
     1. <specific question>
     2. <specific question>
 
-  ...and I expect roughly <N> questions for you afterward.
+  Decisions I expect to put to you:
+    1. <the decision, in a phrase>
+    2. <the decision, in a phrase>
 
-Accept, or tell me what to add or cut.
+Accept this scope, or tell me which repo or question to add or cut.
 ```
+
+⏸ waiting on you: accept the `/plan` scope, or name what to change
 
 ## Research phase
 
@@ -77,17 +103,63 @@ document what exists and write only their own per-area scratchpad; you own the p
 `### Research` in the appendix. Then `scratchpad_archive` the source. The archive hides the pad
 without deleting it, so the pad stays recoverable. Add anything new your investigation found.
 
+**If the user supplied a retro pad:** absorb its findings and its `## Proposed changes` the same
+way, and **do not archive it**. The next `/retro` run reads that pad's `## Corpus scope` to learn
+what an earlier run examined. Archiving hides it from the `scratchpad_list(tags=["retro"])` that
+looks for it, so the next run re-examines the same sessions. `skills/retro/SKILL.md` states that
+reason once, and this is the one input this skill leaves active.
+
 ## Gate B — Grill the user
 
-Follow `/grill`. Ask one question at a time, each with a recommended answer. Wait for a response
-before you ask the next. Do not batch.
+Follow `/grill`. Ask one question at a time, and wait for the answer before you ask the next.
+`rules/chat-vocabulary.md` gives the shape of a question, including the mandatory
+recommendation. Point at that rule rather than restating it, and never batch two questions.
+
+**The heading opens the gate once.** The first question carries `Deciding` for a question you
+cannot answer, or `Approve` for a proposal you already formed. Every later question inside this
+open gate carries no heading. A grilling asks many questions, and one heading each would stop the
+heading staying rare.
+
+**Every question carries the footer**, whether or not it carries a heading. Every question waits
+for the user, and the footer is the only mark that says so.
 
 The remaining questions may turn out to be details the user would rather see than specify. In
 that case, propose defaults, flag them as proposals, and move to gate E.
 
+## The census
+
+Run the inbound-reference census before you write the pad. It is a required step, not a
+thoroughness reminder. Every slice must declare every path it touches. The census finds the
+paths you did not think of.
+
+Take each file a slice changes, and each symbol it renames or removes. Search for three kinds of
+inbound reference:
+
+```
+caller     every site that imports, calls, includes, or spawns the thing you change
+test       every test that exercises it, by name or through its public entry point
+standard   every rule, ADR, README, or skill whose text your change makes false
+```
+
+Record every path the search returns in that slice's `**Files**:` list. A hit in another
+repository belongs to another slice, because a slice covers exactly one repository.
+
+The third kind is the one that gets missed. A change to a rule falsifies the README table that
+describes it. No import points from one to the other, so grep the prose as well as the code.
+
+Nineteen of thirty sessions shipped an incomplete `**Files**:` list, and one run reported ten
+affected waves of fourteen. The census now decides what ships in parallel, not only who edits
+what. `/implement` composes milestones from slices, and file overlap between two milestones
+forces them into sequence.
+
 ## Write the pad
 
-Slug from `date +%Y-%m-%dT%H%M` plus a short topic.
+Slug from `date +%Y-%m-%dt%H%M` plus a short topic.
+
+**The `t` is lowercase, and that is load-bearing.** This slug builds two KV keys, a branch name, a
+worktree path, and `COMPOSE_PROJECT_NAME`. Solo rejects an uppercase KV key outright. A rejected
+key reads exactly like a key nobody wrote. `/worktree` then takes its collision branch, and the
+run escalates over its own branch.
 
 ```
 scratchpad_write(
@@ -104,9 +176,10 @@ a mismatch, re-read and retry.
 ```
 # <Feature or task> Plan
 
-**Repos**: `<name>` — <absolute path>
+**Repos**: `<name>` — <absolute container path>
 
-One line per repo when more than one is in scope.
+One line per repo when more than one is in scope. The path is the container gate A derived, not
+`<container>/main`.
 
 ## Overview
 <the outcome we're after, why, and how we will know it was achieved>
@@ -142,34 +215,56 @@ One line per repo when more than one is in scope.
 
 ### References
 - Research absorbed from: <pad name and id, if any>
+- Retro absorbed from: <pad name and id, if any — that pad stays active>
+- Critique roster: <model · effort, one per critic>
 ```
 
-The plan leads and the evidence follows. One `**Repos**:` line carries the absolute path
-`/implement` needs to place its workers. Each item verifies itself. There is no separate testing
-section, so unit, integration, and manual checks all go under that item's `### Verification`.
+The plan leads and the evidence follows. One `**Repos**:` line carries the container path
+`/implement` needs to cut each milestone's worktree. Each slice verifies itself. There is no
+separate testing section, so unit, integration, and manual checks all sit under that slice's
+`### Verification`.
 
-**A work item is a coherent change, not a unit of execution.** It says what changes and why.
-Worker count, order, and model are scheduling. That schedule depends on facts that only exist
-at execution time, so `/implement` decides it. Do not group items to suit a worker count, and
-do not number them to imply sequence.
+**A work item is a slice.** A slice is narrow and vertical: one coherent change, in exactly one
+repository, that stands on its own. It says what changes and why, never who runs it. Worker
+count, order, and model belong to the schedule. That schedule rests on facts that exist only at
+execution time, so `/implement` decides it.
+
+Shape each slice so `/implement` can compose milestones from it:
+
+```
+  slice       one worker's unit of work. Narrow, vertical, one repository.
+  milestone   a consumable chunk of a plan, sequenced in a DAG. May span
+              repositories. The unit of delivery.
+  wave        the concurrency schedule inside a milestone, from file overlap.
+```
+
+A plan declares slices and nothing above them. `/implement` groups slices into milestones,
+orders the milestones, and schedules each milestone's waves. Do not group slices to suit a worker
+count, and do not number them to imply sequence.
 
 Rules the rest of the workflow depends on:
 
-- **`**Files**:` must list every path the item will touch.** `/implement` computes worker
-  grouping and wave parallelism from these. A worker that writes an undeclared path deviates
-  from the task. This is the one field nobody can infer later.
+- **`**Files**:` must list every path the slice will touch.** The census above is how you get
+  that list right. `/implement` computes milestone boundaries, worker grouping, and wave
+  parallelism from these. A worker that writes an undeclared path deviates from its task. This is
+  the one field nobody can infer later.
 - **`**Constraint**:` is optional and has exactly two forms.** Use `same-worker as <item>` when
   two items must not drift apart. Two examples: a shared clause that has to stay byte-identical,
   and a rename and its call sites. Use `after <item>` for a genuine dependency, such as
   documenting a result. Anything else is scheduling and does not belong here.
-- **Split any item that spans two repos.** Each item belongs to exactly one repo in the
-  `**Repos**:` list.
+- **`after` also feeds the milestone DAG.** `/implement` aggregates every `after` in the plan
+  onto the milestones that hold the two slices. That aggregate becomes the order the milestones
+  ship in, so an `after` you add for convenience delays delivery.
+- **Split any slice that spans two repos.** Each slice belongs to exactly one repo in the
+  `**Repos**:` list. A slice that straddles two repositories joins neither milestone cleanly.
 
 ## Gate E — Approval and fork
 
 Optionally run `/critique plan/<slug>` first and fold in what survives.
 
-Present the design — the work, its file scopes, and any constraint that ties two items together:
+Present the design — the slices, their file scopes, and any constraint that ties two together:
+
+**Approve — `plan/<slug>`**
 
 ```
 Plan: plan/<slug>  (id <n>)
@@ -183,14 +278,18 @@ Plan: plan/<slug>  (id <n>)
 Approve the plan?
 ```
 
-**No waves, no worker count, no models here.** `/implement` computes those at decomposition,
-from facts that are current at that moment, and gates them separately. A plan that fixes the
-schedule forces an approval on evidence nobody has yet.
+⏸ waiting on you: approve `plan/<slug>`, or name the slice to change
+
+**No milestones, no waves, no worker count, no models here.** `/implement` composes and
+schedules those at decomposition, against facts that are current then, and gates them
+separately. A plan that fixes the schedule forces an approval on evidence nobody has yet.
 
 Iterate on feedback and update the pad each time. **Do not proceed past this gate without
 explicit approval.**
 
 Once the user approves:
+
+**Deciding — what happens to `plan/<slug>`**
 
 ```
 Plan approved. What next?
@@ -200,9 +299,16 @@ Plan approved. What next?
   3. Leave active    — pad stays in Solo; run /implement plan/<slug> whenever
 ```
 
-- **Implement now** — ask which models should run the critique (see `/critique`), then hand to
-  `/implement`. That skill decomposes the work items into workers and gates that roster
-  separately.
+I recommend <one of the three>, because <the ground>.
+
+⏸ waiting on you: pick one of the three for `plan/<slug>`
+
+`rules/chat-vocabulary.md` makes that line mandatory. This `Deciding` presents three options you
+did not rank, so it never counts as its own recommendation.
+
+- **Implement now** — ask which models should run the critique (see `/critique`), write the answer
+  to the pad's `### References`, then hand to `/implement`. That skill composes the slices into
+  milestones and gates that roster separately.
 - **Stash for later** — hand to `/stash`, which proposes the tracker shape and confirms.
 - **Leave active** — do nothing. The pad stays in Solo.
 

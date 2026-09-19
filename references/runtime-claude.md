@@ -2,7 +2,7 @@
 
 Launch arguments and startup behavior for a Claude worker spawned through Solo's `spawn_agent`.
 `rules/solo-agent-orchestration.md` carries the policy. This file carries the flags that
-implement it.
+implement it, and the two policies Claude cannot implement.
 
 ## Policy to flag
 
@@ -10,7 +10,9 @@ implement it.
 |---|---|
 | Launch in auto-approval mode | `"--permission-mode", "auto"` |
 | Never use a bypass mode | never `bypassPermissions`, `dontAsk`, or `acceptEdits` |
-| Deny git writes structurally | `"--settings", '{"permissions":{"deny":[…]}}'` |
+| Bound an immutable-target worker's writes | `"--settings", '{"permissions":{"deny":[…]}}'` — requested, never enforced. See below |
+| Deny an editing worker's git writes | `"--settings", '{"permissions":{"deny":["Bash(git add:*)", …]}}'` — per command. See below |
+| Set a worker's working directory | **no equivalent** — see below |
 | Match the worker to the job | `"--model", "<tier>"` and `"--effort", "<tier>"` |
 | Carry the invariant preamble | `"--append-system-prompt", "<preamble>"` |
 | Carry prose discipline where a project overrides the style | `"--settings", '{"outputStyle":"prose-discipline"}'` |
@@ -27,15 +29,68 @@ assignment is not an exception.
 Every value here is a valid flag. A wrong one launches cleanly and changes the worker's safety
 posture in silence. You cannot discover this fact by trying it.
 
-## The deny list
+## The immutable-target worker: writes requested, never bounded
+
+Every critic, every research agent, and every retro agent is one. Pass the three editing tools
+beside the four git commands:
+
+```
+"--settings", '{"permissions":{"deny":["Edit","Write","NotebookEdit",
+                "Bash(git add:*)","Bash(git commit:*)",
+                "Bash(git push:*)","Bash(git checkout:*)"]}}'
+```
+
+Claude denies per tool and per command pattern, which is finer-grained than any sandbox mode. It
+never denies by directory, so it cannot scope a worker's writes to a scratch directory. Name that
+directory in the prompt.
+
+**A deny list does not bound shell redirection.** Claude scopes a denial by tool and by pattern,
+never by directory. A worker denied `Edit`, `Write`, and `NotebookEdit` still writes any file
+through Bash, because `cat > <target>` matches no pattern above. This run's critics launched under
+exactly that deny list, and they wrote the target freely.
+
+**On Claude, a brief can only request an immutable target.**
+`rules/solo-agent-orchestration.md` names that inversion: Codex bounds the same worker by
+directory, and Claude cannot. A brief that relies on an unwritable target says so on this runtime.
+It also carries the scratch-only, immutable-target, and no-git rules in the prompt itself.
+
+The deny list still earns its place. It stops each `Edit`, `Write`, and `NotebookEdit` call, and
+each `Bash` call its patterns match. A reviewer sees every denied call. What it does not do is
+make the target unwritable.
+
+## The editing worker: git denied per command
+
+An editing worker changes the target, and the rule puts it in its milestone worktree. The preamble
+names that path, because Claude sets no working directory. Drop the three editing tools and keep
+the git commands:
 
 ```
 "--settings", '{"permissions":{"deny":["Bash(git add:*)","Bash(git commit:*)",
                 "Bash(git push:*)","Bash(git checkout:*)"]}}'
 ```
 
-Claude denies per command pattern. This is what makes the git prohibition structural rather than
-requested, and it is finer-grained than any sandbox mode.
+`references/runtime-codex.md` records that Codex has no per-worker equivalent for this. Claude
+has one, and `rules/solo-agent-orchestration.md` asks for it here. The shell gap above still
+applies, so the prompt carries the prohibition too.
+
+## Two policies Claude cannot implement
+
+**No directory-scoped write bound.** `## The immutable-target worker: writes requested, never
+bounded` above carries this one, and the reason for it.
+
+**No per-launch working directory.** `rules/solo-agent-orchestration.md` gives an immutable-target
+worker its own scratch directory, and an editing worker its milestone worktree. Claude sets
+neither. The CLI carries no working-directory flag, and `--add-dir` grants tool access rather than
+scoping it. `spawn_agent` takes only `agent_tool_id`, `agent_tool_installation_id`, `extra_args`,
+`include_agent_instructions`, `name`, and `project_id`.
+
+A Claude worker therefore runs in the Solo project's own directory, which may contain the target.
+One critic launched under the deny list above and reported `pwd` as `/Users/devenj/Code`. That
+directory holds the repository its own brief named as immutable.
+
+**The directory reaches a Claude worker through the prompt alone.** Name the absolute path there,
+and say that nothing enforces it. A brief that asserts a bound this runtime cannot apply tells the
+worker something false.
 
 ## Model and effort
 
@@ -59,11 +114,12 @@ in a project where someone selected a different style.
 
 The remedy is a launch flag, not a longer prompt. Pass
 `"--settings", '{"outputStyle":"prose-discipline"}'`, which Claude Code ranks above every settings
-file except the managed tier. Do this whenever the working directory holds a
-`.claude/settings.local.json` that names another style.
+file except the managed tier. Do this whenever the Solo project's own directory holds a
+`.claude/settings.local.json` that names another style. That directory is where a worker runs.
 
 Never restate a rule in a Claude worker prompt. State the job and the constraints specific to
-this task.
+this task. The immutable-target rules above are the one exception, because no launch flag
+enforces them here.
 
 **This is Claude-specific.** Another runtime has its own instruction-loading path, or none. Check
 that runtime's adapter before you assume a worker knows anything.

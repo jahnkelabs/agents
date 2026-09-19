@@ -11,20 +11,52 @@ cost of not reading it is a visible error rather than a silent one.
 
 | Policy in the rule | Codex flag |
 |---|---|
-| Launch in auto-approval mode | `--approve-for-me`, or `-a never` before 0.147 |
+| Launch in auto-approval mode | `-a never` with a sandbox mode, or `--approve-for-me` alone |
 | Never use a bypass mode | never `--dangerously-bypass-approvals-and-sandbox` |
-| Deny git writes structurally | **no equivalent** — see below |
+| Bound an immutable-target worker's writes | `-C`, `-s workspace-write`, `-c 'sandbox_permissions=[…]'` — see below |
+| Deny an editing worker's git writes | **no equivalent** — see below |
 | Match the worker to the job | `-m/--model`; reasoning effort through `-c` |
 | Carry the invariant preamble | **no equivalent** — see below |
 | Make the worker visible | `--no-alt-screen` |
 
+## The immutable-target worker: writes bounded by directory
+
+Codex controls writes per launch with `-s/--sandbox`, which takes `read-only`, `workspace-write`,
+or `danger-full-access`. `workspace-write` scopes writes to the working directory. Point the
+working directory at a scratch directory, then restore reads across the whole disk:
+
+```
+-C <the worker's scratch directory> -s workspace-write -c 'sandbox_permissions=["disk-full-read-access"]'
+```
+
+`rules/solo-agent-orchestration.md` calls this the immutable-target worker, and it says which
+workers are one. It also derives the path `-C` takes, and it says to create that path before you
+spawn. Name the same path in the prompt, because the worker reports against it.
+
+**The measurement, and nothing beyond it.** One worker launched exactly that way, on codex-cli
+0.149.0, produced these five results:
+
+```
+  read the target        OK
+  write scratch          OK
+  write the target       BLOCKED — Operation not permitted
+  git add in the target  BLOCKED
+  man cp                 OK
+```
+
+The test ran once, on that one version. Treat any wider claim as untested. Re-run the five checks
+on the version you have, rather than quoting this block.
+
+Pair the sandbox mode with `-a never`. `--approve-for-me` implies `workspace-write` and Codex
+rejects it beside `-s/--sandbox`, so it cannot carry this posture.
+
 ## Three policies Codex cannot implement
 
-**No per-worker deny list.** Codex controls writes per launch with `-s/--sandbox`, which takes
-`read-only`, `workspace-write`, or `danger-full-access`. All three are coarse. `read-only` blocks
-a worker that must edit files, and `workspace-write` permits `git add`. Two Codex workers that
-share a tree can therefore cross-commit, and no launch flag prevents it. On this runtime the git
-prohibition is a request rather than a structure. Keep each worker in its own tree, or accept
+**No per-worker deny list for an editing worker.** An editing worker changes the target, so its
+working directory is its milestone worktree, and `workspace-write` permits `git add` there. All
+three sandbox modes are coarse, and none of them denies one command. Two Codex editing workers
+that share a tree can therefore cross-commit, and no launch flag prevents it. For that worker the
+git prohibition is a request rather than a structure. Keep each worker in its own tree, or accept
 the risk knowingly.
 
 Codex does have a per-command deny list, and this repository declines to use it. See
@@ -55,6 +87,9 @@ codex-cli 0.146.0 and earlier, `--approve-for-me` does not exist and the launch 
 `-a never -s read-only` for a read-only worker, or `-a never` with a writable sandbox for a
 worker that edits. Both stay inside the prohibition on bypass modes.
 
+The version installed when this file was last measured is **codex-cli 0.149.0**. There both
+`-a/--ask-for-approval` and `--approve-for-me` exist on `codex`.
+
 ## The trust prompt consumes the first input
 
 A Codex worker's first launch in an untrusted directory consumes its first input. `codex` asks
@@ -62,15 +97,18 @@ A Codex worker's first launch in an untrusted directory consumes its first input
 dismisses that question, because `--approve-for-me` governs command approvals rather than
 workspace trust.
 
-Pre-trust the directory. Add `[projects."<absolute path>"]` with `trust_level = "trusted"` to
-`~/.codex/config.toml`, or pass it per launch:
+Pre-trust the directory in the config file. Add `[projects."<absolute path>"]` with
+`trust_level = "trusted"` to `~/.codex/config.toml`.
+
+**The per-launch override does not dismiss the prompt.** This session tested the argument below on
+codex-cli 0.149.0, and the trust question still appeared:
 
 ```
 -c 'projects."<absolute path>".trust_level="trusted"'
 ```
 
-If you cannot pre-trust the directory, answer `1` with `send_input` before you send the
-assignment.
+Answer `1` with `send_input` before you send the assignment. That is the fallback for a directory
+you did not pre-trust. On 0.149.0 it is the only path that worked.
 
 ## Why `--no-alt-screen` matters
 
