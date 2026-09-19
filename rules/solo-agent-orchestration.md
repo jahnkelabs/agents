@@ -29,7 +29,7 @@ Two reasons survive. Every claim in this section holds on 2026-09-19, against Cl
 1. `list_agent_tools` — resolve the runtime. Never hardcode a roster or an id.
 2. `spawn_agent(agent_tool_id=<id>, name="<role>-<slug>", extra_args=[…])` returns `process_id` and `agent_instructions`. See **Capability, not compliance** for what belongs in `extra_args`.
 3. Write the brief pad. See **The worker brief pad**.
-4. `send_input(process_id, input=<pointer>)` — the pointer names the pad. See **The pointer shape**.
+4. `send_input(process_id, input=<pointer>)` — the pointer names the pad id. See **The pointer shape**.
 5. The worker does its job, writes its report pad, and signals completion as its last act.
 6. On the signal, read the report pad. Never scrape process output for content.
 7. `close_process(process_id)` for every worker. A join that leaves processes open leaks them.
@@ -42,7 +42,7 @@ The corpus recorded 802 `send_input` calls from 2026-08-23 to 2026-09-19. Fifty 
 
 ### The pointer shape
 
-Put the pad name last, because a truncated message arrives as its tail.
+Put the pad id last, because a truncated message arrives as its tail.
 
 ```
 You are Solo process <pid> (<name>) in project <project>, id <project id>.
@@ -51,9 +51,11 @@ Call whoami() first. If Solo MCP is unavailable, say so and stop.
 Do nothing until you have read your brief in full. It carries your job,
 your constraints, your reporting target, and your completion signal.
 
-Read this scratchpad now:
-<brief pad title>
+Read this scratchpad now, by id:
+scratchpad_read(scratchpad_id=<brief pad id>)
 ```
+
+**Address every pad by its id, never by its name.** `scratchpad_write` returns the id, and the id never changes. A title may follow it as a human-readable hint. The same holds for a guard pad and for a completion signal.
 
 ## The worker brief pad
 
@@ -73,6 +75,8 @@ The brief carries six sections, in this order:
   ## Completion       the timer_set call, with the orchestrator's process id
 ```
 
+**A brief pad and a guard pad carry no H1 heading.** Solo replaces the `name` you pass `scratchpad_write` with the content's first H1. Without one the name survives, which keeps the pad legible in a listing. Two probe pads measured this on 2026-09-19.
+
 **A worker without Solo MCP cannot read its brief pad.** Three Codex workers hit this, and their guards collected stdout instead. `whoami()` surfaces the failure first, before the worker starts the job. The pointer therefore calls `whoami()` first, and it tells the worker to stop when Solo is unavailable.
 
 ## Workers signal completion
@@ -81,10 +85,10 @@ A worker's last act wakes the orchestrator directly:
 
 ```
 timer_set(delay_ms=1, delivery_process_id=<orchestrator process_id>,
-          body="<task> complete, <clean|escalated>. Report in <report pad>.")
+          body="<task> complete, <clean|escalated>. Report in scratchpad <report pad id>.")
 ```
 
-Solo rejects a zero delay, so `1` is the smallest legal value. The body obeys the ceiling, and the pad name sits last.
+Solo rejects a zero delay, so `1` is the smallest legal value. The body obeys the ceiling, and the pad id sits last.
 
 **Only the worker knows when it finishes.** Push the signal, and do not watch for its absence. The orchestrator receives completions rather than infers them.
 
@@ -106,19 +110,19 @@ Idle detection cannot do more than that, for three reasons:
 
 ### The guard pad
 
-The guard body names a pad and obeys the ceiling. Write the branches into the pad, never into the body. Every line of the body reads correctly alone, and the pad name sits last.
+The guard body names a pad and obeys the ceiling. Write the branches into the pad, never into the body. Every line of the body reads correctly alone, and the pad id sits last.
 
 ```
 Guard fired for <milestone>, wave <n>.
 A worker that never signalled is a failure to investigate, not a completion.
-Procedure: <guard pad title>
+Procedure: scratchpad_read(scratchpad_id=<guard pad id>)
 ```
 
 The pad carries the watch list and one branch per outcome:
 
 ```
   opening               the guard fired, and this is a failure to investigate
-  ## The watch list     one row per worker: process id, name, todo, report pad
+  ## The watch list     one row per worker: process id, name, todo, report pad id
   ## Do this, in order  cancel every other guard, then read status and output,
                         then branch on running, exited, and idle with a pad
   ## Only then          the escalation sweep, and what the orchestrator may commit
@@ -244,7 +248,9 @@ Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, an
 | Workers running git writes in a shared tree | `git add` from two workers cross-commits their work |
 | A tool deny list treated as a sandbox | Without the Bash sandbox, `cat > <target>` still writes the target through the shell |
 | An inline brief over 1,000 bytes | Claude workers lost 50 of 456 sends, and a truncated brief loses its head |
-| A pointer that names the pad first | Truncation keeps the tail, so the pad name goes last |
+| A pointer that names the pad id first | Truncation keeps the tail, so the pad id goes last |
+| A pointer that addresses a pad by its title | Solo renamed the pad to its first H1, so the title resolves nothing |
+| An H1 heading in a brief pad or a guard pad | Solo overwrites the name you gave the pad, and a listing then loses it |
 | Cutting a milestone branch with `-b` and no existence test | A resumed run fails outright, because teardown left the branch behind |
 | Cutting onto a recorded worktree path with no existence test | `/stash` leaves the worktree standing, so `git worktree add` exits 128 |
 | Treating an idle timer as the completion signal | No debounce, and a thinking worker looks like a finished one |

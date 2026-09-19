@@ -108,6 +108,10 @@ order, and put this task's content in each:
 
 A mid-run amendment edits that pad in place. Never write a second pad for one worker.
 
+**Write no H1 heading into a brief pad or a guard pad.** Solo replaces the pad name with the first
+H1, and the pointer then names a pad nobody can find. Keep the id `scratchpad_write` returns,
+because the pointer carries it.
+
 **Take a lock only where a second writer may exist.** The rule's `## Locks and reports` carries
 that test. A wave's tasks hold disjoint file scopes, so they never contend with each other. Where
 this task does need one, the key is the absolute path inside the worktree that holds the file,
@@ -127,20 +131,21 @@ an escalation record that nothing recreates.
    Run each one against the pre-change state first. Where a check already passes, prove it fails
    on a mutated copy under <this worker's scratch directory, absolute>. Never mutate the
    repository for a proof.
-4. Write your report to scratchpad "<slug>/<milestone>/<task>". Record what you did, the
-   verification output, and anything you found that the task did not anticipate. Begin the report
-   with "ESCALATION:" if you stop rather than finish.
+4. Write your report to scratchpad "<slug>/<milestone>/<task>", and keep the id it returns.
+   Record what you did, the verification output, and anything you found that the task did not
+   anticipate. Begin the report with "ESCALATION:" if you stop rather than finish.
 5. Release any lock you took
 6. Signal completion as your last act:
      timer_set(delay_ms=1, delivery_process_id=<this session's process_id>,
-               body="Task <letter> complete, <clean|escalated>. Report in <slug>/<milestone>/<task>.")
+               body="Task <letter> complete, <clean|escalated>. Report in scratchpad <the report pad id>.")
 ```
 
 ## The pointer
 
 `send_input` carries a pointer at the brief pad and nothing else. `solo-agent-orchestration` gives
 the text under `### The pointer shape`, and the 1,000-byte ceiling that forces it under
-`## The PTY ceiling`. The pad name sits last, because a truncated message arrives as its tail.
+`## The PTY ceiling`. The pointer names the pad id, and the id sits last, because a truncated
+message arrives as its tail.
 
 ## The join
 
@@ -150,11 +155,11 @@ the text under `### The pointer shape`, and the 1,000-byte ceiling that forces i
    timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
      body="Guard fired for milestone <m>, wave <N>.
            A worker that never signalled is a failure to investigate, not a completion.
-           Procedure: <the guard pad title>")
+           Procedure: scratchpad_read(scratchpad_id=<the guard pad id>)")
      → timer_id
    ```
-   Write that guard pad first, in the shape `### The guard pad` gives. The body names the pad and
-   stops there. The 1,000-byte ceiling covers a guard body too.
+   Write that guard pad first, in the shape `### The guard pad` gives. The body names the pad id
+   and stops there. The 1,000-byte ceiling covers a guard body too.
 
    Arm the timer once the workers produce output. An entirely idle watch list returns
    `already_satisfied` and creates no timer at all.

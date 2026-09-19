@@ -123,18 +123,18 @@ pad**. Fill its six sections:
 Send only the pointer, per **The pointer shape** under **The PTY ceiling**:
 
 ```
-send_input(process_id, input=<pointer to the brief pad>)
+send_input(process_id, input=<pointer to the brief pad, naming its id>)
 ```
 
 Workers signal when they finish. Before arming the guard, write a guard pad per
 `solo-agent-orchestration`'s **The guard pad**. It carries the watch list — process id, name,
-area, report pad — and the branches. Then arm one idle timer per run as the dead-worker
+area, report pad id — and the branches. Then arm one idle timer per run as the dead-worker
 fallback only:
 
 ```
 timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
   body="Research guard fired. A worker that never signalled is a failure to investigate,
-        not a completion. Procedure: <guard pad title>")
+        not a completion. Procedure: scratchpad_read(scratchpad_id=<guard pad id>)")
   → timer_id
 ```
 
