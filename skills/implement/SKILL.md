@@ -39,12 +39,12 @@ Use whichever Solo project is currently selected, consistent with `/plan`.
 
 ## Speaking
 
-`rules/chat-vocabulary.md` reserves the headings and the footer. Speak on four occasions and no
-others: a gate, a milestone landing, an escalation, and a failure. The rest of the run is
-silent.
+`rules/chat-vocabulary.md` reserves the headings and the footer. Speak on five occasions and no
+others: a gate, a wave join, a milestone landing, an escalation, and a failure.
 
-Narrate no worker completion and no wave boundary. Worker traffic drove 78% of the assistant
-turns in one run, and none of it needed a reply.
+Narrate no worker completion. That ban cites 78% of one run's assistant turns, which counted one
+message per worker. A wave join instead emits one `Running` block covering every wave of the
+milestone, and `references/implement-waves.md` defines it.
 
 ## The exit criterion
 
@@ -129,8 +129,8 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what the user
    a different tier by itself. Write the summary so the tier follows from it, and add no separate
    rationale field.
 
-   The user can adjust boundaries, not just tiers. The roster is where a milestone that does two
-   things, or two milestones that should be one, becomes obvious.
+   The roster is where a milestone that does two things, or two milestones that should be one,
+   becomes obvious.
 
    **The critique roster comes from the plan.** `/plan` records it under `### References`, and
    `--critique` overrides that. Restate it in this gate as a line the user can change, and do not
@@ -282,7 +282,7 @@ The waves inside one milestone still run their tasks concurrently — that is st
    it. Escalate as `Blocked` where a finding invalidates a PR the run already opened.
 
    **It runs before the landing so its result reaches the user inside `Landed`.** Run it after,
-   and the run speaks a fifth time.
+   and the run speaks a sixth time.
 9. **Announce the landing.** It reports and does not block.
 
    **Landed — `<milestone>`**
@@ -375,8 +375,8 @@ this skill runs a plan, and step 2 is what makes that true. Each report scratchp
 what the task did.
 
 **Close is silent.** Each `Landed` already carried its own PR URLs, quality gates, and ledger.
-Repeat none of it here. `rules/chat-vocabulary.md` reserves four occasions, and a closing report
-is a fifth.
+Repeat none of it here. `rules/chat-vocabulary.md` reserves five occasions, and a closing report
+is a sixth.
 
 **The integration critique runs before this section, and that order matters.** It compares the
 landed branches against the plan pad. Archive the pad first, and you remove half of that

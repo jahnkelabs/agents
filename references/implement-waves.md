@@ -176,11 +176,50 @@ git commit -m "<type>(<scope>): <task summary>"
 ```
 
 Never `git add -A` — another task's work may be in the tree. A task that wrote in two
-repositories commits once per repository. Then `todo_complete` each task, and start the next wave
-of this milestone.
+repositories commits once per repository. Then `todo_complete` each task, emit the wave state
+block below, and start the next wave of this milestone.
 
 **The wave join is the only place a task commits.** No step after the last wave commits a task
 again. A second task commit instruction stops on `nothing to commit`. Deferring it instead lets a
 later wave's changes enter an earlier task's diff.
 
 The milestone loop's critique remedies are the one exception, and its step 5 owns that commit.
+
+## The wave state block
+
+Every wave join emits one block, and this is the only place a wave speaks.
+`rules/chat-vocabulary.md` reserves the `Running` heading for it. It stops nothing and carries
+no footer.
+
+**It carries every wave in the milestone, not the wave that just ended.** The user's need is to
+read where the run is without asking. A block that covers one wave answers that for ten minutes,
+and then the reader asks again.
+
+**Running — `<milestone>`**
+
+```
+  wave 1  ✓ A  salvage artifacts       committed 927c3db
+  wave 2  ▶ B  skeleton and contract   opus · high   worker 383, todo 161
+  wave 3    C  measurement harness     opus · xhigh
+            D  shared guest image      opus · xhigh
+  wave 4    E  three backends          opus · xhigh
+  wave 5    F  run the bakeoff         supervised
+  wave 6    G  decision record         opus · high
+```
+
+<what the plan did not anticipate, in one or two sentences. Then the guard's id and its kind.>
+
+Each row names its wave, the task letter, and a short task name. The state follows:
+
+```
+  committed   ✓ and the short SHA
+  running     ▶, the tier, the worker process id, and the todo id
+  pending     the tier alone
+```
+
+No row repeats a wave number. Rows after a wave's first row leave the wave column empty, as
+wave 3 does above. An escalated task takes ⚠ and a blocked one takes ⊘, per the rule's glyphs.
+
+Keep the paragraph to what a reader needs to orient. A wave that met the plan needs no sentence
+at all, and the guard line is then the whole paragraph. An escalation belongs under `Blocked`
+instead, which `/implement` owns.
