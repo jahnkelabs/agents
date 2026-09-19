@@ -33,17 +33,18 @@ reach it any other way. A file you wrote yourself is backed up before the first 
 hooks regenerate it after a commit, a checkout, and a merge, so a rule edit you commit reaches
 Codex without a re-run. `./scripts/install.sh --rules-only` does that regeneration alone.
 
-**Codex has no `disable-model-invocation`.** On Claude, `/plan`, `/implement`, `/bare-convert`,
-`/stash`, and `/recall` cannot be invoked by the model. On Codex it can invoke all five itself.
-Each still gates on your approval before anything lands, so the guarantee weakens from "you
-start it" to "you approve it".
+**Codex has no `disable-model-invocation`.** On Claude, the model cannot invoke `/bare-convert`
+or `/stash`. On Codex it can invoke both itself. Each still gates on your approval before
+anything lands, so the guarantee weakens from "you start it" to "you approve it".
 
 `references/` is a whole-directory link because it is not a Claude Code directory. It exists so
-a skill or a rule can read an adapter from a stable path, and nothing else writes there. It
-holds two kinds: a tracker adapter that `/stash` and `/recall` read, and a runtime adapter that
-`solo-agent-orchestration` points at before you spawn that runtime. `runtime-claude.md` and
-`runtime-codex.md` are the runtime adapters. Each maps every policy in that rule to the flag
-that implements it, and records the policies its runtime cannot implement at all.
+a skill or a rule can read a file from a stable path. Nothing else writes there. It holds three
+kinds. A tracker adapter serves `/stash` and `/recall`. A runtime adapter serves
+`solo-agent-orchestration`, which points at it before you spawn that runtime. A skill's own
+overflow holds what one skill cannot fit under its size cap, and `implement-waves.md` is the one
+today. `runtime-claude.md` and `runtime-codex.md` are the runtime adapters. Each maps every
+policy in that rule to the flag that implements it. Each also records the policies its runtime
+cannot implement at all.
 
 The `runtime-` prefix is load-bearing. A file named `claude.md` collides with `CLAUDE.md` on a
 case-insensitive filesystem. Claude Code then loads the adapter as project instructions in every
@@ -81,7 +82,7 @@ All six rules load into every session.
 
 | Rule | Description |
 |---|---|
-| [chat-vocabulary](rules/chat-vocabulary.md) | Five reserved headings and one footer mark every message the user must act on; nothing else gets a heading |
+| [chat-vocabulary](rules/chat-vocabulary.md) | Six reserved headings and one footer mark every message the user must act on; nothing else gets a heading |
 | [comment-discipline](rules/comment-discipline.md) | Comments are disallowed by default; after the implementation, propose only the few that pass the admission test |
 | [pr-first-contributions](rules/pr-first-contributions.md) | PR-first git workflow with conventional titles, draft PRs, stacked bases, and squash-merge descriptions |
 | [solo-agent-orchestration](rules/solo-agent-orchestration.md) | Fan out with Solo agents, never a vendor's native sub-agent mechanism. Workers signal their own completion and report to a durable surface |
@@ -154,21 +155,26 @@ Both checks are warnings for that reason: read each one and decide.
 | [`/grill`](skills/grill/SKILL.md) | Interrogate a decision one question at a time | you or Claude |
 | [`/retro`](skills/retro/SKILL.md) | Analyse past sessions for recurring failures and hand the findings to `/plan` | you or Claude |
 | [`/worktree`](skills/worktree/SKILL.md) | Cut, provision, and tear down one milestone worktree | you or Claude |
-| [`/plan`](skills/plan/SKILL.md) | Research, grill, and produce a plan in one Solo scratchpad | **you only** |
-| [`/implement`](skills/implement/SKILL.md) | Compose a plan into milestones, and ship each one as its own PRs | **you only** |
+| [`/plan`](skills/plan/SKILL.md) | Research, grill, and produce a plan in one Solo scratchpad | you or Claude |
+| [`/implement`](skills/implement/SKILL.md) | Compose a plan into milestones, and ship each one as its own PRs | you or Claude |
+| [`/recall`](skills/recall/SKILL.md) | Pull tracker work back into planning | you or Claude |
 | [`/bare-convert`](skills/bare-convert/SKILL.md) | Set up or convert a repository into the bare-plus-worktrees layout | **you only** |
 | [`/stash`](skills/stash/SKILL.md) | Move active work into a durable tracker | **you only** |
-| [`/recall`](skills/recall/SKILL.md) | Pull tracker work back into planning | **you only** |
 
-Five skills have side effects: they write code, commit, convert a repository, or create tracker
-objects. Each of the five carries `disable-model-invocation: true`, so Claude cannot decide to
-run it. Those five do not appear in Claude's skill listing, so they cost no context until you
-invoke them.
+Two skills keep `disable-model-invocation: true`, so Claude cannot decide to run either.
+`/bare-convert` moves your working tree, and `/stash` creates tracker objects and deletes todos
+and KV. Neither appears in Claude's skill listing, so they cost no context until you invoke
+them.
 
-The other five stay model-invocable and carry `when_to_use` trigger phrases. Say "grill me on
-this" or "find the bugs" and the skill runs without a command name. `/worktree` is the one that
-also writes: `/implement` calls it per milestone, so it must be callable. Its destructive half
-lives in `/bare-convert`, which keeps the gate.
+The other eight stay model-invocable. Five of them carry `when_to_use` trigger phrases. Say
+"grill me on this" or "find the bugs" and the skill runs without a command name. `/plan`,
+`/implement`, and `/recall` carry none, so a command name still starts each one. They are
+model-invocable because they call each other. `/recall` hands to `/plan`, and `/plan` calls
+`/implement`. A disabled skill cannot call another disabled skill.
+
+`/worktree` is the one trigger-phrase skill that also writes: `/implement` calls it per
+milestone, so it must be callable. Its destructive half lives in `/bare-convert`, which keeps
+the gate.
 
 **No skill overrides the model.** Every skill respects your session's choice, including a `[1m]`
 variant. A skill sets `effort` only where the shape of the work justifies it:
@@ -244,7 +250,7 @@ confirmation.
 fan out with `spawn_agent`, never with the host runtime's own sub-agent mechanism.
 [solo-agent-orchestration](rules/solo-agent-orchestration.md) carries the policy and the
 reasoning, so the policy also holds for a fan-out that no skill started. Each skill carries only
-its own worker prompt and constraints.
+its own worker brief and constraints.
 
 **Every worker launches in auto-approval mode.** A read-only assignment is no exception, and no
 worker uses a bypass mode. Each runtime names its own flags, and it renames them between releases.
@@ -301,18 +307,20 @@ so the tier follows from it. A task described as "three localized edits against 
 references" argues for its own tier. Adjust any milestone boundary, model, effort, or grouping,
 or approve the roster as proposed.
 
-**A worker's write bound follows what it edits, not which runtime runs it.** An immutable-target
-worker reads the target and writes only scratch. Codex bounds that worker by directory, so the
-denial is structural. A Claude deny list scopes by tool and by command pattern, so the shell still
-reaches the target. There the brief requests that bound, and each runtime adapter says which of
-the two you get.
+**Both runtimes bound an immutable-target worker's writes by directory.** That worker reads the
+target and writes only scratch, and the operating system enforces the bound. On Claude the
+sandbox covers Bash alone. `Read`, `Edit` and `Write` use the permission system, so the brief
+also needs a tool deny list. Codex keeps `/tmp` and `$TMPDIR` writable, so it does not isolate
+one worker's scratch directory from another's. Each runtime adapter carries the arguments and
+the date of its last measurement.
 
-An editing worker is the harder case. Claude denies `git add` per command, and Codex has no
-per-worker equivalent. The rule requires that gap disclosed rather than restated as a promise.
-`/worktree` cuts one tree per milestone and per repository, so several workers share one. Two
-Codex workers that stage in that tree cross-commit silently. `/implement` discloses the exposure
-at the roster gate, and it does not close it. Workers hold per-path locks, and the orchestrator
-commits each task's declared paths, so history stays granular.
+An editing worker is the harder case. No directory-scoped posture denies git in the worktree the
+worker edits. Claude denies `git add` per command, and Codex has no per-worker equivalent. The
+rule requires that gap disclosed rather than restated as a promise. `/worktree` cuts one tree per
+milestone and per repository, so several workers share one. Two Codex workers that stage in that
+tree cross-commit silently. `/implement` discloses the exposure at the roster gate, and it does
+not close it. A worker takes a lock only where a second run or a person may edit the same tree.
+The orchestrator commits each task's declared paths, so history stays granular.
 
 **Workers escalate on deviation, not on failure.** A worker that cannot self-resolve records
 what it found and stops. So does a worker that would have to depart meaningfully from the

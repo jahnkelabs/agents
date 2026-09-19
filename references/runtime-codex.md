@@ -33,8 +33,8 @@ working directory at a scratch directory, then restore reads across the whole di
 workers are one. It also derives the path `-C` takes, and it says to create that path before you
 spawn. Name the same path in the prompt, because the worker reports against it.
 
-**The measurement, and nothing beyond it.** One worker launched exactly that way, on codex-cli
-0.149.0, produced these five results:
+**The measurement, and nothing beyond it.** The original worker ran on codex-cli 0.149.0 and
+produced these five results:
 
 ```
   read the target        OK
@@ -44,8 +44,29 @@ spawn. Name the same path in the prompt, because the worker reports against it.
   man cp                 OK
 ```
 
-The test ran once, on that one version. Treat any wider claim as untested. Re-run the five checks
-on the version you have, rather than quoting this block.
+A second run on codex-cli 0.155.1, measured 2026-09-19, repeated four of the five checks:
+
+```
+  read the target                 OK
+  write scratch                   OK
+  write outside workdir and /tmp  BLOCKED — Operation not permitted
+  git add in the target           not re-run — see note below
+  man cp                          OK
+```
+
+The `git add` check did not re-run this pass. This task's own boundary forbids running any git
+write command, sandboxed or not. The write-outside check above hits the same block `git add`
+would hit. So the 0.149.0 result stands as consistent, not as independently reconfirmed.
+
+**New on 0.155.1: the writable roots include `/tmp` and `$TMPDIR`, not only `-C`.** The launch
+banner states `sandbox: workspace-write [workdir, /tmp, $TMPDIR]`. A write inside `/tmp` but
+outside the `-C` directory still succeeded. A target that lives under `/tmp` would not get this
+posture's protection. This repository's targets live under `/Users/...`, so the guarantee above
+holds for them. It does not hold for scratch. Every worker's scratch directory also lives under
+`/tmp`, so `workspace-write` does not isolate one Codex worker's scratch from another's.
+
+Each test ran once, on one version. Treat any wider claim as untested. Re-run the five checks on
+the version you have, rather than quoting either block.
 
 Pair the sandbox mode with `-a never`. `--approve-for-me` implies `workspace-write` and Codex
 rejects it beside `-s/--sandbox`, so it cannot carry this posture.
@@ -87,8 +108,17 @@ codex-cli 0.146.0 and earlier, `--approve-for-me` does not exist and the launch 
 `-a never -s read-only` for a read-only worker, or `-a never` with a writable sandbox for a
 worker that edits. Both stay inside the prohibition on bypass modes.
 
-The version installed when this file was last measured is **codex-cli 0.149.0**. There both
-`-a/--ask-for-approval` and `--approve-for-me` exist on `codex`.
+The version installed when this file was last measured is **codex-cli 0.155.1**, checked
+2026-09-19. There both `-a/--ask-for-approval` and `--approve-for-me` exist on `codex`.
+
+**The approval policy has exactly two values.** `codex --help` on codex-cli 0.155.1 lists only
+`on-request` and `never` for `-a/--ask-for-approval`. No `on-failure` value exists on the CLI,
+whatever a discussion of Codex's behavior calls it.
+
+**Unverified: `workspace-write` may ignore `approval_policy`.** GitHub issue openai/codex#11885
+reports that the `workspace-write` sandbox always behaves as `on-failure`, no matter what `-a`
+value you pass. This session did not verify that report against the source or a running
+instance. Treat it as unconfirmed.
 
 ## The trust prompt consumes the first input
 
@@ -114,6 +144,13 @@ you did not pre-trust. On 0.149.0 it is the only path that worked.
 
 Without it the TUI writes to the alternate screen and `get_process_output` returns nothing. The
 worker then exits on its own after about thirty seconds, and that exit looks like a silent crash.
+
+## Auto-update can kill the first launch
+
+A Codex worker's first launch can trigger a silent auto-update. During this plan's research, a
+worker auto-updated from 0.155.0 to 0.155.1. It exited immediately with `Please restart Codex`,
+before it did any work. Respawn the worker. Do not diagnose that exit as a launch-argument
+problem or a sandbox problem: the update caused it, not the flags.
 
 ## Execpolicy, and why this repository does not use it
 

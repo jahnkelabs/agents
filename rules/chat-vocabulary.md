@@ -1,10 +1,10 @@
 ---
-description: Five reserved headings and one footer mark every message the user must act on; nothing else gets a heading
+description: Six reserved headings and one footer mark every message the user must act on; nothing else gets a heading
 ---
 
 # Chat vocabulary
 
-A run produces a lot of text, and little of it needs the user. This rule reserves five headings
+A run produces a lot of text, and little of it needs the user. This rule reserves six headings
 and one footer for the text that does. The user reads the heading and knows what you want. A
 message that carries neither a heading nor the footer needs no reply, so the user can read it
 later.
@@ -20,8 +20,8 @@ Declined: a `references/chat-vocabulary.md` adapter. A missing convention fails 
 
 **A reserved heading marks a message the user must act on. Nothing else carries one.**
 
-Four of the five headings block and wait for a reply. `Landed` asks the user to read a milestone
-result, and the run continues.
+Four of the six headings block and wait for a reply. `Landed` asks the user to read a milestone
+result, and `Running` reports where the run is. Neither one stops the run.
 
 The heading works only while it stays rare. One heading on a message that asks nothing teaches
 the user to read every turn again.
@@ -29,11 +29,11 @@ the user to read every turn again.
 ## Default policy
 
 - **Default:** Send no heading, and send no footer.
-- **Cadence:** In an `/implement` run, speak on your own initiative on four occasions only.
-- **The four occasions:** a gate, a milestone landing, an escalation, and a failure.
+- **Cadence:** In an `/implement` run, speak on your own initiative on five occasions only.
+- **The five occasions:** a gate, a wave join, a milestone landing, an escalation, and a failure.
 - **Every other skill:** speak where the skill's own steps say to speak. A `/research` pad report
   is one such message, and it carries no heading.
-- **Global parts:** the five headings and the footer hold in every skill. The cadence above holds
+- **Global parts:** the six headings and the footer hold in every skill. The cadence above holds
   in `/implement` alone.
 - **Fencing:** Fence every block that sits under a reserved heading.
 - **Recommendation:** Every question that offers options carries one. An `Approve` proposal is its
@@ -45,6 +45,7 @@ the user to read every turn again.
 ```
 **Approve — <topic>**     a gate. Nothing proceeds without a reply.
 **Deciding — <topic>**    a question the user must answer, with or without options.
+**Running — <milestone>** the wave state of a milestone that has not landed yet.
 **Landed — <milestone>**  a milestone shipped. PR URLs, gates, ledger.
 **Blocked — <what>**      work stopped and needs the user.
 **Failed — <what>**       something broke that the orchestrator cannot resolve.
@@ -53,7 +54,15 @@ the user to read every turn again.
 
 Each heading carries exactly one meaning, and no heading carries a second. Nothing else in a run
 gets a heading. `Approve`, `Deciding`, `Blocked`, and `Failed` each stop the run and wait for the
-user. `Landed` reports a milestone, and the run continues.
+user. `Landed` reports a milestone and `Running` reports its waves, and the run continues.
+
+**`Running` covers the whole milestone, not the wave that ended.** It names every wave, with the
+state of each task. A block that covers one wave leaves the reader asking again ten minutes
+later.
+
+**The narration ban does not reach it.** That ban cites 78% of one run's assistant turns, and
+that figure counted one message per worker. One milestone here ran five waves and ten workers, so
+the block costs half the messages. It also answers a question no narration answered.
 
 ## Approve versus Deciding
 
@@ -99,9 +108,9 @@ message. The questions after it are follow-ups inside the same open gate. `/impl
 no arguments asks which plan to run. That question opens a gate rather than standing outside one. So
 "inside an open gate" covers a first question too, and no waiting message falls outside this rule.
 
-**Which messages do not.** `Landed` carries no footer, because the run continues. A report, a
-narration, and a direct answer to the user's own question carry none. None of the three waits, and
-waiting is the whole test. Whether a message carries a heading decides nothing here.
+**Which messages do not.** `Landed` and `Running` carry no footer, because the run continues. A
+report, a narration, and a direct answer to the user's own question carry none. None of the three
+waits, and waiting is the whole test. Whether a message carries a heading decides nothing here.
 
 ## Fence every blocking block
 
@@ -119,6 +128,7 @@ Each glyph below already carries one meaning. Never give one of them a second.
 ```
 →   a call and what it returns
 ✓   a task committed
+▶   a task running
 ⚠   a task escalated
 ⊘   a task blocked behind another
 ☐   an open work item
@@ -174,8 +184,8 @@ rule now says both.
 selectable options and waits. A `Deciding` is a choice you cannot rank, which is the shape the
 tool exists for.
 
-**Everything else is prose.** `Approve`, `Landed`, `Blocked`, and `Failed` stay in the message
-text. An `Approve` proposes one course, and a user often answers with a refinement rather than a
+**Everything else is prose.** `Approve`, `Running`, `Landed`, `Blocked`, and `Failed` stay in the
+message text. An `Approve` proposes one course, and a user often answers with a refinement rather than a
 pick. A fixed option set would remove that refinement.
 
 **A `Deciding` that offers nothing to rank is prose too.** The tool needs two options or more, and
@@ -215,3 +225,4 @@ the situation into the options.
 | A bold sentinel in place of the footer | Bold marks emphasis everywhere else, so it marks nothing here |
 | A new glyph for a meaning a taken glyph holds | A reader learns two symbols for one fact and trusts neither |
 | Narrating each worker completion | Worker traffic drove 78% of assistant responses in one run, and none needed a reply |
+| A wave block that reports only the wave that ended | The reader asks where the run is again, before the next wave joins |

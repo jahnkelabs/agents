@@ -1,8 +1,7 @@
 ---
 name: plan
 description: Research, grill, and produce an implementation plan in a Solo scratchpad
-argument-hint: "[topic | research/<slug> | paths]"
-disable-model-invocation: true
+argument-hint: "[topic | research/<slug> | recall/<issue-ref> | paths]"
 ---
 
 # Plan
@@ -23,7 +22,7 @@ creates no Solo todos. `/implement` composes the slices into milestones when it 
 - A research pad (`research/<slug>` or a numeric id) — from a standalone `/research`
 - A retro pad (`retro/<slug>` or a numeric id) — from `/retro`
 - File paths — read fully before anything else
-- A recall payload — when invoked by `/recall`
+- A recall pad (`recall/<issue-ref>` or a numeric id) — from `/recall`
 
 With no arguments:
 
@@ -169,9 +168,16 @@ scratchpad_write(
 )
 ```
 
-Record the `scratchpad_id`. Revise with `scratchpad_edit` using
-`target={"type":"section","section_heading":"## ..."` or `"### ..."}` and the current `expected_revision`; on
-a mismatch, re-read and retry.
+Record the `scratchpad_id`. Revise with `scratchpad_edit`, and pass the current
+`expected_revision`. On a mismatch, re-read and retry. The `target` is an object, never a bare
+string, and it takes one of two forms:
+
+```
+{"type": "section", "section_heading": "<heading>"}
+{"type": "line_range", "offset": <n>, "limit": <n>}
+```
+
+`rules/solo-agent-orchestration.md` carries this shape under `## Locks and reports`.
 
 ```
 # <Feature or task> Plan
@@ -192,6 +198,11 @@ One line per repo when more than one is in scope. The path is the container gate
 
 `path/one.ext` — <what changes and why>
 `path/two.ext` — <what changes and why>
+
+### Exit criterion
+<the one end state, in a sentence>
+**Proof**: `<the command that proves it>`
+**Invariants**: <what must not change while the item reaches that state>
 
 ### Verification
 #### Automated:
@@ -223,6 +234,16 @@ The plan leads and the evidence follows. One `**Repos**:` line carries the conta
 `/implement` needs to cut each milestone's worktree. Each slice verifies itself. There is no
 separate testing section, so unit, integration, and manual checks all sit under that slice's
 `### Verification`.
+
+**Every work item carries one exit criterion.** It names the end state a machine can check, the
+command that proves it, and the invariants that must survive. `/implement` runs each milestone to
+the criteria of the items it carries, and it asks the user nothing in between.
+`skills/implement/SKILL.md` states that under `## The exit criterion`.
+
+Write a command, never a description. `the tests pass` proves nothing, because nobody can run it.
+
+One corpus attributed 40 of 109 escalations to plan ambiguity. The two most frequent self-imposed
+pauses were decisions the plan left open. An exit criterion is what closes them.
 
 **A work item is a slice.** A slice is narrow and vertical: one coherent change, in exactly one
 repository, that stands on its own. It says what changes and why, never who runs it. Worker
@@ -294,7 +315,7 @@ Once the user approves:
 ```
 Plan approved. What next?
 
-  1. Implement now   — I'll confirm critique models and start
+  1. Implement now   — I'll start /implement; you'll next see its roster gate
   2. Stash for later — park it in a tracker via /stash
   3. Leave active    — pad stays in Solo; run /implement plan/<slug> whenever
 ```
@@ -306,11 +327,15 @@ I recommend <one of the three>, because <the ground>.
 `rules/chat-vocabulary.md` makes that line mandatory. This `Deciding` presents three options you
 did not rank, so it never counts as its own recommendation.
 
-- **Implement now** — ask which models should run the critique (see `/critique`), write the answer
-  to the pad's `### References`, then hand to `/implement`. That skill composes the slices into
-  milestones and gates that roster separately.
+- **Implement now** — call `/implement plan/<slug>`, with the pad as the first argument. Print no
+  command for the user to type. The next stop is that skill's roster gate.
 - **Stash for later** — hand to `/stash`, which proposes the tracker shape and confirms.
 - **Leave active** — do nothing. The pad stays in Solo.
+
+**Do not ask for the critique roster here.** `/implement` reads it from the pad's `### References`
+and asks inside its own roster gate where the pad names none. One run holds one roster, and two
+skills asking for it turns one stop into two. Write the roster to `### References` whenever the
+grilling settled it.
 
 ## Guidelines
 

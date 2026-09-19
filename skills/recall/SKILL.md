@@ -2,7 +2,6 @@
 name: recall
 description: Pull stashed work out of a tracker and back into active planning
 argument-hint: "[issue-ref]"
-disable-model-invocation: true
 effort: medium
 ---
 
@@ -47,7 +46,8 @@ landed is usually a mistake to recall, and the user may want a different one.
 
 ## Step 3 — Hand to /plan
 
-Write the pulled content into a Solo pad as planning input, then invoke `/plan` with it.
+Write the pulled content into a Solo pad named `recall/<issue-ref>`, then invoke `/plan` with it.
+Record the returned pad id.
 
 `/plan` runs normally from there: gate A proposes scope and investigation, gate B grills, gate
 E approves and forks. The tracker content becomes context, not a substitute for any of it.
