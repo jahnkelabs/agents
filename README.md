@@ -1,6 +1,6 @@
 # agents
 
-Claude Code configuration: always-on rules, plus a research, plan, and implement workflow built
+Claude Code and Codex configuration: always-on rules, plus a research, plan, and implement workflow built
 on the [Solo](https://soloterm.dev) MCP server.
 
 ## Install
@@ -74,6 +74,7 @@ overwrites a value you set, and it touches nothing else in that file. It does no
 | A tracker MCP | `/stash`, `/recall` — Linear adapter included |
 | Vale 3.0 or later | checking the sentence-level half of `prose-discipline` — `brew install vale`. CI pins 3.17.1 |
 | jq | selecting the output style at install time — without it the install prints the instruction instead |
+| `gws` CLI, signed in | `/gws` |
 | Nothing | `/grill`, `/bare-convert`, and the rules |
 
 ## Rules
@@ -150,31 +151,32 @@ Both checks are warnings for that reason: read each one and decide.
 
 | Skill | Purpose | Invocation |
 |---|---|---|
-| [`/research`](skills/research/SKILL.md) | Investigate a codebase with parallel Solo agents and write the findings to a Solo scratchpad | you or Claude |
-| [`/critique`](skills/critique/SKILL.md) | Adversarial multi-model review of a diff, plan, files, or PR | you or Claude |
-| [`/grill`](skills/grill/SKILL.md) | Interrogate a decision one question at a time | you or Claude |
-| [`/retro`](skills/retro/SKILL.md) | Analyse past sessions for recurring failures and hand the findings to `/plan` | you or Claude |
-| [`/worktree`](skills/worktree/SKILL.md) | Cut, provision, and tear down one milestone worktree | you or Claude |
-| [`/plan`](skills/plan/SKILL.md) | Research, grill, and produce a plan in one Solo scratchpad | you or Claude |
-| [`/implement`](skills/implement/SKILL.md) | Compose a plan into milestones, and ship each one as its own PRs | you or Claude |
-| [`/recall`](skills/recall/SKILL.md) | Pull tracker work back into planning | you or Claude |
+| [`/research`](skills/research/SKILL.md) | Investigate a codebase with parallel Solo agents and write the findings to a Solo scratchpad | you or the agent |
+| [`/critique`](skills/critique/SKILL.md) | Adversarial multi-model review of a diff, plan, files, or PR | you or the agent |
+| [`/grill`](skills/grill/SKILL.md) | Interrogate a decision one question at a time | you or the agent |
+| [`/retro`](skills/retro/SKILL.md) | Analyse past sessions for recurring failures and hand the findings to `/plan` | you or the agent |
+| [`/worktree`](skills/worktree/SKILL.md) | Cut, provision, and tear down one milestone worktree | you or the agent |
+| [`/plan`](skills/plan/SKILL.md) | Research, grill, and produce a plan in one Solo scratchpad | you or the agent |
+| [`/implement`](skills/implement/SKILL.md) | Compose a plan into milestones, and ship each one as its own PRs | you or the agent |
+| [`/recall`](skills/recall/SKILL.md) | Pull tracker work back into planning | you or the agent |
+| [`/gws`](skills/gws/SKILL.md) | Read and change Google Drive, Docs, Sheets, and Slides files through the `gws` CLI | you or the agent |
 | [`/bare-convert`](skills/bare-convert/SKILL.md) | Set up or convert a repository into the bare-plus-worktrees layout | **you only** |
 | [`/stash`](skills/stash/SKILL.md) | Move active work into a durable tracker | **you only** |
 
-Two skills keep `disable-model-invocation: true`, so Claude cannot decide to run either.
+Two skills keep `disable-model-invocation: true`, so the agent cannot decide to run either.
 `/bare-convert` moves your working tree, and `/stash` creates tracker objects and deletes todos
-and KV. Neither appears in Claude's skill listing, so they cost no context until you invoke
+and KV. Neither appears in the agent's skill listing, so they cost no context until you invoke
 them.
 
-The other eight stay model-invocable. Five of them carry `when_to_use` trigger phrases. Say
+The other nine stay model-invocable. Six of them carry `when_to_use` trigger phrases. Say
 "grill me on this" or "find the bugs" and the skill runs without a command name. `/plan`,
 `/implement`, and `/recall` carry none, so a command name still starts each one. They are
 model-invocable because they call each other. `/recall` hands to `/plan`, and `/plan` calls
 `/implement`. A disabled skill cannot call another disabled skill.
 
-`/worktree` is the one trigger-phrase skill that also writes: `/implement` calls it per
-milestone, so it must be callable. Its destructive half lives in `/bare-convert`, which keeps
-the gate.
+`/worktree` and `/gws` are the two trigger-phrase skills that also write. `/implement` calls
+`/worktree` per milestone, so it must be callable. Its destructive half lives in `/bare-convert`,
+which keeps the gate. `/gws` confirms every write with you before it sends one.
 
 **No skill overrides the model.** Every skill respects your session's choice, including a `[1m]`
 variant. A skill sets `effort` only where the shape of the work justifies it:
