@@ -107,7 +107,7 @@ Which models should critique this? I recommend <the models>, because <the ground
 Use only enabled runtimes — never assume a fixed set. Each model misses different defects,
 which is the point. Independent critics find more defects than one critic that you run repeatedly.
 
-When `/implement` calls this skill, it already chose the roster at setup. Use that roster, and
+When `/plan` or `/implement` calls this skill, it already chose the roster. Use that roster, and
 do not ask again.
 
 **One roster serves a whole run.** `/implement` chooses it once, then reuses it for every
@@ -207,8 +207,7 @@ pad**:
     scratchpad; when stuck, record and stop
   ## Tool guidance  per finding: severity (bug | risk | nit), location (file:line), claim,
     a concrete failure or a statement that none exists, and a fix; never suggest a feature,
-    a refactor, or scope growth; never say "add tests" without naming the untested path;
-    be specific and harsh — vague concerns are noise
+    a refactor, or scope growth; never say "add tests" without naming the untested path
   ## Output format  write to the scratchpad step 1 resolved
   ## Completion     timer_set per `solo-agent-orchestration`'s Workers signal completion
 ```
