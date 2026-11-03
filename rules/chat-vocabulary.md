@@ -35,7 +35,7 @@ the user to read every turn again.
   is one such message, and it carries no heading.
 - **Global parts:** the six headings and the footer hold in every skill. The cadence above holds
   in `/implement` alone.
-- **Fencing:** Fence every block that sits under a reserved heading.
+- **Fencing:** Fence code and diagrams only. Never fence a prose field.
 - **Recommendation:** Every question that offers options carries one. An `Approve` proposal is its
   own; every other such question states one explicitly. A question offering none carries none.
 - **Exceptions:** A direct reply to the user's own question needs no heading.
@@ -112,14 +112,15 @@ no arguments asks which plan to run. That question opens a gate rather than stan
 report, a narration, and a direct answer to the user's own question carry none. None of the three
 waits, and waiting is the whole test. Whether a message carries a heading decides nothing here.
 
-## Fence every blocking block
+## Fence code and diagrams only
 
-Fence every block that sits under a reserved heading. Unfenced, the roster gate reached a median
-of 286 columns and the finding block 327. At that width the terminal wrapped both, and neither
-read as a table any more. Real runs fenced the roster gate 5 times out of 13, and the
-per-finding block 13 of 25.
+A fence holds code or a diagram, and nothing else. No column limit applies to a prose field. The
+terminal wraps a markdown field cleanly. Inside a fence, the field's bold label shows as literal
+asterisks.
 
-A question that offers nothing to rank has no block, so it fences nothing.
+A fixed-width layout, such as an aligned table, counts as a diagram, because wrapping breaks it.
+Real runs measured that failure. Unfenced, the roster gate reached a median of 286 columns and the
+finding block 327. At that width the terminal wrapped both, and neither read as a table any more.
 
 ## The taken glyphs stay taken
 
@@ -148,25 +149,112 @@ restating it.
 1. The reserved heading, on the gate's opening message only: `Deciding` for a question you cannot
    answer yourself, `Approve` for a proposal. Each follow-up question inside that open gate carries
    no heading.
-2. A fenced context block, carrying the three things below.
-3. One short question, and a recommendation. The recommendation is mandatory. An `Approve`
-   proposal is its own, so it needs no separate line.
+2. The context block, in markdown: the block fields, one section per option, and the
+   recommendation with its ground. The recommendation is mandatory. An `Approve` proposal is its
+   own, so it needs no separate line.
+3. One short question.
 4. The footer, as the last line of a prose question. A question the tool delivers needs
    none, because the tool blocks on its own.
 
-**A question that offers nothing to rank drops part 2 and the recommendation.** It has no option to
-cost and nothing to recommend. The heading, the question, and the footer are the whole message.
-The first question of `/plan`, `/research`, and `/retro` is that shape. `/implement`'s lists the
-active plan pads, so it offers options and takes the full shape.
+**A question that offers nothing to rank drops part 2.** It has no option to weigh and nothing to
+recommend. The heading, the question, and the footer are the whole message. The first question of
+`/plan`, `/research`, and `/retro` is that shape. `/implement`'s lists the active plan pads, so it
+offers options and takes the full shape.
 
-The context block carries what you found, why the user must choose, and the cost of each option:
+Write each field label in bold, with the colon inside the bold. Start each field on its own line,
+and a markdown list does that. Fence nothing in the context block except an example's code or
+diagram.
 
-```
-found:      <what you found, and where>
-decision:   <why this needs the user, rather than a lookup you can run>
-<option A>  <what it costs, and what it forecloses>
-<option B>  <what it costs, and what it forecloses>
-```
+### The block fields
+
+The context block opens with four fields:
+
+- `**Found:**` what you found, and where.
+- `**Deciding:**` what the user decides, and why no lookup you can run settles it.
+- `**Criticality:**` high, medium, or low, on the scale below.
+- `**Reversible:**` yes, partly, or no, with what undoing it costs.
+
+The criticality scale has three values:
+
+- **High:** other decisions depend on it, or undoing it is costly.
+- **Medium:** it shapes one skill or stage.
+- **Low:** it is local and cheap to change.
+
+### One section per option
+
+Head each option's section with a bold label, such as `**A. A join table**`. Then give its five
+fields:
+
+- `**Pros:**` what the option gains.
+- `**Cons:**` what the option costs.
+- `**Risks:**` what can go wrong, and what follows if it does.
+- `**Constraints:**` what the option requires, and what it rules out later.
+- `**Example:**` a fenced code block or diagram that shows the option.
+
+Give an example wherever the option has code or a structure to show. Omit it where the option is
+already concrete, as `squash the branch` is.
+
+### The recommendation
+
+Close the context block with one `**Recommendation:**` line. Name the option, and give its ground:
+the field that decides between the options. A recommendation with no ground leaves the user to
+rank the options again.
+
+### An `Approve` of one proposal
+
+An `Approve` carries the four block fields and one section for the proposal itself. That section
+carries the five option fields. Each alternative you declined then takes one `**Declined:**` line,
+with the alternative and the reason. The proposal is its own recommendation, so it carries no
+`**Recommendation:**` line.
+
+### Example
+
+A `Deciding` with two options, as it renders above the question tool call:
+
+> **Deciding — where tags live**
+>
+> - **Found:** the `notes` table stores no tags. The search page filters by one tag, and no other
+>   query reads them.
+> - **Deciding:** the storage shape for tags. No file in the repository settles it.
+> - **Criticality:** high. The search query and every later migration depend on it.
+> - **Reversible:** partly. A later change of shape costs one migration over every row.
+>
+> **A. A JSON array column**
+>
+> - **Pros:** one column, and no join on read.
+> - **Cons:** nothing enforces one spelling per tag.
+> - **Risks:** the filter by tag scans every row as the table grows.
+> - **Constraints:** the database must support a JSON type.
+>
+> **Example:**
+>
+> ```sql
+> ALTER TABLE notes ADD COLUMN tags JSON NOT NULL DEFAULT '[]';
+> ```
+>
+> **B. A join table**
+>
+> - **Pros:** an index serves the filter by tag directly.
+> - **Cons:** every read of a note's tags takes a join.
+> - **Risks:** without `ON DELETE CASCADE`, a deleted note leaves orphan rows.
+> - **Constraints:** one more table, and one more migration now.
+>
+> **Example:**
+>
+> ```sql
+> CREATE TABLE note_tags (
+>   note_id INTEGER NOT NULL REFERENCES notes (id) ON DELETE CASCADE,
+>   tag     TEXT    NOT NULL,
+>   PRIMARY KEY (tag, note_id)
+> );
+> ```
+>
+> **Recommendation:** B. The filter by tag is the one query that reads tags, and only B indexes it.
+
+The tool then carries the question, `Where should tags live?`, and one line per option:
+
+- `B. A join table (Recommended)`: an index serves the tag filter, and reads take a join.
+- `A. A JSON array column`: one column and no join, and the tag filter scans every row.
 
 Ask one question per message. Never batch two, because the user answers the first and the second
 one disappears.
@@ -193,18 +281,19 @@ that question has none.
 
 Map the shape onto the tool:
 
-```
-part 1, the heading          the prose above the call
-part 2, the context block    the prose above the call
-each option and its cost     that option's description
-part 3, the question         the question field
-the recommendation           the first option, labelled (Recommended)
-part 4, the footer           omit it, because the tool waits on its own
-```
+| Part of the shape | Where it goes |
+|---|---|
+| Part 1, the heading | the prose above the call |
+| Part 2, the context block | the prose above the call, in markdown, with every field |
+| Each option | its section stays above the call; its description is a one-line summary |
+| Part 3, the question | the question field |
+| The recommendation | the context block, and that option goes first, labelled (Recommended) |
+| Part 4, the footer | omitted, because the tool waits on its own |
 
 **Put the context above the call, never inside the options.** One run answered a rejected question
 on the second try, once the background arrived first. The user said so: "The context was helpful.
-Represent the question." An option carries its own cost, and the situation belongs above them all.
+Represent the question." An option's description carries one line, and the fields belong above the
+call.
 
 Real runs justify this section. One session sent 23 tool calls, and 8 reached the clarify path.
 That is 35 percent, against a 6 percent baseline across 273 questions. Every one of those 8 packed
@@ -219,7 +308,8 @@ the situation into the options.
 | A blocking message with no footer | Its absence means nothing is outstanding, so the user reads an all-clear |
 | `Approve` on a choice you cannot rank | The user sanctions a proposal nobody made, and the real question stays unasked |
 | `Deciding` on a proposal you already formed | The user ranks options you invented to fill the shape |
-| An unfenced roster or finding block | Real runs reached 286 and 327 columns, and neither block read as a table |
+| An unfenced fixed-width table | Real runs reached 286 and 327 columns, and neither block read as a table |
+| Decision fields inside a fence | The bold labels show as literal asterisks, and the fields read as code |
 | A question that offers options and no recommendation | The user does the ranking work you were able to do first |
 | Two questions in one message | The user answers the first, and the second one disappears |
 | A bold sentinel in place of the footer | Bold marks emphasis everywhere else, so it marks nothing here |
