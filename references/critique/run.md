@@ -57,7 +57,7 @@ intent:
 location · concrete failure, or before and after · fix · severity
 
 ## Out of mandate
-<what this lens never reports, because another lens owns it>
+<what this lens does not hunt for, and the lens that owns each>
 ```
 
 The frontmatter keys are `lens`, `batch`, `applies_when`, `tier.<runtime>.model`, `tier.<runtime>.effort`,
@@ -141,12 +141,18 @@ the front end's tags.
                     git write command; write only the agent's scratch directory (absolute) or
                     its report pad; when stuck, record and stop; the preamble, where the runtime
                     takes no system-prompt argument
-  ## Tool guidance  report each finding in the shape the lens file's `## Finding` section gives; report nothing its
-                    `## Out of mandate` section excludes; never say "add tests" without naming the
+  ## Tool guidance  report each finding in the shape the lens file's `## Finding` section gives; do not hunt for
+                    what its `## Out of mandate` section assigns elsewhere, and record any you notice
+                    as a handoff; never say "add tests" without naming the
                     untested path; be specific and harsh, because a vague concern is noise
   ## Output format  the report channel below, and the ESCALATION: marker
   ## Completion     the rule's timer_set call; on the file channel, none
 ```
+
+**A lens hands off what it notices outside its mandate.** It records each incidental sighting under
+`## Noticed outside mandate`, one line each: the location, the claim, and the owning lens. It gives
+no severity and no fix, and it never searches for one. A mandate keeps each agent's attention on
+its own question. It never drops a finding.
 
 Give each agent the target, its lens file, and the intent. Withhold the reasoning behind the work.
 An agent that already knows why the code is good is no longer a critic.
@@ -308,6 +314,10 @@ Across both batches, collect the surviving findings of each. In `apply` mode, ad
 finding that a rework fixed, with `fixed: rework round <n>`. A rerun no longer raises that
 finding, so nothing else carries it into the ledger.
 
+A handoff enters the merge beside the owning lens's findings. Where the owner raised the same
+defect, the two fold into one finding. Where the owner did not, the handoff becomes a finding under
+the owner's question, and its refuter also sets its severity.
+
 Match findings that describe the same defect at the same location, even when the wording differs.
 Keep one, and name every lens that raised it. Two findings at one location that describe different
 defects stay separate.
@@ -400,7 +410,9 @@ Not run: security, the diff touches no auth; requirements-fidelity, no intent
          fixed: renamed it to `$refreshed`
 ```
 
-Every line names its severity, its location, the lenses that raised it, and its scope. Severity is
+Every line names its severity, its location, the lenses that raised it, and its scope. A finding
+that only a handoff raised names the owning lens and `handed off by <lens>`. A run of those against
+one owner shows a mandate that lens keeps missing. Severity is
 `bug` (wrong behavior), `risk` (plausible failure), or `nit` (style, naming, cleanup). Severity
 ranks the ledger, so never drop it from a line.
 
