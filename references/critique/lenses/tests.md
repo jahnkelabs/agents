@@ -2,7 +2,9 @@
 lens: tests
 batch: 2
 applies_when: always
-tier: { model: sonnet, effort: high }
+tier:
+  claude: { model: sonnet, effort: high }
+  codex: { model: gpt-6.1-sol, effort: high }
 intent:
   concern: "`requirements.md`, each acceptance criterion a test must cover."
   pr: "the behavior the PR body describes, and the test conventions the repository already uses."

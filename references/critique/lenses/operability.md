@@ -2,7 +2,9 @@
 lens: operability
 batch: 2
 applies_when: "the diff changes a request path, a background job, or an external call in a deployed service. It also applies when the diff adds a migration, a configuration value, or a feature flag."
-tier: { model: sonnet, effort: high }
+tier:
+  claude: { model: sonnet, effort: high }
+  codex: { model: gpt-6.1-sol, effort: high }
 intent:
   concern: "`design.md`, for the rollout plan and any observability it names."
   pr: "the PR body, and the logging, metrics, and configuration patterns the service already uses."

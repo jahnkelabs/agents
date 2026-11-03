@@ -83,8 +83,9 @@ That roster names a model and an effort per critic. Take the runtime each model 
 each. `list_agent_tools` resolves each one to an enabled runtime. Stop and say so where one
 resolves to none. Never hardcode a roster, and ask no roster question.
 
-`run.md` runs every lens agent on Claude whenever the roster includes Claude, so each lens file's
-`tier` frontmatter stays in force. The roster's other runtimes run the refuters.
+`run.md` runs every lens agent on Claude whenever the roster includes Claude. The lens file's
+`tier` entry for the agent's runtime sets its model and effort. The roster's other runtimes run
+the refuters.
 
 ## Step 2 — Resolve the intent
 

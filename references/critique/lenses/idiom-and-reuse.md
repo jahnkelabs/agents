@@ -2,7 +2,9 @@
 lens: idiom-and-reuse
 batch: 2
 applies_when: always
-tier: { model: sonnet, effort: high }
+tier:
+  claude: { model: sonnet, effort: high }
+  codex: { model: gpt-6.1-sol, effort: high }
 intent:
   concern: "`design.md`, for the conventions it adopts."
   pr: "the conventions in the files around the diff, and the repository's own rules and lint config."

@@ -2,7 +2,9 @@
 lens: requirements-fidelity
 batch: 1
 applies_when: always
-tier: { model: opus, effort: high }
+tier:
+  claude: { model: opus, effort: high }
+  codex: { model: gpt-6-astra, effort: high }
 intent:
   concern: "`requirements.md`, every acceptance criterion and its proof command."
   pr: "the PR body and the linked issue, read as the requirements."

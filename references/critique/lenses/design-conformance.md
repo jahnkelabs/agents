@@ -2,7 +2,9 @@
 lens: design-conformance
 batch: 1
 applies_when: always
-tier: { model: opus, effort: high }
+tier:
+  claude: { model: opus, effort: high }
+  codex: { model: gpt-6-astra, effort: high }
 intent:
   concern: "`design.md`, every decision and each declined alternative."
   pr: "the architecture the code around the diff already follows: its layers, module boundaries, and data flow."

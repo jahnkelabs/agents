@@ -2,7 +2,9 @@
 lens: claims
 batch: 2
 applies_when: always
-tier: { model: sonnet, effort: high }
+tier:
+  claude: { model: sonnet, effort: high }
+  codex: { model: gpt-6.1-sol, effort: high }
 intent:
   concern: "`requirements.md` and `design.md`, for the behavior the text must now describe."
   pr: "the PR body, for the behavior the text must now describe."

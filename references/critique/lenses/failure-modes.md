@@ -2,7 +2,9 @@
 lens: failure-modes
 batch: 2
 applies_when: always
-tier: { model: opus, effort: high }
+tier:
+  claude: { model: opus, effort: high }
+  codex: { model: gpt-6-astra, effort: high }
 intent:
   concern: "`requirements.md` for stated limits and error behavior, and `design.md` for the failure handling it chose."
   pr: "the PR body and the linked issue, and the error handling the code around the diff already uses."

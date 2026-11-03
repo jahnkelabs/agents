@@ -2,7 +2,9 @@
 lens: data-access
 batch: 2
 applies_when: "the diff touches a database query, an ORM relation, a migration, a schema, or a cache. It also applies when the diff adds a loop that calls a remote service."
-tier: { model: sonnet, effort: high }
+tier:
+  claude: { model: sonnet, effort: high }
+  codex: { model: gpt-6.1-sol, effort: high }
 intent:
   concern: "`design.md` for the data model and its expected volumes, and `requirements.md` for any stated limit."
   pr: "the PR body, and the schema, indexes, and query patterns the repository already holds."

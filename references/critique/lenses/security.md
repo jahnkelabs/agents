@@ -2,7 +2,9 @@
 lens: security
 batch: 2
 applies_when: "the diff touches authentication, authorization, secrets, permissions, or cryptography. It also applies when the diff builds a query, a path, or a shell command from outside input."
-tier: { model: opus, effort: high }
+tier:
+  claude: { model: opus, effort: high }
+  codex: { model: gpt-6-astra, effort: high }
 intent:
   concern: "`requirements.md` and `design.md`, for who may do what, and where the trust boundary sits."
   pr: "the PR body and the linked issue, and the checks the code around the diff already applies."

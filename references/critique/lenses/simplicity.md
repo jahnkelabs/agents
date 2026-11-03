@@ -2,7 +2,9 @@
 lens: simplicity
 batch: 2
 applies_when: always
-tier: { model: sonnet, effort: high }
+tier:
+  claude: { model: sonnet, effort: high }
+  codex: { model: gpt-6.1-sol, effort: high }
 intent:
   concern: "`design.md`, for the structure a rewrite must keep."
   pr: "the PR body, for the behavior a rewrite must keep."
