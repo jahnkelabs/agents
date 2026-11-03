@@ -165,8 +165,9 @@ costs no context until you invoke it.
 
 The other eight stay model-invocable. Six of them carry `when_to_use` trigger phrases. Say
 "grill me on this" or "find the bugs" and the skill runs without a command name. `/plan` and
-`/implement` carry none, so a command name still starts each one. They are model-invocable
-because `/plan` calls `/implement`. A disabled skill cannot call another disabled skill.
+`/implement` carry none, so a command name still starts each one. `/implement` is
+model-invocable because `/plan` calls it. No skill calls `/plan`, so it stays model-invocable by
+default. A disabled skill cannot call another disabled skill.
 
 `/worktree` and `/gws` are the two trigger-phrase skills that also write. `/implement` calls
 `/worktree` per milestone, so it must be callable. Its destructive half lives in `/bare-convert`,
