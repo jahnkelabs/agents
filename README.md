@@ -331,8 +331,9 @@ whose question needs an intent runs only when the caller supplies one.
 **The lenses run in two batches.** Batch 1 holds requirements fidelity, design conformance, and
 root cause. Batch 2 holds the rest. Batch 2 waits for batch 1 because a rework changes the code
 batch 2 reads. In `apply` mode, an in-design batch 1 failure goes back for rework, and batch 1 then
-runs again with fresh agents. Two rework rounds are the limit. A finding that departs from the
-approved design stops the critique and waits for you.
+runs again with fresh agents. Two rework rounds are the limit. In `apply` mode, a finding that
+departs from the approved design stops the critique and waits for you. In `report` mode, the
+ledger marks it `deviation:`, and batch 2 starts once batch 1 finishes.
 
 **A refutation pass checks every finding.** One refuter per finding argues that the failure cannot
 occur. It defaults to `refuted` when it is uncertain, and the critique drops what it refutes. This
@@ -351,8 +352,9 @@ That file runs the agents, the batches, the refutation pass, the filter, and the
 
 **A filter decides which findings reach you.** The critique accepts a finding by default. What
 acceptance does then depends on who called. A milestone critique inside `/implement` applies the
-fix; a standalone, `--integration`, or `/review-pr` pass reports the remedy and edits nothing. Six
-criteria escalate a finding to you instead:
+fix; a standalone, `--integration`, or `/review-pr` pass reports the remedy and edits nothing. In
+`apply` mode, six criteria escalate a finding to you instead. In `report` mode, no finding
+escalates, and the ledger marks a match `criterion:`. The six criteria:
 
 ```
 C1 — the fix rests on a fact you cannot verify.

@@ -5,7 +5,7 @@ when_to_use: >-
   When the user wants work torn apart rather than surveyed. Trigger phrases: "what is wrong
   with this", "review this adversarially", "find the bugs", "critique my plan". Also invoked
   by the plan and implement skills.
-argument-hint: "[target] [--base <ref>] [--plan <pad>] [--integration <slug>] [--runtimes <names>]"
+argument-hint: "[target] [--base <ref>] [--plan <pad>] [--integration <slug>]"
 ---
 
 # Critique
@@ -30,10 +30,7 @@ diff. A pull request belongs to `/review-pr`, which reads the PR body as intent.
 | `--integration <slug>` | every landed milestone of that plan, together |
 | `--pr <N>` | none: say that `/review-pr <N>` reviews a pull request, and stop |
 
-Two modifiers resolve no target of their own:
-
-- `--plan <pad>` carries the intent, per step 2.
-- `--runtimes <names>` lists the runtimes that may run an agent, in order. The default is Claude.
+`--plan <pad>` resolves no target of its own. It carries the intent, per step 2.
 
 State what you resolved before you proceed. If the target is empty — clean tree, no changes —
 say so and stop rather than reviewing nothing.
@@ -78,12 +75,16 @@ repositories in one milestone would otherwise write one pad twice.
 Omit the pass, and M2's pads overwrite M1's. `run.md` archives every pad after the merge, so that
 overwrite leaves no trace. Tag every pad `transient`, and `plan:<slug>` where a plan resolved.
 
-**Resolve the runtimes here.** `list_agent_tools` resolves each name to an enabled runtime. Stop
-and say so where a name resolves to none. Never hardcode a roster, and ask no roster question.
+**Resolve the runtimes here.** The critique roster is their only source. When `/implement` calls,
+use the roster `/implement` passed, including its `--critique` override and any edit at its gate.
+Never re-read the plan's roster. Without a caller's roster, the runtime is Claude.
 
-When `/implement` calls, use the critique roster its plan recorded. That roster names a model and
-an effort per critic. Take the runtime each model runs on, in the roster's order, once each. Each
-lens file's `Tier:` line now sets the model and the effort on Claude.
+That roster names a model and an effort per critic. Take the runtime each model runs on, once
+each. `list_agent_tools` resolves each one to an enabled runtime. Stop and say so where one
+resolves to none. Never hardcode a roster, and ask no roster question.
+
+`run.md` runs every lens agent on Claude whenever the roster includes Claude, so each lens file's
+`Tier:` line stays in force. The roster's other runtimes run the refuters.
 
 ## Step 2 — Resolve the intent
 
@@ -96,6 +97,11 @@ supplies the `plan:` kind.
 - **No `--plan`** supplies no intent. `run.md` drops every lens that checks the target against
   one, and names each in the ledger's header. A standalone `/critique src/foo.php` has nothing to
   check requirements against.
+
+**A plan-pad target is its own intent.** `/critique plan/<slug>` reads the pad's slices as its
+`plan:` intent, with no `--plan` flag. That target holds no code, so name its lens set for
+`run.md`: correctness, failure-modes, security, and claims. Add requirements-fidelity, which
+checks the slices against the plan's own `## Overview`.
 
 **A lens drops silently only when the caller offered no `--plan`.** When a caller offered
 `--plan` and the pad does not resolve, stop and say so. Never drop a lens quietly on a pad you
@@ -114,9 +120,9 @@ the work items this milestone carries. `run.md` reruns them after the fixes land
 
 **A standalone critique edits nothing, because the request covered a review only.**
 
-**In `apply` mode, `/implement` is the caller that reworks.** A batch 1 rework lands in this
-milestone's worktrees, uncommitted, the way an accepted fix lands. `/implement` commits both at
-its own step 5.
+**In `apply` mode, the critique runner reworks.** It applies an in-design batch 1 fix itself,
+after the filter, then reruns batch 1. The rework lands uncommitted in this milestone's worktree,
+and `/implement` step 5 commits it.
 
 **An `--integration` pass reports the remedy and edits nothing, whoever called it.** Every
 milestone it reviews already shipped its PRs. A finding against M1 cannot land on M1's branch. That
@@ -127,8 +133,13 @@ Never write into the user's stable `main` worktree. `rules/solo-agent-orchestrat
 worker out of the user's tree, and `pr-first-contributions` forbids a commit on the default branch.
 An accepted remedy therefore lands as a follow-up milestone, and `/implement` proposes one.
 
-**A `proposed edit:` line stays in the ledger.** `/implement` carries the ledger into `Landed`, so
-the user reads every proposed edit there.
+**In `apply` mode, each systemic finding also reaches the plan pad.** Append it to the pad's
+`## Proposed edits` section, with `scratchpad_append_section` or `scratchpad_edit`. Where the pad
+has no such section, create it at the end of the pad. Until M4, that section stands in for the
+map.
+
+**A `proposed edit:` line stays in the ledger too.** `/implement` carries the ledger into
+`Landed`, so the user reads every proposed edit there.
 
 ## Step 4 — Run the engine
 
@@ -136,10 +147,10 @@ Read `references/critique/run.md` in full, then run it with what steps 1 to 3 re
 
 - the target: the diff text itself, or the exact refs and container paths;
 - the intent: the `plan:` kind with the resolved slices, or none;
-- the lens set: the catalog in `references/critique/lenses/`, or the integration set for
-  `--integration`;
+- the lens set: the catalog in `references/critique/lenses/`, the plan-pad set from step 2 for a
+  `plan/<slug>` target, or the integration set for `--integration`;
 - the output mode, where a rework lands, and the proof commands;
-- the runtimes, in order;
+- the runtimes the roster names;
 - the slug, the pass, and the tags.
 
 `run.md` owns the agents, the batches, the refutation pass, the merge, the filter, the ledger, and

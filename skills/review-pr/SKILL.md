@@ -96,6 +96,8 @@ Each comment states the concrete failure, or the before and after, and the fix. 
 severity. It says nothing about lenses, refuters, or this workflow, because the author needs none
 of it.
 
+Quote only text from the PR diff or the PR body. Never quote a file outside the diff.
+
 Write no bare `@name` in a comment, because GitHub notifies that login. Put code in backticks.
 
 The summary opens with one sentence on what the PR does. It then counts the findings by severity,
