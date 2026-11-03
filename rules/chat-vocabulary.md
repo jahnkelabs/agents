@@ -36,8 +36,8 @@ the user to read every turn again.
 - **Global parts:** the six headings and the footer hold in every skill. The cadence above holds
   in `/implement` alone.
 - **Fencing:** Fence code and diagrams only. Never fence a prose field.
-- **Recommendation:** Every question that offers options carries one. An `Approve` proposal is its
-  own; every other such question states one explicitly. A question offering none carries none.
+- **Recommendation:** Every question that offers options carries one `**Recommendation:**` line
+  with its ground, an `Approve` included. A question offering none carries none.
 - **Exceptions:** A direct reply to the user's own question needs no heading.
 
 ## The reserved vocabulary
@@ -79,9 +79,9 @@ Pick by that test alone, never by how large the question feels. A roster you ass
 `Approve`. A tradeoff only the user can settle is a `Deciding`, and so is an open prompt for
 input.
 
-**An `Approve` proposal is its own recommendation.** The message states one course and asks the
-user to sanction it. You did the ranking work, and the user can read it. An `Approve` therefore
-satisfies the mandatory recommendation without a separate line, and it may still carry one.
+**An `Approve` still states its recommendation.** The message states one course and asks the
+user to sanction it. Its `**Recommendation:**` line names that course and the ground that ranks it
+first. The user then checks your ranking rather than redoing it.
 
 A `Deciding` message that offers options needs an explicit recommendation, because it presents
 options you did not rank. So does a `Blocked` message that lists options. Neither one ranks
@@ -118,9 +118,9 @@ A fence holds code or a diagram, and nothing else. No column limit applies to a 
 terminal wraps a markdown field cleanly. Inside a fence, the field's bold label shows as literal
 asterisks.
 
-A fixed-width layout, such as an aligned table, counts as a diagram, because wrapping breaks it.
-Real runs measured that failure. Unfenced, the roster gate reached a median of 286 columns and the
-finding block 327. At that width the terminal wrapped both, and neither read as a table any more.
+A listing of literal syntax counts as code, because the reader copies it verbatim. The reserved
+vocabulary, the footer template, and the glyph table are such listings. A table of prose is a
+markdown table, never a fenced one.
 
 ## The taken glyphs stay taken
 
@@ -147,11 +147,12 @@ Every question takes this shape, and this rule states it once. A skill points he
 restating it.
 
 1. The reserved heading, on the gate's opening message only: `Deciding` for a question you cannot
-   answer yourself, `Approve` for a proposal. Each follow-up question inside that open gate carries
-   no heading.
+   answer yourself, `Approve` for a proposal. A `Blocked` or `Failed` message that asks a question
+   keeps its own heading, because the heading says the run stopped. Each follow-up question inside
+   an open gate carries no heading.
 2. The context block, in markdown: the block fields, one section per option, and the
-   recommendation with its ground. The recommendation is mandatory. An `Approve` proposal is its
-   own, so it needs no separate line.
+   recommendation with its ground. The recommendation is mandatory, in an `Approve` and a
+   `Blocked` too.
 3. One short question.
 4. The footer, as the last line of a prose question. A question the tool delivers needs
    none, because the tool blocks on its own.
@@ -162,8 +163,7 @@ recommend. The heading, the question, and the footer are the whole message. The 
 offers options and takes the full shape.
 
 Write each field label in bold, with the colon inside the bold. Start each field on its own line,
-and a markdown list does that. Fence nothing in the context block except an example's code or
-diagram.
+and a markdown list does that. Fence nothing in the context block except code or a diagram.
 
 ### The block fields
 
@@ -191,21 +191,22 @@ fields:
 - `**Constraints:**` what the option requires, and what it rules out later.
 - `**Example:**` a fenced code block or diagram that shows the option.
 
-Give an example wherever the option has code or a structure to show. Omit it where the option is
-already concrete, as `squash the branch` is.
+Place `**Example:**` after the list, because a fence does not nest cleanly in a list item. Give
+an example wherever the option has code or a structure to show. It is optional where the option
+is already concrete, as `squash the branch` is.
 
 ### The recommendation
 
 Close the context block with one `**Recommendation:**` line. Name the option, and give its ground:
-the field that decides between the options. A recommendation with no ground leaves the user to
+the fact that decides between the options. A recommendation with no ground leaves the user to
 rank the options again.
 
 ### An `Approve` of one proposal
 
-An `Approve` carries the four block fields and one section for the proposal itself. That section
-carries the five option fields. Each alternative you declined then takes one `**Declined:**` line,
-with the alternative and the reason. The proposal is its own recommendation, so it carries no
-`**Recommendation:**` line.
+An `Approve` carries the four block fields and one section for the proposal itself, with the five
+option fields. Each alternative the message names takes its own section with the same fields,
+because the user weighs every option on the same terms. One `**Recommendation:**` line then names
+the proposal and the ground that ranks it first.
 
 ### Example
 
@@ -213,7 +214,7 @@ A `Deciding` with two options, as it renders above the question tool call:
 
 > **Deciding — where tags live**
 >
-> - **Found:** the `notes` table stores no tags. The search page filters by one tag, and no other
+> - **Found:** the SQLite `notes` table stores no tags. The search page filters by one tag, and no other
 >   query reads them.
 > - **Deciding:** the storage shape for tags. No file in the repository settles it.
 > - **Criticality:** high. The search query and every later migration depend on it.
@@ -223,8 +224,8 @@ A `Deciding` with two options, as it renders above the question tool call:
 >
 > - **Pros:** one column, and no join on read.
 > - **Cons:** nothing enforces one spelling per tag.
-> - **Risks:** the filter by tag scans every row as the table grows.
-> - **Constraints:** the database must support a JSON type.
+> - **Risks:** SQLite cannot index inside a JSON array, so the filter by tag scans every row.
+> - **Constraints:** SQLite stores the column as text and reads it with its JSON functions.
 >
 > **Example:**
 >
@@ -236,7 +237,8 @@ A `Deciding` with two options, as it renders above the question tool call:
 >
 > - **Pros:** an index serves the filter by tag directly.
 > - **Cons:** every read of a note's tags takes a join.
-> - **Risks:** without `ON DELETE CASCADE`, a deleted note leaves orphan rows.
+> - **Risks:** SQLite ignores `ON DELETE CASCADE` unless `PRAGMA foreign_keys = ON` is set, and a
+>   deleted note then leaves orphan rows.
 > - **Constraints:** one more table, and one more migration now.
 >
 > **Example:**
@@ -308,7 +310,7 @@ the situation into the options.
 | A blocking message with no footer | Its absence means nothing is outstanding, so the user reads an all-clear |
 | `Approve` on a choice you cannot rank | The user sanctions a proposal nobody made, and the real question stays unasked |
 | `Deciding` on a proposal you already formed | The user ranks options you invented to fill the shape |
-| An unfenced fixed-width table | Real runs reached 286 and 327 columns, and neither block read as a table |
+| A fenced table of prose | Its cells cannot wrap, and its bold text shows as literal asterisks |
 | Decision fields inside a fence | The bold labels show as literal asterisks, and the fields read as code |
 | A question that offers options and no recommendation | The user does the ranking work you were able to do first |
 | Two questions in one message | The user answers the first, and the second one disappears |

@@ -251,14 +251,16 @@ worker that reasons at length emits no output and looks finished.
 get wrong: why these repos, why these investigation areas, why this is out of scope. A bad guess
 is then visible rather than buried. A gate prints a looked-up fact without argument. The
 selected Solo project needs no justification; a repo list inferred from file references needs
-one. A gate's opening message carries a reserved heading and the decision format, per
-[chat-vocabulary](rules/chat-vocabulary.md). `Approve` marks a proposal, and `Deciding` marks a
+one. A gate's opening message carries a reserved heading, and the decision format when it offers
+options, per [chat-vocabulary](rules/chat-vocabulary.md). `Approve` marks a proposal, and `Deciding` marks a
 question you cannot answer yourself.
 
-**`/plan` grills you.** One question per message, never two. Each one carries the decision format
-from [chat-vocabulary](rules/chat-vocabulary.md). That format states what was found, how critical
-the choice is, and whether it is reversible. Each option shows its pros, cons, risks, and
-constraints. A mandatory recommendation names its ground. A prose question ends with the `⏸`
+**`/plan` grills you.** One question per message, never two. Each question that offers options
+carries the decision format from [chat-vocabulary](rules/chat-vocabulary.md). That format states
+what was found, how critical the choice is, and whether it is reversible. Each option shows its
+pros, cons, risks, constraints, and an example where it has one. A mandatory recommendation names
+its ground. A question with nothing to rank carries only its heading, the question, and the
+footer. A prose question ends with the `⏸`
 footer, and the question tool needs none. Only the first question carries the
 `Deciding` heading, so a long grilling does not become a column of headings. The
 question whose answer changes the most other answers comes first. `/plan` looks up anything the
