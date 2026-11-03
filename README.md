@@ -33,18 +33,17 @@ reach it any other way. A file you wrote yourself is backed up before the first 
 hooks regenerate it after a commit, a checkout, and a merge, so a rule edit you commit reaches
 Codex without a re-run. `./scripts/install.sh --rules-only` does that regeneration alone.
 
-**Codex has no `disable-model-invocation`.** On Claude, the model cannot invoke `/bare-convert`
-or `/stash`. On Codex it can invoke both itself. Each still gates on your approval before
-anything lands, so the guarantee weakens from "you start it" to "you approve it".
+**Codex has no `disable-model-invocation`.** On Claude, the model cannot invoke `/bare-convert`.
+On Codex it can invoke that skill itself. It still gates on your approval before anything lands,
+so the guarantee weakens from "you start it" to "you approve it".
 
 `references/` is a whole-directory link because it is not a Claude Code directory. It exists so
-a skill or a rule can read a file from a stable path. Nothing else writes there. It holds three
-kinds. A tracker adapter serves `/stash` and `/recall`. A runtime adapter serves
-`solo-agent-orchestration`, which points at it before you spawn that runtime. A skill's own
-overflow holds what one skill cannot fit under its size cap, and `implement-waves.md` is the one
-today. `runtime-claude.md` and `runtime-codex.md` are the runtime adapters. Each maps every
-policy in that rule to the flag that implements it. Each also records the policies its runtime
-cannot implement at all.
+a skill or a rule can read a file from a stable path. Nothing else writes there. It holds two
+kinds. A runtime adapter serves `solo-agent-orchestration`, which points at it before you spawn
+that runtime. A skill's own overflow holds what one skill cannot fit under its size cap, and
+`implement-waves.md` is the one today. `runtime-claude.md` and `runtime-codex.md` are the runtime
+adapters. Each maps every policy in that rule to the flag that implements it. Each also records
+the policies its runtime cannot implement at all.
 
 The `runtime-` prefix is load-bearing. A file named `claude.md` collides with `CLAUDE.md` on a
 case-insensitive filesystem. Claude Code then loads the adapter as project instructions in every
@@ -70,8 +69,7 @@ overwrites a value you set, and it touches nothing else in that file. It does no
 
 | | |
 |---|---|
-| Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/retro`, `/worktree`, `/stash`, `/recall` |
-| A tracker MCP | `/stash`, `/recall` — Linear adapter included |
+| Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/retro`, `/worktree` |
 | Vale 3.0 or later | checking the sentence-level half of `prose-discipline` — `brew install vale`. CI pins 3.17.1 |
 | jq | selecting the output style at install time — without it the install prints the instruction instead |
 | `gws` CLI, signed in | `/gws` |
@@ -158,21 +156,18 @@ Both checks are warnings for that reason: read each one and decide.
 | [`/worktree`](skills/worktree/SKILL.md) | Cut, provision, and tear down one milestone worktree | you or the agent |
 | [`/plan`](skills/plan/SKILL.md) | Research, grill, and produce a plan in one Solo scratchpad | you or the agent |
 | [`/implement`](skills/implement/SKILL.md) | Compose a plan into milestones, and ship each one as its own PRs | you or the agent |
-| [`/recall`](skills/recall/SKILL.md) | Pull tracker work back into planning | you or the agent |
 | [`/gws`](skills/gws/SKILL.md) | Read and change Google Drive, Docs, Sheets, and Slides files through the `gws` CLI | you or the agent |
 | [`/bare-convert`](skills/bare-convert/SKILL.md) | Set up or convert a repository into the bare-plus-worktrees layout | **you only** |
-| [`/stash`](skills/stash/SKILL.md) | Move active work into a durable tracker | **you only** |
 
-Two skills keep `disable-model-invocation: true`, so the agent cannot decide to run either.
-`/bare-convert` moves your working tree, and `/stash` creates tracker objects and deletes todos
-and KV. Neither appears in the agent's skill listing, so they cost no context until you invoke
-them.
+One skill keeps `disable-model-invocation: true`, so the agent cannot decide to run it.
+`/bare-convert` moves your working tree. It does not appear in the agent's skill listing, so it
+costs no context until you invoke it.
 
-The other nine stay model-invocable. Six of them carry `when_to_use` trigger phrases. Say
-"grill me on this" or "find the bugs" and the skill runs without a command name. `/plan`,
-`/implement`, and `/recall` carry none, so a command name still starts each one. They are
-model-invocable because they call each other. `/recall` hands to `/plan`, and `/plan` calls
-`/implement`. A disabled skill cannot call another disabled skill.
+The other eight stay model-invocable. Six of them carry `when_to_use` trigger phrases. Say
+"grill me on this" or "find the bugs" and the skill runs without a command name. `/plan` and
+`/implement` carry none, so a command name still starts each one. `/implement` is
+model-invocable because `/plan` calls it. No skill calls `/plan`, so it stays model-invocable by
+default. A disabled skill cannot call another disabled skill.
 
 `/worktree` and `/gws` are the two trigger-phrase skills that also write. `/implement` calls
 `/worktree` per milestone, so it must be callable. Its destructive half lives in `/bare-convert`,
@@ -184,7 +179,6 @@ variant. A skill sets `effort` only where the shape of the work justifies it:
 | Skill | `effort` | Why |
 |---|---|---|
 | `grill` | `xhigh` | pure judgment, no fan-out to multiply the cost |
-| `stash`, `recall` | `medium` | mechanical mapping against an explicit adapter |
 | the rest | inherits | a raise multiplies across their parallel agents |
 
 An effort override applies for the rest of the turn, and it resets on your next prompt. For
@@ -199,20 +193,13 @@ flowchart LR
     BC["/bare-convert"]
     M["milestone loop"]
     C["/critique"]
-    S["/stash"]
-    RC["/recall"]
     RT["/retro"]
-    T[("tracker")]
     PR["draft PRs<br/>one per repo"]
 
     R -->|"research pad"| P
     P -->|"1. implement now"| I
-    P -->|"2. stash"| S
-    P -.->|"3. leave active"| P
+    P -.->|"2. leave active"| P
     P -.->|"critique the draft"| C
-    S --> T
-    T --> RC
-    RC -->|"always re-plans"| P
     RT -->|"proposed changes"| P
     I -->|"milestones in DAG order"| M
     BC -->|"a container per repo"| W
@@ -222,15 +209,11 @@ flowchart LR
     M -->|"next milestone"| M
 ```
 
-## How the system divides state
+## How the system holds state
 
-**Solo is the active working set.** Scratchpads hold research and plans. They are short-lived,
-and you archive them once the work ships. Todos exist only while `/implement` runs a plan. KV
-holds small orchestration pointers.
-
-**A tracker is the durable backlog.** It holds an idea you parked for later. It also holds a
-large plan whose work items each get their own research, plan, and implement cycle. Nothing
-crosses that boundary automatically: `/stash` and `/recall` are always explicit.
+**Solo is the working set.** Scratchpads hold research and plans. They are short-lived, and you
+archive them once the work ships. Todos exist only while `/implement` runs a plan. KV holds small
+orchestration pointers.
 
 Nothing in this repository stores your work. Research and plans live in Solo, not in git.
 
@@ -368,10 +351,3 @@ blocks nothing. The run opens the PR, reports the landing, and starts the next m
 cross-milestone contract drift, plan completeness, claim consistency, and stack coherence. It may
 not raise a finding that lives wholly inside one milestone's diff. That milestone already put the
 finding through the filter.
-
-## Adding a tracker
-
-Add an adapter to `references/` that describes that tracker's object model and field mapping.
-`/stash` and `/recall` own the semantics and read the adapter for the specifics. A new tracker
-is therefore one file rather than two skills. See
-[`references/linear.md`](references/linear.md).

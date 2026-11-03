@@ -203,7 +203,7 @@ The milestone slug is lowercase, because the KV key carries it. The `record` key
 
 **The branch carries the plan slug because teardown outlives the KV record.** Teardown keeps the branch, and a plan's close step deletes every `plan:<slug>:*` key. Drop the prefix, and a second plan that reuses a milestone slug finds a branch no KV key claims. It then escalates over a PR that merged and closed. `/implement` labels milestones `m1`, `m2`, and `m3`, so that is the common case rather than the rare one.
 
-**Test the recorded worktree path too.** `plan:<slug>:milestone:<m>:worktree:<repo>` holds it, so this costs one `kv_get`. Where the path exists and holds this milestone's branch, reuse it and cut nothing. Where it exists and holds anything else, stop and report both paths. `/stash` leaves a worktree standing on unpushed commits and on uncommitted work. A stashed plan therefore resumes onto a path another worktree still holds, and `git worktree add` exits 128 there.
+**Test the recorded worktree path too.** `plan:<slug>:milestone:<m>:worktree:<repo>` holds it, so this costs one `kv_get`. Where the path exists and holds this milestone's branch, reuse it and cut nothing. Where it exists and holds anything else, stop and report both paths. A run that stopped before teardown leaves a worktree standing on unpushed commits and on uncommitted work. A resumed plan therefore finds a path another worktree still holds, and `git worktree add` exits 128 there.
 
 A milestone slug is therefore unique inside its plan. The plan slug separates it from every other plan's.
 
@@ -254,7 +254,7 @@ Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, an
 | A pointer that addresses a pad by its title | Solo renamed the pad to its first H1, so the title resolves nothing |
 | An H1 heading in a brief pad or a guard pad | Solo overwrites the name you gave the pad, and a listing then loses it |
 | Cutting a milestone branch with `-b` and no existence test | A resumed run fails outright, because teardown left the branch behind |
-| Cutting onto a recorded worktree path with no existence test | `/stash` leaves the worktree standing, so `git worktree add` exits 128 |
+| Cutting onto a recorded worktree path with no existence test | A run that stopped before teardown leaves the worktree standing, so `git worktree add` exits 128 |
 | Treating an idle timer as the completion signal | No debounce, and a thinking worker looks like a finished one |
 | Scheduling an idle timer before workers produce output | An all-idle watch list returns `already_satisfied` and creates no timer |
 | A guard body that carries the branches inline | It exceeds the ceiling, and the orchestrator wakes to a truncated instruction |
