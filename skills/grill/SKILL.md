@@ -35,12 +35,13 @@ Do not act on it until the user confirms you have reached a shared understanding
 - **Order by dependency.** Ask the question whose answer changes the most other answers first.
   When an answer invalidates something already decided, say so and revisit it rather than
   quietly building on a contradiction.
-- **Recommend, always.** A recommendation is mandatory, not expected. Every question carries
-  one, with the reason for it. A question without a recommendation is incomplete.
+- **Recommend, always.** A recommendation is mandatory, not expected. Every question that offers
+  options carries one, with its ground. Such a question without a recommendation is incomplete. An
+  open question with nothing to rank carries none.
 - **Look it up.** Anything discoverable from the filesystem, git, an API, or a tool is yours to
   find. Do not ask the user for a fact you could have read. That wastes a turn.
-- **Show the consequence.** State what each option costs and what it forecloses. Options that
-  all sound reasonable are not a real choice.
+- **Show the consequence.** Fill the per-option fields that `rules/chat-vocabulary.md` defines:
+  pros, cons, risks, constraints, and an example where the option has one. Options that all sound reasonable are not a real choice.
 - **Surface what you got wrong.** When research contradicts a recommendation you already made,
   correct it plainly and move on.
 - **Track the tree.** Keep a running map of settled items, open items, and items an open
