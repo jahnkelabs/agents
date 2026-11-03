@@ -102,7 +102,7 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what the user
               Author one rule from scratch, matching house style across six
               existing files.
          wave 2
-           B  skills/{research,recall,stash}/SKILL.md        sonnet · medium
+           B  skills/{research,retro,grill}/SKILL.md         sonnet · medium
               Three localized edits against precise line references.
 
      M2  deliver each milestone as its own PRs
@@ -201,9 +201,9 @@ The waves inside one milestone still run their tasks concurrently — that is st
    `/worktree` construct the name a second time, and the two can differ from the key you just
    wrote.
 
-   **A resumed run may find the worktree still standing.** `/stash` leaves one behind, and
-   `solo-agent-orchestration` carries both tests. Reuse a recorded path that holds this
-   milestone's branch, and stop where it holds anything else.
+   **A resumed run may find the worktree still standing.** A run that stopped before teardown
+   leaves one behind, and `solo-agent-orchestration` carries both tests. Reuse a recorded path
+   that holds this milestone's branch, and stop where it holds anything else.
 
    `/worktree` records the tree path under `plan:<slug>:milestone:<m>:worktree:<repo>`. Both keys
    carry the milestone and the repository, and `solo-agent-orchestration` says why.

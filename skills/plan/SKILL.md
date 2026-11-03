@@ -1,7 +1,7 @@
 ---
 name: plan
 description: Research, grill, and produce an implementation plan in a Solo scratchpad
-argument-hint: "[topic | research/<slug> | recall/<issue-ref> | paths]"
+argument-hint: "[topic | research/<slug> | paths]"
 ---
 
 # Plan
@@ -11,8 +11,7 @@ skeptical, thorough, and collaborative.
 
 Three gates: **scope**, **grilling**, **approval**. The output is exactly one artifact — a
 plan scratchpad. It leads with the plan and keeps the research in an appendix. This skill
-creates no Solo todos. `/implement` composes the slices into milestones when it starts, or
-`/stash` turns them into tracker issues.
+creates no Solo todos. `/implement` composes the slices into milestones when it starts.
 
 ## Input
 
@@ -22,7 +21,6 @@ creates no Solo todos. `/implement` composes the slices into milestones when it 
 - A research pad (`research/<slug>` or a numeric id) — from a standalone `/research`
 - A retro pad (`retro/<slug>` or a numeric id) — from `/retro`
 - File paths — read fully before anything else
-- A recall pad (`recall/<issue-ref>` or a numeric id) — from `/recall`
 
 With no arguments:
 
@@ -315,21 +313,19 @@ Once the user approves:
 ```
 Plan approved. What next?
 
-  1. Implement now   — I'll start /implement; you'll next see its roster gate
-  2. Stash for later — park it in a tracker via /stash
-  3. Leave active    — pad stays in Solo; run /implement plan/<slug> whenever
+  1. Implement now — I'll start /implement; you'll next see its roster gate
+  2. Leave active  — pad stays in Solo; run /implement plan/<slug> whenever
 ```
 
-I recommend <one of the three>, because <the ground>.
+I recommend <one of the two>, because <the ground>.
 
-⏸ waiting on you: pick one of the three for `plan/<slug>`
+⏸ waiting on you: pick one of the two for `plan/<slug>`
 
-`rules/chat-vocabulary.md` makes that line mandatory. This `Deciding` presents three options you
+`rules/chat-vocabulary.md` makes that line mandatory. This `Deciding` presents two options you
 did not rank, so it never counts as its own recommendation.
 
 - **Implement now** — call `/implement plan/<slug>`, with the pad as the first argument. Print no
   command for the user to type. The next stop is that skill's roster gate.
-- **Stash for later** — hand to `/stash`, which proposes the tracker shape and confirms.
 - **Leave active** — do nothing. The pad stays in Solo.
 
 **Do not ask for the critique roster here.** `/implement` reads it from the pad's `### References`
