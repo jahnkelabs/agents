@@ -33,9 +33,9 @@ reach it any other way. A file you wrote yourself is backed up before the first 
 hooks regenerate it after a commit, a checkout, and a merge, so a rule edit you commit reaches
 Codex without a re-run. `./scripts/install.sh --rules-only` does that regeneration alone.
 
-**Codex has no `disable-model-invocation`.** On Claude, the model cannot invoke `/bare-convert`.
-On Codex it can invoke that skill itself. It still gates on your approval before anything lands,
-so the guarantee weakens from "you start it" to "you approve it".
+**Codex has no `disable-model-invocation`.** On Claude, the model cannot invoke `/bare-convert` or
+`/review-pr`. On Codex it can invoke either skill itself. Each still gates on your approval before
+anything lands or posts, so the guarantee weakens from "you start it" to "you approve it".
 
 `references/` is a whole-directory link because it is not a Claude Code directory. It exists so
 a skill or a rule can read a file from a stable path. Nothing else writes there. It holds two
@@ -69,7 +69,8 @@ overwrites a value you set, and it touches nothing else in that file. It does no
 
 | | |
 |---|---|
-| Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/retro`, `/worktree` |
+| Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/review-pr`, `/retro`, `/worktree` |
+| `gh` CLI, signed in | `/review-pr` |
 | Vale 3.0 or later | checking the sentence-level half of `prose-discipline` — `brew install vale`. CI pins 3.17.1 |
 | jq | selecting the output style at install time — without it the install prints the instruction instead |
 | `gws` CLI, signed in | `/gws` |
@@ -150,7 +151,8 @@ Both checks are warnings for that reason: read each one and decide.
 | Skill | Purpose | Invocation |
 |---|---|---|
 | [`/research`](skills/research/SKILL.md) | Investigate a codebase with parallel Solo agents and write the findings to a Solo scratchpad | you or the agent |
-| [`/critique`](skills/critique/SKILL.md) | Adversarial multi-model review of a diff, plan, files, or PR | you or the agent |
+| [`/critique`](skills/critique/SKILL.md) | Adversarial review of a diff, plan, or files, with one critic agent per lens | you or the agent |
+| [`/review-pr`](skills/review-pr/SKILL.md) | Adversarial review of someone else's pull request, with a drafted review you approve before it posts | **you only** |
 | [`/grill`](skills/grill/SKILL.md) | Interrogate a decision one question at a time | you or the agent |
 | [`/retro`](skills/retro/SKILL.md) | Analyse past sessions for recurring failures and hand the findings to `/plan` | you or the agent |
 | [`/worktree`](skills/worktree/SKILL.md) | Cut, provision, and tear down one milestone worktree | you or the agent |
@@ -159,9 +161,9 @@ Both checks are warnings for that reason: read each one and decide.
 | [`/gws`](skills/gws/SKILL.md) | Read and change Google Drive, Docs, Sheets, and Slides files through the `gws` CLI | you or the agent |
 | [`/bare-convert`](skills/bare-convert/SKILL.md) | Set up or convert a repository into the bare-plus-worktrees layout | **you only** |
 
-One skill keeps `disable-model-invocation: true`, so the agent cannot decide to run it.
-`/bare-convert` moves your working tree. It does not appear in the agent's skill listing, so it
-costs no context until you invoke it.
+Two skills keep `disable-model-invocation: true`, so the agent cannot decide to run them.
+`/bare-convert` moves your working tree, and `/review-pr` posts to GitHub. Neither appears in the
+agent's skill listing, so neither costs context until you invoke it.
 
 The other eight stay model-invocable. Six of them carry `when_to_use` trigger phrases. Say
 "grill me on this" or "find the bugs" and the skill runs without a command name. `/plan` and
@@ -193,6 +195,7 @@ flowchart LR
     BC["/bare-convert"]
     M["milestone loop"]
     C["/critique"]
+    RP["/review-pr"]
     RT["/retro"]
     PR["draft PRs<br/>one per repo"]
 
@@ -205,6 +208,7 @@ flowchart LR
     BC -->|"a container per repo"| W
     M -->|"cut a tree per repo"| W
     M -->|"before the landing"| C
+    RP -->|"shares the engine"| C
     M --> PR
     M -->|"next milestone"| M
 ```
@@ -318,25 +322,45 @@ approved plan. Neither one improvises. The record is the worker's report scratch
 completion signal says that it escalated, so you have one place to look. Other workers in the
 wave finish, and everything appears together at the join.
 
-**Critique is adversarial and multi-model.** `/critique` spawns one worker per model you select:
-Claude, Copilot, Kimi, or anything else enabled in Solo. Each worker tries to break the target
-rather than survey it. Cross-model agreement is evidence that a defect is real, because two
-models rarely invent one defect. One model gives no such evidence, so a refutation pass takes its
-place and drops what it refutes. Agreement raises confidence, and it drops nothing. Every merged
-finding reaches the filter, whether one critic found it or every critic did.
+**Critique is adversarial, with one agent per lens.** A lens is one question about the target,
+such as requirements fidelity, correctness, or security. `references/critique/lenses/` holds one
+file per lens. Each file states when the lens applies, its model and effort, and what it never
+reports. Each agent tries to break the target on its own question rather than survey it. A lens
+whose question needs an intent runs only when the caller supplies one.
 
-**A filter decides which findings reach you.** `/critique` accepts a finding by default. What
+**The lenses run in two batches.** Batch 1 holds requirements fidelity, design conformance, and
+root cause. Batch 2 holds the rest. Batch 2 waits for batch 1 because a rework changes the code
+batch 2 reads. In `apply` mode, an in-design batch 1 failure goes back for rework, and batch 1 then
+runs again with fresh agents. Two rework rounds are the limit. A finding that departs from the
+approved design stops the critique and waits for you.
+
+**A refutation pass checks every finding.** One refuter per finding argues that the failure cannot
+occur. It defaults to `refuted` when it is uncertain, and the critique drops what it refutes. This
+pass replaces cross-model agreement, which is no evidence when every critic runs one model. Every
+surviving finding reaches the filter, whichever lens raised it.
+
+**Every finding carries a scope.** `scope: local` means the cause sits in code the work owns.
+`scope: systemic` means other code shares the cause. Only the root-cause lens raises a systemic
+finding. It gets no local patch. It becomes a proposed map edit on a `proposed edit:` line.
+
+**Two front ends share one engine.** `/critique` reviews your own work and runs inside `/plan` and
+`/implement`. `/review-pr` reviews someone else's pull request, reads the PR body as intent, and
+edits nothing. Both hand `references/critique/run.md` the target, the intent, and the output mode.
+That file runs the agents, the batches, the refutation pass, the filter, and the ledger.
+`/review-pr` turns the ledger into a draft review and posts it only after you approve.
+
+**A filter decides which findings reach you.** The critique accepts a finding by default. What
 acceptance does then depends on who called. A milestone critique inside `/implement` applies the
-fix; a standalone or `--integration` pass reports the remedy and edits nothing. Six criteria
-escalate a finding to you instead:
+fix; a standalone, `--integration`, or `/review-pr` pass reports the remedy and edits nothing. Six
+criteria escalate a finding to you instead:
 
 ```
-C1  the fix rests on a fact the orchestrator cannot verify
-C2  the fix needs you to act outside the repository
-C3  the fix is irreversible, or visible outside the repository
-C4  the fix changes a default posture
-C5  the fix changes who decides, or who merges
-C6  two fixes exist, and neither one ranks above the other on stated grounds
+C1 — the fix rests on a fact you cannot verify.
+C2 — the fix needs the user to act outside the repository.
+C3 — the fix is irreversible, or visible outside the repository.
+C4 — the fix changes a default posture.
+C5 — the fix changes who decides, or who merges.
+C6 — two or more fixes exist, and you cannot rank them on stated grounds.
 ```
 
 Three grounds never escalate: a nit, cross-model agreement, and a mechanical fix to a verifiable
