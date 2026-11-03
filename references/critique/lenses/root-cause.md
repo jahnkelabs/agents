@@ -1,17 +1,25 @@
+---
+lens: root-cause
+batch: 1
+applies_when: always
+tier: { model: opus, effort: high }
+intent:
+  concern: "`requirements.md` for the problem the concern solves, and `design.md` for where its fix belongs."
+  pr: "the PR body and the linked issue, read as the bug report or the problem statement."
+  plan: "the plan pad's `## Overview`, and this milestone's work item."
+---
 # Root cause
 
-Batch: 1.
-Applies when: always.
-Tier: opus · high.
-Question: Which part of the change works around a symptom, and is its cause local or shared?
-Intent source:
-  concern: `requirements.md` for the problem the concern solves, and `design.md` for where its fix belongs.
-  pr: the PR body and the linked issue, read as the bug report or the problem statement.
-  plan: the plan pad's `## Overview`, and this milestone's work item.
-Finding: location · concrete failure, or before and after · fix · severity (bug | risk | nit).
-Out of mandate: the wrong result a symptom produces belongs to `correctness`.
-  A missing error path belongs to `failure-modes`.
-  Whether a fix matches the design belongs to `design-conformance`.
+## Question
+Which part of the change works around a symptom, and is its cause local or shared?
+
+## Finding
+location · concrete failure, or before and after · fix · severity (bug | risk | nit).
+
+## Out of mandate
+The wrong result a symptom produces belongs to `correctness`.
+A missing error path belongs to `failure-modes`.
+Whether a fix matches the design belongs to `design-conformance`.
 
 ## What this lens hunts for
 

@@ -84,11 +84,11 @@ each. `list_agent_tools` resolves each one to an enabled runtime. Stop and say s
 resolves to none. Never hardcode a roster, and ask no roster question.
 
 `run.md` runs every lens agent on Claude whenever the roster includes Claude, so each lens file's
-`Tier:` line stays in force. The roster's other runtimes run the refuters.
+`tier` frontmatter stays in force. The roster's other runtimes run the refuters.
 
 ## Step 2 — Resolve the intent
 
-Each lens file names its intent per target kind, on its `Intent source:` line. This skill
+Each lens file names its intent per target kind, in its `intent` frontmatter. This skill
 supplies the `plan:` kind.
 
 - **`--plan <pad>`** resolves that plan pad. The intent is the slices of the work items this

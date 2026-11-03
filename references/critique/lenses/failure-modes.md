@@ -1,18 +1,26 @@
+---
+lens: failure-modes
+batch: 2
+applies_when: always
+tier: { model: opus, effort: high }
+intent:
+  concern: "`requirements.md` for stated limits and error behavior, and `design.md` for the failure handling it chose."
+  pr: "the PR body and the linked issue, and the error handling the code around the diff already uses."
+  plan: "this milestone's work item in the plan pad, its Exit criterion and Invariants."
+---
 # Failure modes
 
-Batch: 2.
-Applies when: always.
-Tier: opus · high.
-Question: What does the change do on empty, null, malformed, oversized, or concurrent input, or when a dependency fails?
-Intent source:
-  concern: `requirements.md` for stated limits and error behavior, and `design.md` for the failure handling it chose.
-  pr: the PR body and the linked issue, and the error handling the code around the diff already uses.
-  plan: this milestone's work item in the plan pad, its Exit criterion and Invariants.
-Finding: location · concrete failure, or before and after · fix · severity (bug | risk | nit).
-Out of mandate: a wrong result on valid input belongs to `correctness`.
-  An error path with no test belongs to `tests`.
-  A failure an attacker can use belongs to `security`.
-  A failure nobody can observe belongs to `operability`.
+## Question
+What does the change do on empty, null, malformed, oversized, or concurrent input, or when a dependency fails?
+
+## Finding
+location · concrete failure, or before and after · fix · severity (bug | risk | nit).
+
+## Out of mandate
+A wrong result on valid input belongs to `correctness`.
+An error path with no test belongs to `tests`.
+A failure an attacker can use belongs to `security`.
+A failure nobody can observe belongs to `operability`.
 
 ## What this lens hunts for
 

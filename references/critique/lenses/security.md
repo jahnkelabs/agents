@@ -1,18 +1,25 @@
+---
+lens: security
+batch: 2
+applies_when: "the diff touches authentication, authorization, secrets, permissions, or cryptography. It also applies when the diff builds a query, a path, or a shell command from outside input."
+tier: { model: opus, effort: high }
+intent:
+  concern: "`requirements.md` and `design.md`, for who may do what, and where the trust boundary sits."
+  pr: "the PR body and the linked issue, and the checks the code around the diff already applies."
+  plan: "this milestone's work item and the plan pad's `## Design` section."
+---
 # Security
 
-Batch: 2.
-Applies when: the diff touches authentication, authorization, secrets, permissions, or cryptography.
-  It also applies when the diff builds a query, a path, or a shell command from outside input.
-Tier: opus · high.
-Question: What can an attacker do with this change that they could not do before?
-Intent source:
-  concern: `requirements.md` and `design.md`, for who may do what, and where the trust boundary sits.
-  pr: the PR body and the linked issue, and the checks the code around the diff already applies.
-  plan: this milestone's work item and the plan pad's `## Design` section.
-Finding: location · concrete failure, or before and after · fix · severity (bug | risk | nit).
-Out of mandate: a crash on malformed input with no gain for an attacker belongs to `failure-modes`.
-  A missing audit trail belongs to `operability`.
-  A slow query with no attacker path belongs to `data-access`.
+## Question
+What can an attacker do with this change that they could not do before?
+
+## Finding
+location · concrete failure, or before and after · fix · severity (bug | risk | nit).
+
+## Out of mandate
+A crash on malformed input with no gain for an attacker belongs to `failure-modes`.
+A missing audit trail belongs to `operability`.
+A slow query with no attacker path belongs to `data-access`.
 
 ## What this lens hunts for
 

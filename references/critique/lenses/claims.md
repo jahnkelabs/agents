@@ -1,17 +1,25 @@
+---
+lens: claims
+batch: 2
+applies_when: always
+tier: { model: sonnet, effort: high }
+intent:
+  concern: "`requirements.md` and `design.md`, for the behavior the text must now describe."
+  pr: "the PR body, for the behavior the text must now describe."
+  plan: "this milestone's work item in the plan pad, for the behavior the text must now describe."
+---
 # Claims
 
-Batch: 2.
-Applies when: always.
-Tier: sonnet · high.
-Question: Which doc, README, rule, comment, docstring, or type does the change make false?
-Intent source:
-  concern: `requirements.md` and `design.md`, for the behavior the text must now describe.
-  pr: the PR body, for the behavior the text must now describe.
-  plan: this milestone's work item in the plan pad, for the behavior the text must now describe.
-Finding: location · concrete failure, or before and after · fix · severity (bug | risk | nit).
-Out of mandate: code that is wrong while the text is right belongs to `correctness`.
-  A true comment that restates the code belongs to `simplicity`.
-  New configuration with no documentation belongs to `operability`.
+## Question
+Which doc, README, rule, comment, docstring, or type does the change make false?
+
+## Finding
+location · concrete failure, or before and after · fix · severity (bug | risk | nit).
+
+## Out of mandate
+Code that is wrong while the text is right belongs to `correctness`.
+A true comment that restates the code belongs to `simplicity`.
+New configuration with no documentation belongs to `operability`.
 
 ## What this lens hunts for
 

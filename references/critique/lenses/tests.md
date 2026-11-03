@@ -1,19 +1,27 @@
+---
+lens: tests
+batch: 2
+applies_when: always
+tier: { model: sonnet, effort: high }
+intent:
+  concern: "`requirements.md`, each acceptance criterion a test must cover."
+  pr: "the behavior the PR body describes, and the test conventions the repository already uses."
+  plan: "this milestone's work item in the plan pad, its Exit criterion and Verification lists."
+---
 # Tests
 
-Batch: 2.
-Applies when: always.
-Tier: sonnet · high.
-Question: Does each new or changed behavior have a test that fails without the change, through the production entry point?
-Intent source:
-  concern: `requirements.md`, each acceptance criterion a test must cover.
-  pr: the behavior the PR body describes, and the test conventions the repository already uses.
-  plan: this milestone's work item in the plan pad, its Exit criterion and Verification lists.
-Finding: location · concrete failure, or before and after · fix · severity (bug | risk | nit).
-Out of mandate: the defect a missing test would catch belongs to `correctness` or `failure-modes`.
-  A proof command that cannot fail belongs to `requirements-fidelity`.
-  Duplicated test setup that an existing helper covers belongs to `idiom-and-reuse`.
+## Question
+Does each new or changed behavior have a test that fails without the change, through the production entry point?
 
 `rules/testing-philosophy.md` sets the standard: a test calls the code the way production calls it.
+
+## Finding
+location · concrete failure, or before and after · fix · severity (bug | risk | nit).
+
+## Out of mandate
+The defect a missing test would catch belongs to `correctness` or `failure-modes`.
+A proof command that cannot fail belongs to `requirements-fidelity`.
+Duplicated test setup that an existing helper covers belongs to `idiom-and-reuse`.
 
 ## What this lens hunts for
 

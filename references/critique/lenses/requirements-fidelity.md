@@ -1,17 +1,25 @@
+---
+lens: requirements-fidelity
+batch: 1
+applies_when: always
+tier: { model: opus, effort: high }
+intent:
+  concern: "`requirements.md`, every acceptance criterion and its proof command."
+  pr: "the PR body and the linked issue, read as the requirements."
+  plan: "this milestone's work item in the plan pad: Files, Exit criterion, Proof, and Invariants."
+---
 # Requirements fidelity
 
-Batch: 1.
-Applies when: always.
-Tier: opus · high.
-Question: Does the change do what the approved requirements state, no more, with nothing skipped or substituted?
-Intent source:
-  concern: `requirements.md`, every acceptance criterion and its proof command.
-  pr: the PR body and the linked issue, read as the requirements.
-  plan: this milestone's work item in the plan pad: Files, Exit criterion, Proof, and Invariants.
-Finding: location · concrete failure, or before and after · fix · severity (bug | risk | nit).
-Out of mandate: a departure from the approved design belongs to `design-conformance`.
-  A wrong result inside an approved behavior belongs to `correctness`.
-  A workaround for a symptom belongs to `root-cause`.
+## Question
+Does the change do what the approved requirements state, no more, with nothing skipped or substituted?
+
+## Finding
+location · concrete failure, or before and after · fix · severity (bug | risk | nit).
+
+## Out of mandate
+A departure from the approved design belongs to `design-conformance`.
+A wrong result inside an approved behavior belongs to `correctness`.
+A workaround for a symptom belongs to `root-cause`.
 
 ## What this lens hunts for
 

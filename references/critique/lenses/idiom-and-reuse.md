@@ -1,20 +1,28 @@
+---
+lens: idiom-and-reuse
+batch: 2
+applies_when: always
+tier: { model: sonnet, effort: high }
+intent:
+  concern: "`design.md`, for the conventions it adopts."
+  pr: "the conventions in the files around the diff, and the repository's own rules and lint config."
+  plan: "the plan pad's `## Design` section, and the repository's rules."
+---
 # Idiom and reuse
 
-Batch: 2.
-Applies when: always.
-Tier: sonnet · high.
-Question: Does the change rebuild what the codebase already provides, or break an idiom the codebase uses?
-Intent source:
-  concern: `design.md`, for the conventions it adopts.
-  pr: the conventions in the files around the diff, and the repository's own rules and lint config.
-  plan: the plan pad's `## Design` section, and the repository's rules.
-Finding: location · before and after, always · fix · severity (bug | risk | nit).
-Out of mandate: a smaller rewrite with no existing helper belongs to `simplicity`.
-  A module boundary or an architectural choice belongs to `design-conformance`.
-  A document the change makes false belongs to `claims`.
+## Question
+Does the change rebuild what the codebase already provides, or break an idiom the codebase uses?
+
+## Finding
+location · before and after, always · fix · severity (bug | risk | nit).
 
 **Every finding carries a concrete before and after.** The after names the existing helper, with
 its file and line. The engine drops a finding with no rewrite.
+
+## Out of mandate
+A smaller rewrite with no existing helper belongs to `simplicity`.
+A module boundary or an architectural choice belongs to `design-conformance`.
+A document the change makes false belongs to `claims`.
 
 ## What this lens hunts for
 

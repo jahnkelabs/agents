@@ -1,17 +1,25 @@
+---
+lens: correctness
+batch: 2
+applies_when: always
+tier: { model: opus, effort: high }
+intent:
+  concern: "`requirements.md`, for what a right result is."
+  pr: "the PR body and the linked issue, for what a right result is."
+  plan: "this milestone's work item in the plan pad, for what a right result is."
+---
 # Correctness
 
-Batch: 2.
-Applies when: always.
-Tier: opus · high.
-Question: Where does the change produce a wrong result on valid input?
-Intent source:
-  concern: `requirements.md`, for what a right result is.
-  pr: the PR body and the linked issue, for what a right result is.
-  plan: this milestone's work item in the plan pad, for what a right result is.
-Finding: location · concrete failure, or before and after · fix · severity (bug | risk | nit).
-Out of mandate: empty, malformed, oversized, or concurrent input belongs to `failure-modes`.
-  Behavior the requirements never approved belongs to `requirements-fidelity`.
-  An exploit belongs to `security`, and a slow query belongs to `data-access`.
+## Question
+Where does the change produce a wrong result on valid input?
+
+## Finding
+location · concrete failure, or before and after · fix · severity (bug | risk | nit).
+
+## Out of mandate
+Empty, malformed, oversized, or concurrent input belongs to `failure-modes`.
+Behavior the requirements never approved belongs to `requirements-fidelity`.
+An exploit belongs to `security`, and a slow query belongs to `data-access`.
 
 ## What this lens hunts for
 

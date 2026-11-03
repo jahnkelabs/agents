@@ -1,19 +1,27 @@
+---
+lens: simplicity
+batch: 2
+applies_when: always
+tier: { model: sonnet, effort: high }
+intent:
+  concern: "`design.md`, for the structure a rewrite must keep."
+  pr: "the PR body, for the behavior a rewrite must keep."
+  plan: "this milestone's work item in the plan pad, for the behavior a rewrite must keep."
+---
 # Simplicity
 
-Batch: 2.
-Applies when: always.
-Tier: sonnet · high.
-Question: Which part of the change could be smaller or plainer, with the same behavior?
-Intent source:
-  concern: `design.md`, for the structure a rewrite must keep.
-  pr: the PR body, for the behavior a rewrite must keep.
-  plan: this milestone's work item in the plan pad, for the behavior a rewrite must keep.
-Finding: location · before and after, always · fix · severity (bug | risk | nit).
-Out of mandate: code that rebuilds an existing helper belongs to `idiom-and-reuse`.
-  Scope the requirements never asked for belongs to `requirements-fidelity`.
-  A structural departure from the design belongs to `design-conformance`.
+## Question
+Which part of the change could be smaller or plainer, with the same behavior?
+
+## Finding
+location · before and after, always · fix · severity (bug | risk | nit).
 
 **Every finding carries a concrete before and after.** The engine drops a finding with no rewrite.
+
+## Out of mandate
+Code that rebuilds an existing helper belongs to `idiom-and-reuse`.
+Scope the requirements never asked for belongs to `requirements-fidelity`.
+A structural departure from the design belongs to `design-conformance`.
 
 ## What this lens hunts for
 

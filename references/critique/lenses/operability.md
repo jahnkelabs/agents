@@ -1,18 +1,25 @@
+---
+lens: operability
+batch: 2
+applies_when: "the diff changes a request path, a background job, or an external call in a deployed service. It also applies when the diff adds a migration, a configuration value, or a feature flag."
+tier: { model: sonnet, effort: high }
+intent:
+  concern: "`design.md`, for the rollout plan and any observability it names."
+  pr: "the PR body, and the logging, metrics, and configuration patterns the service already uses."
+  plan: "this milestone's work item and the plan pad's `## Design` section."
+---
 # Operability
 
-Batch: 2.
-Applies when: the diff changes a request path, a background job, or an external call in a deployed service.
-  It also applies when the diff adds a migration, a configuration value, or a feature flag.
-Tier: sonnet · high.
-Question: When this change fails in production, can an operator see it, find its cause, and undo it?
-Intent source:
-  concern: `design.md`, for the rollout plan and any observability it names.
-  pr: the PR body, and the logging, metrics, and configuration patterns the service already uses.
-  plan: this milestone's work item and the plan pad's `## Design` section.
-Finding: location · concrete failure, or before and after · fix · severity (bug | risk | nit).
-Out of mandate: what the code does when it fails belongs to `failure-modes`.
-  A secret in a log line belongs to `security`.
-  A document the change makes false belongs to `claims`.
+## Question
+When this change fails in production, can an operator see it, find its cause, and undo it?
+
+## Finding
+location · concrete failure, or before and after · fix · severity (bug | risk | nit).
+
+## Out of mandate
+What the code does when it fails belongs to `failure-modes`.
+A secret in a log line belongs to `security`.
+A document the change makes false belongs to `claims`.
 
 ## What this lens hunts for
 

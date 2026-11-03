@@ -1,17 +1,25 @@
+---
+lens: design-conformance
+batch: 1
+applies_when: always
+tier: { model: opus, effort: high }
+intent:
+  concern: "`design.md`, every decision and each declined alternative."
+  pr: "the architecture the code around the diff already follows: its layers, module boundaries, and data flow."
+  plan: "the plan pad's `## Design` section, and the prose of this milestone's work item."
+---
 # Design conformance
 
-Batch: 1.
-Applies when: always.
-Tier: opus · high.
-Question: Does the change follow the approved design: its boundaries, data model, interfaces, and file structure?
-Intent source:
-  concern: `design.md`, every decision and each declined alternative.
-  pr: the architecture the code around the diff already follows: its layers, module boundaries, and data flow.
-  plan: the plan pad's `## Design` section, and the prose of this milestone's work item.
-Finding: location · concrete failure, or before and after · fix · severity (bug | risk | nit).
-Out of mandate: missing or extra behavior belongs to `requirements-fidelity`.
-  A local rewrite that keeps the design belongs to `simplicity`.
-  A local idiom or an existing helper belongs to `idiom-and-reuse`.
+## Question
+Does the change follow the approved design: its boundaries, data model, interfaces, and file structure?
+
+## Finding
+location · concrete failure, or before and after · fix · severity (bug | risk | nit).
+
+## Out of mandate
+Missing or extra behavior belongs to `requirements-fidelity`.
+A local rewrite that keeps the design belongs to `simplicity`.
+A local idiom or an existing helper belongs to `idiom-and-reuse`.
 
 ## What this lens hunts for
 
