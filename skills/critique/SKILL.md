@@ -136,8 +136,7 @@ An accepted remedy therefore lands as a follow-up milestone, and `/implement` pr
 
 **In `apply` mode, each systemic finding also reaches the plan pad.** Append it to the pad's
 `## Proposed edits` section, with `scratchpad_append_section` or `scratchpad_edit`. Where the pad
-has no such section, create it at the end of the pad. Until M4, that section stands in for the
-map.
+has no such section, create it at the end of the pad.
 
 **A `proposed edit:` line stays in the ledger too.** `/implement` carries the ledger into
 `Landed`, so the user reads every proposed edit there.

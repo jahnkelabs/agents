@@ -32,8 +32,14 @@ alters. Read each hit outside the diff, and ask whether it is still true. Check 
 - Rules, skills, and references that state how the code behaves.
 - Comments and docstrings next to the changed code.
 - Type annotations and signatures that no longer match what the code returns.
+- Text written for one plan or session: a milestone label, a decision id, a session slug, or
+  "until the next milestone". It reads as false to anyone outside that session.
 
 ## Examples
+
+- `references/critique/lenses/root-cause.md:41` · says "until M4". M4 names a milestone of the plan that
+  wrote the file, and no reader of the shipped file has that plan. Fix: state the behavior by its
+  condition, such as "where the caller supplies a plan pad". Severity `nit`.
 
 - `README.md:164` · says two skills carry `disable-model-invocation`. The change deletes one, so one
   remains. Fix: "One skill carries it." Severity `risk`.

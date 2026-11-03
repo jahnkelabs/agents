@@ -37,10 +37,9 @@ Then decide where the cause lives:
 
 **A systemic cause becomes a proposed map edit, never a local patch.** The fix names a new concern.
 That concern states the shared cause, its location, and the callers it affects. The finding
-proposes no change to code, inside this concern or outside it, and no better workaround. Until
-M4, the plan pad's `## Proposed edits` section stands in for the map. In `apply` mode, the
-critique appends each systemic finding there, and the ledger's `proposed edit:` line carries it
-into `Landed`.
+proposes no change to code, inside this concern or outside it, and no better workaround. In
+`apply` mode, the critique appends each systemic finding to the caller's plan pad, under
+`## Proposed edits`, and the ledger's `proposed edit:` line carries it into `Landed`.
 
 ## Examples
 
