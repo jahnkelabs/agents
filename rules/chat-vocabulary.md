@@ -30,8 +30,9 @@ the user to read every turn again.
 
 - **Default:** Send no heading, and send no footer.
 - **Cadence:** In an `/implement` run, speak on your own initiative on four occasions only.
-- **The four occasions:** `Running` at a wave join, `Landed` at a concern landing, `Blocked` at
-  an escalation, and `Failed` at a failure.
+- **The four occasions:** `Running` at a wave join, `Landed` at a concern landing, an escalation,
+  and `Failed` at a failure. A worker deviation takes `Blocked`. A critique escalation takes
+  `Approve`, `Deciding`, or `Blocked`, as `/critique` picks it.
 - **Every other skill:** speak where the skill's own steps say to speak. A `/research` report
   is one such message, and it carries no heading.
 - **Global parts:** the six headings and the footer hold in every skill. The cadence above holds
@@ -160,7 +161,7 @@ restating it.
 
 **A question that offers nothing to rank drops part 2.** It has no option to weigh and nothing to
 recommend. The heading, the question, and the footer are the whole message. The first question of
-`/research` and `/retro` is that shape. `/implement`'s lists the concerns of the map, so it
+`/research` and `/retro` is that shape. `/implement`'s lists the concerns ready to build, so it
 offers options and takes the full shape.
 
 Write each field label in bold, with the colon inside the bold. Start each field on its own line,

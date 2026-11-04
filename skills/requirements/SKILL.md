@@ -30,8 +30,9 @@ With no arguments:
 >
 > ⏸ waiting on you: name the concern
 
-**Stop where the user has not approved the map yet.** That holds where `map.md` reads
-`status: draft`, or `awaiting: approve the map`. Send the user to `/map <map-slug>`.
+**Stop until the user approves the map.** Go on only where `map.md` reads `status: approved` or
+`status: done`, or `awaiting: approve proposed map edits`, which a map edit reopened. Otherwise send
+the user to `/map <map-slug>`.
 
 ## Step 1 — Read
 
@@ -140,8 +141,11 @@ Follow `## Approval of a document` in `/map`, with `awaiting: approve requiremen
 
 On approval, record each decision that shapes the map or another concern under
 `## Proposed map edits`, as a `decision` entry. End each with `See [[<concern>/requirements]].`
-Where an entry is pending, set `awaiting: settle proposed map edits`, per `/map`. Then report the
-file's path, and stop:
+Where an entry is pending, set `awaiting: settle proposed map edits`, per `/map`.
+
+**Return an approved design to `draft`.** Where the concern's `design.md` reads `status: approved`,
+set its `status: draft`. That design predates these requirements, and `/implement` builds only on
+an approved design. Then report the file's path, and stop:
 
 ```
 Requirements: <docs_dir>/maps/<map-slug>/<concern>/requirements.md

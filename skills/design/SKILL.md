@@ -53,7 +53,7 @@ Where a fact needs more than a lookup, run `/research` on it. Its report goes to
 
 Then move the stage. Set `stage: design` in `concern.md` where it reads `open` or `requirements`.
 A later stage stays as it is, and the revised document goes through approval again. Append
-` · [[<concern>/design]]` to the body's `Documents:` line.
+` · [[<concern>/design]]` to the body's `Documents:` line where the line lacks it.
 
 ## Step 2 — Walk the checklist
 

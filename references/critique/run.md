@@ -24,6 +24,7 @@ nothing escalates. `## Batch 1, then the rework loop` states both paths.
 | Target | the diff text itself, or the exact refs and container paths; never a name alone |
 | Target note | a fact every agent needs about the target, or none |
 | Intent | the `intent` kind that applies (`concern` or `pr`) and the content its `intent.<kind>` key names, or none |
+| Settled | in `apply` mode, the escalations the user already settled, or none |
 | Lens set | the catalog in `references/critique/lenses/`, or the subset the front end names |
 | Output mode | `apply` or `report` |
 | Rework | in `apply` mode, where a batch 1 rework lands |
@@ -44,7 +45,7 @@ tier:
   claude: { model: <model>, effort: <effort> }
   codex: { model: <model>, effort: <effort> }
 intent:
-  concern: <what it reads from a concern pad>
+  concern: <what it reads from the concern's documents>
   pr: <what it reads on someone else's PR>
 ---
 # <Lens name>
@@ -72,9 +73,10 @@ holds code. A target that holds no code takes only the lenses whose question it 
 the front end names that set, as `/critique` does for a requirements or design document, take the set it names.
 
 Each agent reads the part of the intent that its `intent` frontmatter key names for the target kind. Where that part is
-absent, the brief carries `none` as its intent. Where the key names `design.md` and the intent
-carries the concern's approved deviations, the agent reads them with `design.md`. A lens whose question checks the target against
-that intent then has nothing to check, so it drops out. Every other lens runs on the target alone.
+absent, the brief carries `none` as its intent. Where the key names `requirements.md` or
+`design.md`, and the intent carries the concern's approved deviations, the agent reads them too.
+A lens whose question checks the target against that intent then has nothing to check, so it drops
+out. Every other lens runs on the target alone.
 
 Name every lens that did not run in the ledger's header, with its reason. When the front end
 offered an intent that does not resolve, the front end stops before it reaches this file.
@@ -222,7 +224,8 @@ The front end's caller commits it.
 
 Put each deviation to the user under `Blocked`. Batch 2 waits for the answer. A fix the user
 approves for a deviation lands as a rework round, and counts against the limit of two. A dropped
-or accepted deviation enters the ledger, and batch 2 starts.
+or accepted deviation enters the ledger, and batch 2 starts. The front end also records an
+accepted one with the concern's deviations.
 
 After the rework, batch 1 runs again over the reworked target, with fresh agents. An agent that
 saw the first round tends to check its own findings rather than the target.
@@ -319,6 +322,9 @@ You decide almost every finding yourself. Six criteria escalate a finding to the
 grounds never do. The ledger discloses every decision either way.
 
 **Default: fail toward accepting.** Accept any finding that matches no criterion below.
+
+**A settled escalation never escalates again.** Where the front end passed one that answers a
+finding, act on that answer. The finding's ledger line names the settled decision.
 
 Real runs back this default. Serial triage cost about 115 human turns across 8 runs for about
 176 findings. Delegated triage cost about 20 turns across 14 runs for about 260.

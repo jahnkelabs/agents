@@ -69,8 +69,10 @@ supplies the `concern` kind.
 
 - **`--concern <map-slug>/<concern>`** resolves the concern's `requirements.md` and `design.md`
   under `<docs_dir>/maps/<map-slug>/<concern>/`. The intent is those two documents. Where
-  `implementation.md` holds `## Deviations from the design`, that section joins the intent beside
-  `design.md`. Each entry is a departure the user approved, and `design.md` does not record it.
+  `implementation.md` holds `## Deviations`, that section joins the intent of every lens whose key
+  names `requirements.md` or `design.md`. Each entry is a departure the user approved, and it names
+  the document it departs from, which does not record it. Where `implementation.md` holds
+  `## Decided` sections, pass them to `run.md` as settled escalations.
 - **No `--concern`** supplies no intent. `run.md` drops every lens that checks the target against
   one, and names each in the ledger's header. A standalone `/critique src/foo.php` has nothing to
   check requirements against.
@@ -109,6 +111,10 @@ entry under `## Proposed map edits` in the concern document of the stage that ca
 shape under `## Proposed map edits`. A systemic finding names a new concern, and `/map` applies or
 declines it. This skill never writes `map.md`.
 
+**In `apply` mode, each deviation the user accepts also enters the concern's deviations.** Record
+it under `## Deviations` in `implementation.md`, and name the document it departs from. A resumed
+critique then reads it as intent.
+
 **A standalone critique writes the finding to the ledger only.**
 
 **A `proposed edit:` line stays in the ledger too.** `/implement` carries the ledger into
@@ -120,6 +126,7 @@ Read `references/critique/run.md` in full, then run it with what steps 1 to 3 re
 
 - the target: the diff text itself, or the exact refs and container paths;
 - the intent: the `concern` kind with the resolved documents, or none;
+- the settled escalations from `## Decided`, or none;
 - the lens set: the catalog in `references/critique/lenses/`, or the document set from step 2 for
   a `requirements.md` or `design.md` target;
 - the output mode, where a rework lands, and the proof commands;

@@ -13,7 +13,7 @@ Call `whoami` once and keep the returned `process_id`. Every worker needs it to 
 ## Schedule the waves
 
 Slices marked `same-worker` share one task. Slices marked `after` land in a later wave. Slices
-whose `**Files**:` overlap never run concurrently. Everything else is free. Group for coherence
+whose `files` overlap never run concurrently. Everything else is free. Group for coherence
 rather than for a worker count. A task that spans one subsystem is easier to brief and verify
 than one assembled to fill a slot.
 
@@ -188,13 +188,14 @@ Then commit the wave's tasks. **Commit each task separately, staging only its de
 ```bash
 cd <the worktree of the repository that task wrote in>
 git add <task's declared paths>
-git commit -m "<type>(<scope>): <task summary>"
+git commit -m "<type>(<scope>): <task summary>" -m "Task: <letter>"
 ```
 
-Never `git add -A` — another task's work may be in the tree. A task that wrote in two
-repositories commits once per repository. Then `todo_complete` each task and start the concern's
-next wave, which marks its todos in progress. Emit the wave state block below after that
-wave starts. After the last wave, emit one final block with every task committed.
+The `Task:` line lets a resume find the task's commit in `git log`. Never `git add -A` — another
+task's work may be in the tree. A task that wrote in two repositories commits once per repository.
+Then `todo_complete` each task and start the concern's next wave, which marks its todos in
+progress. Emit the wave state block below after that wave starts. After the last wave, emit one
+final block with every task committed.
 
 **The wave join is the only place a task commits.** No step after the last wave commits a task
 again. A second task commit instruction stops on `nothing to commit`. Deferring it instead lets a

@@ -1,7 +1,8 @@
 ---
 name: implement
 description: Implement one approved concern of a map, from its requirements and design to a draft PR with CI green
-argument-hint: "[<map-slug>/<concern>] [--critique <models>]"
+argument-hint: "[<map-slug>/<concern> | <concern>] [--critique <models>]"
+disable-model-invocation: true
 ---
 
 # Implement
@@ -22,26 +23,10 @@ completion — see [Escalation](#escalation).
 
 ## Input
 
-- **`<map-slug>/<concern>`** — the concern's directory under `<docs_dir>/maps/`. A calling skill
-  passes it here.
+- **`<map-slug>/<concern>` or `<concern>`** — the concern's directory under `<docs_dir>/maps/`.
+  Resolve it by the address rule in `/map`.
 - **`--critique <models>`** — the critique roster. Pass it to `/critique` unchanged. Without it,
   `/critique` takes its own default.
-- **Existing todos tagged `concern:<map-slug>-<concern>`** — list them by that one tag, which
-  names this concern alone. The concern's `stage` says what they mean:
-  - **A resumed run** is a concern at `stage: implementing` with at least one todo that is not
-    `completed`. The todos *are* the slicing, so reuse them rather than slicing again. Pick up at
-    the first wave with open tasks.
-  - **A run stopped after the waves** is a concern at `stage: implementing` whose todos are all
-    `completed`. `implementation.md` records where it stopped, per repository. Read it, and pick up
-    in `## Build the concern`:
-    - no ledger for the repository under `## Critique ledger`: step 2, the critique;
-    - a ledger, and no PR for the repository in `pr`: step 3, the commit;
-    - a PR for the repository in `pr`: step 5, the CI wait. A review rerun keeps `pr` from the
-      last landing, so confirm that the worktree holds no uncommitted change and no unpushed
-      commit. Where it holds either, start at step 3.
-  - **A review rerun** is a concern at `stage: in-review`. The review amended the documents, and
-    the kept todos record what the run already built. Slice the amended documents again, and give
-    each new task the next letter after the kept ones.
 
 `docs_dir` is the plugin's `userConfig` directory, and it defaults to `~/Code/agent-docs`.
 
@@ -77,8 +62,61 @@ defines its format. Read it there, and never restate it.
 The skills commit nothing under `docs_dir`. It may be a local git repository with no remote.
 
 **Keep each document's frontmatter current.** A concern's stage lives only in its `concern.md`.
-Set `stage: implementing` when the run starts, and `stage: in-review` at the landing. `/map` sets
-`stage: done` once the PR merges, and this skill never sets it.
+Set `stage: implementing` once the record exists, and `stage: in-review` at the landing. `/map`
+sets `stage: done` once the PR merges, and this skill never sets it.
+
+### Where the run stands
+
+The concern's `stage` and its `implementation.md` say where the run stands. Read both before you
+cut anything:
+
+- **`stage: done`:** stop. The concern closed when its PR merged. Send the user to `/map`, which
+  charts a new concern.
+- **`stage: in-review`:** a review rerun, per `### A review rerun`.
+- **An `implementation.md` at any other stage:** a resume. Read its `step` alone, and go to the
+  step after it:
+  ```
+  null        ## Slice the concern, step 6: each task ## Slices lists and no todo carries
+  sliced      ## Build the concern, step 1: the first wave with open tasks
+  built       step 2: the critique
+  critiqued   step 3: the commit
+  committed   step 4: the push and the PR
+  pr-open     step 5: the CI wait
+  landed      step 7: the announcement
+  ```
+- **No `implementation.md`:** a fresh run.
+
+A resume and a review rerun still take `## Cut the worktree`. It reuses a standing tree, or it
+cuts again onto the recorded branch.
+
+**Close the dead run's workers before you resume.** A Solo worker outlives the session that
+spawned it, so a worker of the dead run may still write. Run `list_processes`. Close each live
+process whose name ends `-<map-slug>-<concern>`, and read its report pad,
+`<map-slug>/<concern>/<task>`. Then settle each todo that reads `in_progress`, in its worktree:
+
+- its commit appears in `git log <base>..HEAD --grep="^Task: <letter>$"`: `todo_complete` it, and
+  spawn nothing;
+- its report pad begins `ESCALATION:`: put it to the user, per [Escalation](#escalation);
+- its report pad records a finish: commit it as the join does, then `todo_complete` it;
+- it has no report pad: restore its declared paths, per [Escalation](#escalation), and respawn it.
+
+### A review rerun
+
+The review asked for changes, and the user reran `/requirements` or `/design` to make them.
+
+1. **Check each PR in `pr` first:**
+   ```bash
+   gh pr view <the PR URL> --json state
+   ```
+   A `MERGED` or `CLOSED` PR stops the run. Send the user to `/map`, which closes a merged concern.
+2. **Find what the kept tasks do not cover.** First create each todo that `## Slices` lists and no
+   todo carries, as `## Slice the concern` step 6 creates one, and leave `step` as it stands. A
+   rerun that stopped partway leaves such a task. The kept tasks are then every todo of the concern.
+   A criterion or a `## Structure` path is new where no kept task's spec names it as the documents
+   now state it.
+3. **Slice only what is new,** per `## Slice the concern`. Where nothing is new and every todo reads
+   `completed`, the review changed nothing the build covers. Say so, tear down per
+   `## Build the concern` step 8, and stop.
 
 ## Speaking
 
@@ -99,13 +137,15 @@ re-ask a question the requirements or the design already answered.
 Stop on these, and on nothing else:
 
 ```
-  no concern, or a stage document that is not approved
+  no concern, a concern at stage: done, or a stage document that is not approved
+  a review rerun whose PR reads MERGED or CLOSED, or that finds nothing new
   a container path that map.md lacks, or that holds no git repository
+  a predecessor that has not landed, that closed unmerged, or that forms no stack with another
   a /worktree refusal
   a census hit that needs a behavior the design does not describe
   a worker deviation
   a critique escalation: C1 to C6, a batch 1 deviation, or batch 1 failing after two reworks
-  a check that still fails after two CI fixes
+  a check that still fails after two CI fixes, or that is still pending at the CI ceiling
 ```
 
 ## Cut the worktree
@@ -116,21 +156,40 @@ concern touches.
 
 1. **Read each repository's container from `map.md`.** Its `repos` frontmatter maps each
    repository name to its container path, and `/map` writes it. Where the map names no path for
-   a repository, or the path holds no git repository, stop. Ask the user for the path, as an open
-   question. Guess no path.
+   a repository, or the path holds no git repository, read the path the user gave before:
+   ```
+   kv_get(key="map:<map-slug>:concern:<concern>:container:<repo>")
+   ```
+   Where that key is empty, or its path holds no git repository, stop. Ask the user for the path,
+   as an open question. Guess no path.
+
+   **Keep the path the user gives.** Write it to that key with `kv_set`, so a resume reads it
+   rather than asking again. `<repo>` there is the name `map.md` gives. Record a pending proposed
+   map edit, `repos: <repo>: <path>`, in `implementation.md`, so `/map` corrects the map. Where the
+   record is not open yet, record the edit when it opens.
 
    `/map` derived each path with the one derivation `/worktree` states, under
    `## Derive the container from any worktree`. A path the user supplies takes that derivation
    too. Use it verbatim, and write no second copy. `git rev-parse --show-toplevel` is the wrong
    command here. It returns `<container>/main` in a converted repository, and `/worktree cut`
    then refuses the container as a plain clone.
-2. **Choose the base.** The base is `origin/HEAD`, unless this concern stacks on an unmerged one.
-   It stacks where its `concern.md` `after` names a concern whose PR has not merged. That
-   concern's `implementation.md` carries the PR in its `pr` field. Read its branch and its state:
+2. **Choose the base, per repository.** The base is `origin/HEAD`, unless this concern stacks on
+   an unmerged one in this repository. Read each concern that `concern.md`'s `after` names, one or
+   a list. Its `implementation.md` carries its PRs in `pr`. Read each one:
    ```bash
-   gh pr view <the predecessor's PR URL> --json headRefName,state
+   gh pr view <the predecessor's PR URL> --json headRefName,baseRefName,state
    ```
-   The base is then that branch, in this repository.
+   Then settle each predecessor for this repository:
+   - no `implementation.md`, or `pr: null`: it has not landed. Stop, and name it;
+   - no PR in this repository: it changes nothing here, so it sets no base here;
+   - `MERGED`: its code is on `origin/HEAD`;
+   - `CLOSED`: stop, and name it, because its branch may no longer exist;
+   - `OPEN`: its `headRefName` is a candidate base.
+
+   One candidate is the base. Two or more candidates form one stack where each PR but one bases on
+   another candidate's branch. The base is then the top branch, which no other candidate bases on.
+   Otherwise stop, and name the branches. The user then asks `/map <map-slug>` for an `after` that
+   chains them.
 3. **Write the branch key, then cut:**
    ```
    kv_set(key="map:<map-slug>:concern:<concern>:branch:<repo>", value="<branch>")
@@ -166,9 +225,9 @@ concern touches.
 
 ## Slice the concern
 
-A resumed run skips this section, because its todos already carry the slices. A review rerun
-takes every step below against the amended documents. It keeps the completed todos, and it
-letters each new task after the last kept one.
+A resume skips this section, except at `step: null`, which takes step 6 alone. A review rerun takes
+every step below for what `### A review rerun` found new. It keeps the kept todos, and it letters
+each new task after the last task `## Slices` lists.
 
 1. **Derive the slices from the requirements and the design.** A slice is narrow and vertical:
    one coherent change, in exactly one repository, that stands on its own. Each slice carries:
@@ -233,10 +292,17 @@ letters each new task after the last kept one.
    pick a runtime. Where one cannot deny those writes, the first `Running` block carries a
    `Sandbox:` line. It names the exposure: two workers in one tree cross-commit each other's work.
    Never promise a denial the runtime cannot give.
-5. **Create the todos** — one per task. The body carries the **task spec**: the slices it covers,
-   their files, their criteria, and their proof commands. The requirements hold the criteria. The
-   todo holds the grouping, which exists nowhere else. The worker reads its own todo, so this is
-   the only place the spec belongs.
+5. **Open the record.** Write `implementation.md` in the shape `## The record` gives, with
+   `status: draft`, `awaiting: null`, `step: null`, and `pr: null`. Fill its `## Slices` section
+   now, with every task letter, before any todo exists. Set `## Critique ledger` to `Not run.`
+   Record each proposed map edit the run already holds, such as a container path the user gave.
+   Then set `stage: implementing` in the concern's `concern.md`.
+
+   A review rerun edits the record instead, per `## The record`, and leaves `stage` for step 6.
+6. **Create the todos** — one per task that `## Slices` lists and no todo tagged `task:<letter>`
+   carries. The body carries the **task spec**: the slices it covers, their files, their criteria,
+   and their proof commands. The requirements hold the criteria. The todo holds the grouping, and
+   the worker reads its own todo, so the spec belongs there.
    ```
    todo_create(title="<task>: <name>", body=<task spec>,
                tags=["map:<map-slug>", "concern:<map-slug>-<concern>", "project:<repo>",
@@ -254,16 +320,15 @@ letters each new task after the last kept one.
    Two checks in the corpus could never fire. `grep -rn 'App\\Models'` searched for two literal
    backslashes, and `grep -ci Test` matched an unrelated domain string. Both read as passing
    evidence.
-6. **Open the record.** Write `implementation.md` in the shape `## The record` gives, with
-   `status: draft`, `awaiting: null`, and `pr: null`. Fill its `## Slices` section now. Set
-   `## Critique ledger` to `Not run.` A review rerun resets the ledger the same way, and it keeps
-   `pr` as it stands.
+
+   **Set `step: sliced` once every task has its todo.** Then set `stage: implementing` where
+   `concern.md` reads another stage. A review rerun reaches that stage here.
 
 ## Build the concern
 
 1. **Run the waves.** `references/implement-waves.md` carries the spawn, the brief pad, the
    pointer, the guard, and the join. Each wave commits its own tasks at its join, so no task
-   commit follows the last wave.
+   commit follows the last wave. Set `step: built` once the last wave's join commits.
 2. **Critique the concern's diff, once per repository it touches.** Name the base explicitly, and
    pass the concern:
    ```
@@ -285,15 +350,21 @@ letters each new task after the last kept one.
 
    **Write each repository's ledger to the record as its call returns,** under
    `implementation.md`'s `## Critique ledger`. Its proposed map edits are already there, because
-   `/critique` recorded them. The ledger also records each escalation the user settled, so a
-   resume raises none of them again.
+   `/critique` recorded them. A resume critiques only the repositories whose ledger the record
+   lacks. Set `step: critiqued` once every repository's ledger is there.
+
+   **Record each escalation the user settles as the answer arrives,** in its own
+   `## Decided: <topic>` section. A resumed critique passes those sections to `/critique` as
+   settled, so it raises none of them again. `/critique` records each deviation the user accepts
+   under `## Deviations`.
 3. **Commit the critique's changes, once per repository:**
    ```bash
    git add <the paths the rework and the ledger's fixes touched>
    git commit -m "fix(<scope>): apply the critique remedies for <concern>"
    ```
    This commit and the CI fixes are the only commits outside a wave join. Skip this one, and the
-   PR omits every remedy.
+   PR omits every remedy. A repository whose worktree holds no change skips its commit, because a
+   resume may find that commit already made. Set `step: committed` once every repository is done.
 4. **Push, and open one draft PR per repository.** Re-run the staleness check and the quality
    gates from `pr-first-contributions` first. Then push and open the PR, per its
    `## Push and open the PR`. No push gate exists, because the approved design authorized these
@@ -303,6 +374,7 @@ letters each new task after the last kept one.
    rather than opening a second one.
 
    **Write each PR URL to `implementation.md`'s `pr` as the PR opens.** A resume reads it there.
+   Set `step: pr-open` once every repository's PR is open.
 
    **A stacked concern opens its PR on its predecessor's branch, then registers the chain:**
    ```bash
@@ -312,22 +384,24 @@ letters each new task after the last kept one.
    The rule's `## Stacked PRs` says what the body names. `gh stack link` registers the chain as a
    native GitHub stack. Never use `gh stack submit`, because it cannot take a PR title or body.
    Where `gh stack` is not installed, skip the link, and say so in `Landed`.
-5. **Wait for CI.**
-   ```bash
-   gh pr checks <the PR URL> --watch
-   ```
-   On a failed check, read its log with `gh run view <run id> --log-failed`. Fix the cause in the
-   worktree, within the design. Commit only the paths the fix touched, push, and watch again.
+5. **Wait for CI,** per `## Wait for CI` in `pr-first-contributions`, which bounds the wait at one
+   hour. On a failed check, read its log with `gh run view <run id> --log-failed`. Fix the cause in
+   the worktree, within the design. Commit only the paths the fix touched, push, and wait again.
 
    **Two CI fixes is the limit.** A check that still fails after the second fix stops the run under
    `Blocked`. A fix that departs from the design is a deviation, and it stops the run at once.
+
+   **A check still pending at the ceiling stops the run under `Blocked`.** Name each pending check
+   from `gh pr checks <the PR URL> --json name,bucket`. Such a check may wait on a manual approval,
+   or on a runner that never starts.
 
    **A repository with no CI takes the proof commands as its gate.** `## Wait for CI` in
    `pr-first-contributions` defines no CI, and it bounds the wait. Run every proof command in the
    worktree instead, and `Landed` says that the proof commands were the gate.
 6. **Write the record.** Complete `implementation.md`, per `## The record`. Its ledger and its
-   `pr` are already there. Set `status: awaiting-you` and `awaiting: review the PR`. Set
-   `stage: in-review` in the concern's `concern.md`.
+   `pr` are already there. Set `status: awaiting-you`, `awaiting: review the PR`, and
+   `step: landed`. Then set `stage: in-review` in the concern's `concern.md`, and append
+   ` · [[<concern>/implementation]]` to its body's `Documents:` line where the line lacks it.
 
    **Record each proposed map edit under `implementation.md`'s `## Proposed map edits`,** in the
    shape `skills/map/SKILL.md` gives under `## Proposed map edits`. Number each one after the last
@@ -368,7 +442,7 @@ letters each new task after the last kept one.
    **Keep the concern's todos and KV keys.** The concern closes when its PR merges, not at the
    landing. A review that asks for changes reruns this skill on the amended documents, as a review
    rerun under `## Input`. The branch key then tells that rerun from a collision. `/map` closes a
-   merged concern when it runs, and `/sweep` does the same on demand.
+   merged concern when it runs.
 
    **Close is silent.** `Landed` already carried the PR URLs, the CI result, and the record's path.
    Repeat none of it.
@@ -384,13 +458,14 @@ map: <map-slug>
 concern: <concern>
 status: awaiting-you          # draft while the run builds
 awaiting: review the PR       # null while the run builds
+step: landed                  # null until the slicing creates every todo
 pr: <the PR URL>              # null until it opens; a list where the concern spans repositories
 ---
 ## Where the code is
 <each repository: its branch, its PR and base, its commits, and the CI result or the proof gate>
 
 ## Slices
-<each task: its letter, its slices, its files, and its wave>
+<each task: its letter, its slices with their files and criteria, its tier, and its wave>
 
 ## Decided: <topic>
 <one section per decision the user settled during the run, in the decision format>
@@ -398,8 +473,8 @@ pr: <the PR URL>              # null until it opens; a list where the concern sp
 ## Critique ledger
 <the ledger, in the shape /critique defines, one per repository; Not run. until the critique returns>
 
-## Deviations from the design
-<each departure the user approved, or none>
+## Deviations
+<each departure the user approved, naming the document it departs from, or none>
 
 ## Proposed map edits
 <each edit this run recorded, in the shape /map gives, or None.>
@@ -407,8 +482,31 @@ pr: <the PR URL>              # null until it opens; a list where the concern sp
 
 Omit `## Decided` where the user settled nothing during the run.
 
-**A stop keeps the record current too.** A `Blocked` or `Failed` sets `status: awaiting-you`, and
-`awaiting` to the footer's one thing. The answer sets them back to `draft` and `null`.
+**`step` names the last step that completed.** Write each value as its step completes, never
+before. A resume reads it alone, per `### Where the run stands`.
+
+```
+null        the record is open, and some task in ## Slices has no todo yet
+sliced      every task in ## Slices has its todo
+built       the last wave's join committed
+critiqued   every repository's ledger is in the record
+committed   every repository's critique remedies are committed
+pr-open     every repository's PR is open, and pr holds its URL
+landed      CI passed, and the record is complete
+```
+
+**The record is written once, then edited in place.** `## Slice the concern` writes it. Every later
+step edits a field or a section, and never writes the whole file again.
+
+**A review rerun edits the record the same way.** It keeps `## Deviations`, every
+`## Decided: <topic>` section, and `## Proposed map edits` verbatim. It numbers each new edit
+after the last entry there. It resets `## Critique ledger` to `Not run.`, keeps `pr` as it
+stands, and sets `status: draft` and `awaiting: null`. It appends its new tasks to `## Slices`,
+and it sets `step: sliced` once their todos exist.
+
+**A stop keeps the record current too.** A `Blocked` or `Failed` after the record opens sets
+`status: awaiting-you`, and `awaiting` to the footer's one thing. The answer sets them back to
+`draft` and `null`.
 
 ## Escalation
 
@@ -447,11 +545,24 @@ their own section, with the five option fields.
 `rules/chat-vocabulary.md` gives the full question shape. **The recommendation is mandatory.** A
 `Blocked` options list ranks nothing by itself, so name the option you would take and its ground.
 
-**A settled deviation lives only in `implementation.md`.** Record it under
-`## Deviations from the design`. Never edit `design.md` or `requirements.md`: an approved document
-changes only when the user reruns its skill. `/critique --concern` reads that section as part of
-the intent, so it checks the code against the departure the user approved. A deviation that
-reaches beyond this concern also becomes a proposed map edit.
+**Record the answer as it arrives,** in its own `## Decided: <topic>` section, so a resume asks
+nothing twice.
+
+**Restore the task's declared paths before you act on the answer.** The worker stopped mid-edit,
+and the join committed none of its paths. Restore each declared path that `HEAD` holds, and delete
+each one that `HEAD` lacks:
+```bash
+git restore --source=HEAD --staged --worktree -- <the task's declared paths that HEAD holds>
+```
+Then act on the answer:
+- **C, drop the slice:** `todo_complete` the task, with a comment that names the drop.
+- **A or B:** edit the task's brief pad in place, and respawn the task at its tier.
+
+**A settled deviation lives only in `implementation.md`.** Record it under `## Deviations`, and
+name the document it departs from: `requirements.md` or `design.md`. Never edit either one: an
+approved document changes only when the user reruns its skill. `/critique --concern` reads that
+section as part of the intent, so it checks the code against the departure the user approved. A
+deviation that reaches beyond this concern also becomes a proposed map edit.
 
 Automated verification failing is not automatically an escalation — a worker that can fix it
 within the design should. It escalates when the fix would require departing from the design.

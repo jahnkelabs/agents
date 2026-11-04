@@ -25,7 +25,8 @@ review                     the user reviews the PR
 ```
 
 This skill writes markdown files. It creates no todo, cuts no worktree, and writes no code. Its
-one other write is `## Close merged concerns`, which deletes a merged concern's todos and KV keys.
+one write outside `docs_dir` is `## Close merged concerns`, which deletes a merged concern's todos
+and KV keys.
 
 **This skill is the only writer of `map.md`.** A stage that finds work the map missed records a
 proposed map edit in its own document, and this skill applies it.
@@ -70,21 +71,21 @@ The frontmatter follows five rules:
   copies can disagree. Its values are `open`, `requirements`, `design`, `implementing`,
   `in-review`, and `done`.
 - **Each document carries only its own review state.** `map.md` and each concern document carry
-  `status` and `awaiting`, and `implementation.md` adds `pr`. A concern document also names its
-  `map` and its `concern`.
+  `status` and `awaiting`, and `implementation.md` adds `pr` and `step`. A concern document also
+  names its `map` and its `concern`. `concern.md` carries no `status` and no `awaiting`.
 - **`status`** in a concern document is `draft` while you write, `awaiting-you` while the user
   owes a review, and `approved` once the user approves. `map.md`'s `status` adds `done`, and the
   `map.md` schema under `### Step 5` states its lifecycle.
 - **`awaiting`** names the one thing the user owes, such as `approve design`, or it is `null`.
 
-Each stage skill sets its concern's `stage` when it starts, so the stage names the work in
-progress. An approval changes a document's `status`, never the concern's `stage`. The next stage
-starts only when the user starts it.
+Each stage skill sets its concern's `stage` when it starts, and `/implement` sets it once its
+record exists. The stage therefore names the work in progress. An approval changes a document's
+`status`, never the concern's `stage`. The next stage starts only when the user starts it.
 
-**A concern's address.** `/requirements` and `/design` take `<map-slug>/<concern>`, or `<concern>`
-alone. Resolve a bare `<concern>` against `<docs_dir>/maps/*/<concern>/concern.md`. One match names
-the map. Several matches need the user: ask which map, as an open question. No match sends the
-user to `/map`.
+**A concern's address.** `/requirements`, `/design`, and `/implement` take `<map-slug>/<concern>`,
+or `<concern>` alone. Resolve a bare `<concern>` against
+`<docs_dir>/maps/*/<concern>/concern.md`. One match names the map. Several matches need the user:
+ask which map, as an open question. No match sends the user to `/map`.
 
 ## Approval of a document
 
@@ -198,8 +199,6 @@ else.
 A concern that spans repositories holds a list in `pr`, and it closes only once every PR merges.
 Leave every other concern as it stands. Name each closed concern in one line, and say nothing
 where none closed.
-
-`/sweep` runs the same close-out on demand, without `/map`.
 
 ## Chart a map
 
@@ -429,6 +428,10 @@ Next: /requirements <map-slug>/c1-<topic> starts the first concern.
 `/map <map-slug>` reads `map.md` and every `concern.md` fully. It then settles each pending map
 edit, and each change the user names.
 
+**Finish an unapproved map first.** A map whose `status` reads `draft`, or whose `awaiting` reads
+`approve the map`, goes back to `### Step 6 — Approve the map`. A slug directory that holds no
+`map.md` goes back to `### Step 4 — Grill the user`, with the research files it already holds.
+
 **Gather the pending edits.** Read `## Proposed map edits` in each concern's `requirements.md`,
 `design.md`, and `implementation.md`. Every entry marked `pending` is a pending edit. Where any is
 pending, set `map.md`'s `status: awaiting-you` and `awaiting: approve proposed map edits`.
@@ -444,6 +447,12 @@ Give each one its proposed action, with its ground:
 The user approves the batch as proposed, or names each edit to change. Apply the answer to every
 edit in the batch.
 
+**Apply each edit once.** A session that dies between applying an edit and marking it leaves the
+edit `pending`. Before you create a concern for an edit, look for a `concern.md` whose body cites
+that edit's id. When you create one, write that citation on its own body line, as
+`From c1-ingest/implementation.md edit 2.` Before you add a line to `map.md`, check whether its
+section already holds it.
+
 **Apply an edit where it belongs:**
 
 - **A new concern** gets a new `concern.md` at `stage: open`, with the next unused number. Shift
@@ -455,8 +464,9 @@ edit in the batch.
 
 **Mark each settled entry in its source document.** Replace `pending` with `applied`, or with
 `declined: <the reason>`, so the same edit does not return. Add one line to `## Decisions so far`
-for each settled edit. Apart from that marker and the document's `awaiting`, this skill never
-edits a document that another skill owns.
+for each settled edit. Apart from that marker, the document's `awaiting`, and the close-out's
+`status` write to a merged concern's `implementation.md`, this skill never edits a document that
+another skill owns.
 
 **Never rename a concern.** Its slug names its KV keys, its branch, and its worktree. Change its
 `order` or its `outcome` instead.

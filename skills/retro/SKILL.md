@@ -256,8 +256,8 @@ Next: /map turns the proposed changes into concerns.
 ```
 
 `/map` owns every change from here. It charts the concerns, and it gates on approval. A
-concern's `/requirements` and `/design` then grill and census the inbound references. That path
-is why this skill edits nothing itself.
+concern's `/requirements` and `/design` then grill the user, and `/implement` censuses the inbound
+references. That path is why this skill edits nothing itself.
 
 ## Notes
 

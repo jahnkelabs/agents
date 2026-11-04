@@ -187,7 +187,8 @@ The file opens with frontmatter and holds the document below:
 ---
 type: research
 map: <map-slug>          # only when a map called
-repos: [<name>]
+repos:
+  <name>: <absolute container path>
 date: <YYYY-MM-DD>
 status: draft
 awaiting: null

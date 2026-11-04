@@ -70,13 +70,19 @@ A PR for this branch may already be open. Push the new commits, then update its 
 
 ## Wait for CI
 
-Wait for every check before you ask for a review:
+Wait for every check before you ask for a review. Poll once a minute, for one hour at most:
 
 ```bash
-gh pr checks <PR URL> --watch
+for _ in $(seq 60); do
+  gh pr checks <PR URL> > /dev/null 2>&1; [ $? -eq 8 ] || break
+  sleep 60
+done
+gh pr checks <PR URL> --json name,bucket
 ```
 
-Fix a failed check on the branch, then watch again. Push that fix only with approval, or where an authorization above covers the branch. Report the result with the PR URL. Take a failure you cannot fix within scope to the user. Quote the shortest decisive line of its log.
+`gh pr checks` exits 8 while a check is pending. A check still `pending` after the hour may wait on something that never comes, such as a manual approval or a missing runner. Take it to the user, and name each pending check.
+
+Fix a failed check on the branch, then wait again. Push that fix only with approval, or where an authorization above covers the branch. Report the result with the PR URL. Take a failure you cannot fix within scope to the user. Quote the shortest decisive line of its log.
 
 A repository with no CI has no checks to wait for. Its quality gates are then the gate, and the review request says so. A PR that reports no check after three polls one minute apart has no CI.
 
