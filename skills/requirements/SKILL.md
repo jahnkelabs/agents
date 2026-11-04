@@ -10,11 +10,12 @@ Write what one concern must achieve, and how a machine proves that it did. This 
 first stage. `/map` charted the concern, and `/design` follows. The user starts each stage.
 
 This skill writes `<concern>/requirements.md` under `docs_dir`. It also moves the concern's
-`stage`, and it can append a proposed edit to the map. It writes no design and no code.
+`stage`, and it records each proposed map edit in that document. It never writes `map.md`, and it
+writes no design and no code.
 
 `skills/map/SKILL.md` defines the docs directory, the frontmatter, and a concern's address under
-`## The docs directory`. It defines the approval under `## Approval of a document`. Follow both as
-written there.
+`## The docs directory`. It defines the approval under `## Approval of a document`, and the shape
+of an edit under `## Proposed map edits`. Follow each as written there.
 
 ## Input
 
@@ -41,7 +42,8 @@ Read each of these fully:
 - the concern's `concern.md`, with every note in its body;
 - each file under the map's `research/` that bears on this concern;
 - the concern's `requirements.md`, where one exists, because this run then revises it;
-- each pending edit under `map.md`'s `## Proposed edits` that names this concern.
+- each pending entry under `## Proposed map edits`, in any concern's documents, that names this
+  concern.
 
 `/map` has not applied a pending edit yet. Tell the user about each one that names this concern,
 before the first question.
@@ -69,9 +71,9 @@ decisions.
 **Leave how to build it to `/design`.** A question about files, data shapes, or interfaces belongs
 to the next stage. Ask it here only where the outcome depends on the answer.
 
-**A finding that changes the map goes to the map.** A new concern, a split, or new fog becomes a
-numbered item under `map.md`'s `## Proposed edits`. `/map` applies or rejects it. Edit no other
-section of `map.md`, apart from the decisions in step 4.
+**A finding that changes the map becomes a proposed map edit.** A new concern, a split, or new
+fog becomes the next entry under this document's `## Proposed map edits`. `/map` applies or
+declines it.
 
 When the remaining questions are details the user would rather see than specify, propose
 defaults. Flag each one as a proposal in the document, and move on to step 3.
@@ -105,10 +107,14 @@ awaiting: null
 ## Not doing
 
 - <an explicit non-goal, which keeps the scope fixed>
+
+## Proposed map edits
+
+None.
 ```
 
-`## Outcome` and `## Acceptance criteria` always appear. Omit `## Constraints` or `## Not doing`
-where nothing belongs there.
+`## Outcome`, `## Acceptance criteria`, and `## Proposed map edits` always appear. Omit
+`## Constraints` or `## Not doing` where nothing belongs there.
 
 **Every acceptance criterion names a proof command.** Write a command, never a description.
 `the tests pass` proves nothing, because nobody can run it.
@@ -132,8 +138,9 @@ attributed 40 of 109 escalations to that ambiguity.
 
 Follow `## Approval of a document` in `/map`, with `awaiting: approve requirements`.
 
-On approval, add one line to `map.md`'s `## Decisions so far` for each decision that shapes the
-map or another concern. End each line with `See [[<concern>/requirements]].` Then report the
+On approval, record each decision that shapes the map or another concern under
+`## Proposed map edits`, as a `decision` entry. End each with `See [[<concern>/requirements]].`
+Where an entry is pending, set `awaiting: settle proposed map edits`, per `/map`. Then report the
 file's path, and stop:
 
 ```

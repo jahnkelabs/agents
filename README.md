@@ -184,9 +184,11 @@ the concern's `stage`. No other file repeats the stage, so no two copies can dis
 Base can filter on it. `map.md` embeds a Base of its concerns, filtered by `type` and by map. The
 Base shows each concern's `order`, `outcome`, `after`, and `stage`. The map holds no table by hand.
 
-**Findings flow back to the map.** A stage that finds work the map missed appends a numbered item
-under `map.md`'s `## Proposed edits`. When `/implement` calls `/critique`, it appends each systemic
-finding there too. `/map` applies or rejects each edit, one `Approve` at a time.
+**Findings flow back to the map.** A stage that finds work the map missed records a proposed map
+edit under `## Proposed map edits`, in the document that stage owns. When `/implement` calls
+`/critique`, it records each systemic finding in `implementation.md` too. `/map` is the only writer
+of `map.md`. It gathers the pending edits and applies or declines each one, one `Approve` at a
+time.
 
 ```mermaid
 flowchart LR
@@ -287,18 +289,30 @@ change.
 
 `src/schema.ts` in `jahnkelabs/agents-obsidian` defines the inbox item format.
 
-**`map.md`'s `repos` maps each repository name to its local container path.** `/map` writes it,
-and `/implement` cuts each worktree from it. A missing or stale path stops `/implement`, which
-then asks you for it.
+**`map.md`'s `repos` maps each repository name to its local container path.** Each name is the
+basename of its container path. `/map` writes it, and `/implement` cuts each worktree from it. A
+missing or stale path stops `/implement`, which then asks you for it.
 
 ```yaml
 repos:
   <repo>: <absolute container path>
 ```
 
-Each document carries only its own review state. `status` is `draft`, `awaiting-you`, or
+Each concern document carries only its own review state. `status` is `draft`, `awaiting-you`, or
 `approved`. `awaiting` names the one thing you owe, or it is `null`. `implementation.md` adds `pr`.
 `concern.md` adds `order`, `outcome`, `after`, and `stage`.
+
+`map.md`'s `status` follows the map's lifecycle:
+
+| `map.md` `status` | Means |
+|---|---|
+| `draft` | `/map` is charting the map |
+| `awaiting-you` | you owe an approval: of the map, or of a proposed map edit |
+| `approved` | you approved the map, and no edit waits |
+| `done` | every concern reads `stage: done` |
+
+A proposed map edit returns `approved` to `awaiting-you`. The close-out sets `done` once every
+concern is `done`. An edit that adds a concern reopens a `done` map.
 
 `design.md` holds only the parts that apply, such as `## Structure` and
 `## Call, query, and network patterns`.
@@ -323,7 +337,8 @@ reaches this concern and no other.
 
 **A concern closes when its PR merges.** `/implement` keeps the concern's todos and KV keys at the
 landing. `/map` checks each `in-review` concern's PR whenever it runs. It moves a merged one to
-`stage: done`, and deletes its todos and KV keys. `/sweep` runs the same close-out on demand.
+`stage: done`, and deletes its todos and KV keys. Once every concern of a map is `done`, it sets
+the map's `status: done`. `/sweep` runs the same close-out on demand.
 `/research`, `/retro`, and `/critique` archive their worker pads after they synthesize.
 
 Skills use whichever Solo project is currently selected, and say which one in their first

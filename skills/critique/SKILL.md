@@ -101,10 +101,13 @@ and `/implement` commits it.
 Never write into the user's stable `main` worktree. `rules/solo-agent-orchestration.md` keeps a
 worker out of the user's tree, and `pr-first-contributions` forbids a commit on the default branch.
 
-**In `apply` mode, each systemic finding also reaches the map.** Append it as the next numbered
-item under `## Proposed edits` in `<docs_dir>/maps/<map-slug>/map.md`. Where the file has no such
-section, add it at the end. A systemic finding names a new concern, and `/map` applies or rejects
-it.
+**In `apply` mode, each systemic finding also becomes a proposed map edit.** Record it as the next
+entry under `## Proposed map edits` in the concern document of the stage that called. When
+`/implement` calls, that document is `implementation.md`. `skills/map/SKILL.md` gives the entry's
+shape under `## Proposed map edits`. A systemic finding names a new concern, and `/map` applies or
+declines it. This skill never writes `map.md`.
+
+**A standalone critique writes the finding to the ledger only.**
 
 **A `proposed edit:` line stays in the ledger too.** `/implement` carries the ledger into
 `Landed`, so the user reads every proposed edit there.

@@ -27,6 +27,9 @@ review                     the user reviews the PR
 This skill writes markdown files. It creates no todo, cuts no worktree, and writes no code. Its
 one other write is `## Close merged concerns`, which deletes a merged concern's todos and KV keys.
 
+**This skill is the only writer of `map.md`.** A stage that finds work the map missed records a
+proposed map edit in its own document, and this skill applies it.
+
 ## The docs directory
 
 Everything the user reads is a markdown file under `docs_dir`. `docs_dir` is the plugin's
@@ -69,8 +72,9 @@ The frontmatter follows five rules:
 - **Each document carries only its own review state.** `map.md` and each concern document carry
   `status` and `awaiting`, and `implementation.md` adds `pr`. A concern document also names its
   `map` and its `concern`.
-- **`status`** is `draft` while you write, `awaiting-you` while the user owes a review, and
-  `approved` once the user approves.
+- **`status`** in a concern document is `draft` while you write, `awaiting-you` while the user
+  owes a review, and `approved` once the user approves. `map.md`'s `status` adds `done`, and the
+  `map.md` schema under `### Step 5` states its lifecycle.
 - **`awaiting`** names the one thing the user owes, such as `approve design`, or it is `null`.
 
 Each stage skill sets its concern's `stage` when it starts, so the stage names the work in
@@ -123,6 +127,30 @@ The chat approval takes this shape:
 >
 > ⏸ waiting on you: approve the <document>, or name the part to change
 
+## Proposed map edits
+
+`requirements.md`, `design.md`, and `implementation.md` each carry a `## Proposed map edits`
+section. The stage that owns the document records there each finding that changes the map: a new
+concern, a split, a principle, new fog, an out-of-scope line, a constraint on another concern, a
+missing `after`, or a decision that shapes the map. `## Update a map` gathers and settles them.
+
+Each entry takes this shape:
+
+```markdown
+## Proposed map edits
+
+1. **<the kind>: <the edit>.** <what the stage found, and where>. `pending`
+```
+
+- **Number the entries within the document.** An edit's id is its document and its number, as
+  in `c1-ingest/implementation.md` edit 2. No skill numbers edits in `map.md`.
+- **The marker** is `pending` until this skill settles the entry. It then reads `applied` or
+  `declined: <the reason>`.
+- **`awaiting` names the pending edit.** The stage that records an edit sets its document's
+  `awaiting` to `settle proposed map edits`, once nothing else waits on that document. This skill
+  sets it to `null` when it settles the document's last pending entry.
+- **An empty section reads `None.`**
+
 ## Input
 
 `$ARGUMENTS` may hold any of these:
@@ -158,6 +186,8 @@ else.
    kv_delete every map:<map-slug>:concern:<concern>:* key
    todo_delete every todo tagged concern:<map-slug>-<concern>
    ```
+4. Where every concern of a map now reads `stage: done`, set that map's `status: done` and
+   `awaiting: null`.
 
 A concern that spans repositories holds a list in `pr`, and it closes only once every PR merges.
 Leave every other concern as it stands. Name each closed concern in one line, and say nothing
@@ -174,7 +204,7 @@ enough of each repository to form a real proposal.
 
 - **Container:** resolve each repository's container with the one derivation `/worktree` states.
   `skills/worktree/SKILL.md` gives it under `## Derive the container from any worktree`. Use it as
-  written there, and write no second copy.
+  written there, and write no second copy. Name each repository by its container's basename.
 - **Solo project:** call `whoami`, and use the effective project it reports. Match no path, and
   assume no name. The research workers run in that project.
 - **Target repositories:** infer them, and show your evidence for each. Draw on the current
@@ -320,12 +350,28 @@ views:
 ## Out of scope
 
 - <what this map never does>
-
-## Proposed edits
 ````
 
-**`repos` maps each repository name to its container path**, the one step 1 derived. `/implement`
-cuts each worktree from that path, so no later stage derives it again.
+**`repos` maps each repository name to its container path**, the one step 1 derived. Each name is
+the basename of its container path, as `/worktree` derives `<repo>`, so every KV key agrees.
+`/implement` cuts each worktree from that path, so no later stage derives it again.
+
+**`map.md`'s `status` follows the map's lifecycle:**
+
+```
+draft          this skill is charting the map
+awaiting-you   the user owes an approval: of the map, or of a pending map edit
+approved       the user approved the map, and no edit waits
+done           every concern reads stage: done
+```
+
+- **`draft` to `awaiting-you`:** step 6 puts the map to the user.
+- **`approved` or `done` to `awaiting-you`:** `## Update a map` finds a pending map edit, or the
+  user names a change.
+- **`awaiting-you` to `approved`:** the user approves the map, or the last edit settles.
+- **`awaiting-you` to `done`:** the last edit settles, and every concern still reads `stage: done`.
+  An edit that adds a concern therefore reopens a finished map.
+- **`approved` to `done`:** the close-out under `## Close merged concerns` closes the last concern.
 
 Each section has one job:
 
@@ -336,8 +382,6 @@ Each section has one job:
 - **`## Decisions so far`** holds one line per settled decision, and links the file that holds it.
 - **`## Fog`** holds the decisions still to come, which nobody can state yet.
 - **`## Out of scope`** holds what this map never does.
-- **`## Proposed edits`** starts empty. A concern's stages append numbered edits to it, and this
-  skill applies or rejects each one.
 
 Write one `<docs_dir>/maps/<map-slug>/<concern>/concern.md` per concern:
 
@@ -374,17 +418,24 @@ Next: /requirements <map-slug>/c1-<topic> starts the first concern.
 
 ## Update a map
 
-`/map <map-slug>` reads `map.md` and every `concern.md` fully. It then settles each edit under
-`## Proposed edits`, and each change the user names.
+`/map <map-slug>` reads `map.md` and every `concern.md` fully. It then settles each pending map
+edit, and each change the user names.
 
-Take the edits in order, one per message. Read the file each edit cites, such as the concern's
-`implementation.md`. Put each edit to the user as an `Approve`, with
-`awaiting: approve proposed edit <n>`. Give it two sections:
+**Gather the pending edits.** Read `## Proposed map edits` in each concern's `requirements.md`,
+`design.md`, and `implementation.md`. Every entry marked `pending` is a pending edit. Where any is
+pending, set `map.md`'s `status: awaiting-you` and `awaiting: approve proposed map edits`.
+
+Take the edits one per message, in concern `order`, then in each document's numbering. Read the
+file each edit cites. Put each edit to the user as an `Approve`, and name it by its id, as in
+`c1-ingest/implementation.md` edit 2. Give it two sections:
 
 - **A. Apply the edit,** as written or as you would reword it.
-- **B. Reject it.**
+- **B. Decline it.**
 
 The recommendation names one of the two, with its ground.
+
+**A decision that shapes the map** is a record of what a stage already settled. Apply it to
+`## Decisions so far` without an `Approve`, and mark it `applied`.
 
 **Apply an edit where it belongs:**
 
@@ -394,17 +445,16 @@ The recommendation names one of the two, with its ground.
 - **A constraint on one concern** goes into that concern's `concern.md` body. Its next stage reads
   the line. A document that is already approved changes only when the user reruns its skill.
 
-This skill never edits a document that another skill owns.
-
-Remove the settled edit from `## Proposed edits`, and add one line to `## Decisions so far`. A
-rejected edit leaves the list the same way. Its line names the edit and the reason, so the same
-edit does not return.
+**Mark each settled entry in its source document.** Replace `pending` with `applied`, or with
+`declined: <the reason>`, so the same edit does not return. Add one line to `## Decisions so far`
+for each settled edit. Apart from that marker and the document's `awaiting`, this skill never
+edits a document that another skill owns.
 
 **Never rename a concern.** Its slug names its KV keys, its branch, and its worktree. Change its
 `order` or its `outcome` instead.
 
 A change the user names takes the same steps, with one `Approve` per change. Once nothing remains
-to settle, set `status: approved` and `awaiting: null`, and stop.
+to settle, set `awaiting: null`, and set `status` per the lifecycle under `### Step 5`. Then stop.
 
 ## Guidelines
 

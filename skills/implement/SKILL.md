@@ -26,15 +26,22 @@ completion — see [Escalation](#escalation).
   passes it here.
 - **`--critique <models>`** — the critique roster. Pass it to `/critique` unchanged. Without it,
   `/critique` takes its own default.
-- **Existing todos tagged `concern:<map-slug>-<concern>`** — this is a resumed run. List them by
-  that one tag, which names this concern alone. The todos *are* the slicing, so reuse them rather
-  than slicing again. Pick up at the first wave with open tasks.
+- **Existing todos tagged `concern:<map-slug>-<concern>`** — list them by that one tag, which
+  names this concern alone. The concern's `stage` says what they mean:
+  - **A resumed run** is a concern at `stage: implementing` with at least one todo that is not
+    `completed`. The todos *are* the slicing, so reuse them rather than slicing again. Pick up at
+    the first wave with open tasks.
+  - **A run stopped after its last join** is a concern at `stage: implementing` whose todos are
+    all `completed`. Every wave is built, so pick up at step 2 of `## Build the concern`, the critique.
+  - **A review rerun** is a concern at `stage: in-review`. The review amended the documents, and
+    the kept todos record what the run already built. Slice the amended documents again, and give
+    each new task the next letter after the kept ones.
 
 `docs_dir` is the plugin's `userConfig` directory, and it defaults to `~/Code/agent-docs`.
 
 With no concern named, list each concern whose `design.md` carries `status: approved` and whose
-`stage` is `design` or `implementing`. Ask which one. That opens a `Deciding` gate, per
-`rules/chat-vocabulary.md`, and a caller never reaches it.
+`stage` is `design`, `implementing`, or `in-review`. Ask which one. That opens a `Deciding` gate,
+per `rules/chat-vocabulary.md`, and a caller never reaches it.
 
 Use whichever Solo project is currently selected.
 
@@ -44,7 +51,7 @@ Read every document below fully before you cut anything:
 
 ```
 <docs_dir>/maps/<map-slug>/
-├── map.md                    repos, guiding principles, out of scope, ## Proposed edits
+├── map.md                    repos, guiding principles, out of scope
 └── <concern>/
     ├── concern.md            type: concern; the concern's stage and its after
     ├── requirements.md       acceptance criteria: criterion, proof command, invariant
@@ -129,8 +136,8 @@ concern touches.
 
    **Pass the container path, never the repository name.** `/worktree` substitutes it into
    `--git-dir`. Pass `agents` instead, and cut mode resolves against the session's working
-   directory and refuses an already-converted repository. `<repo>` stays the short name in every
-   KV key here.
+   directory and refuses an already-converted repository. `<repo>` in every KV key here is the
+   basename of the container, as `/worktree` derives it.
 
    That skill owns the layout, the provisioning, the naming, and every refusal it states. Add
    nothing to its procedure, and do not paraphrase it.
@@ -153,7 +160,9 @@ concern touches.
 
 ## Slice the concern
 
-A resumed run skips this section, because its todos already carry the slices.
+A resumed run skips this section, because its todos already carry the slices. A review rerun
+takes every step below against the amended documents. It keeps the completed todos, and it
+letters each new task after the last kept one.
 
 1. **Derive the slices from the requirements and the design.** A slice is narrow and vertical:
    one coherent change, in exactly one repository, that stands on its own. Each slice carries:
@@ -199,8 +208,9 @@ A resumed run skips this section, because its todos already carry the slices.
    widen the design yourself.
 
    **A census hit can reveal a missing `after`.** An open PR of another concern may change a file
-   this concern changes, with no `after` between the two. Record a proposed map edit that orders
-   them. The later branch would otherwise carry a conflict the user never approved.
+   this concern changes, with no `after` between the two. Record a proposed map edit in
+   `implementation.md` that orders them. The later branch would otherwise carry a conflict the
+   user never approved.
 3. **Schedule the waves.** `references/implement-waves.md` carries the rules that turn file
    overlap into a wave order.
 4. **Assign each task a model and effort tier.** A task does not inherit these from the session.
@@ -259,8 +269,8 @@ A resumed run skips this section, because its todos already carry the slices.
    branch while another starts from `origin/HEAD`. One ref is then wrong for one of them.
 
    `/critique` runs in `apply` mode here. Its runner performs the batch 1 rework itself, and it
-   applies each accepted fix. Both land uncommitted in this concern's worktrees. It also appends
-   each systemic finding to `map.md`'s `## Proposed edits`.
+   applies each accepted fix. Both land uncommitted in this concern's worktrees. It also records
+   each systemic finding under `implementation.md`'s `## Proposed map edits`.
 
    `/critique` owns the filter, the ledger, the escalations, and the presentation of a finding.
    Point at it and add nothing. Fix no finding unilaterally.
@@ -307,14 +317,14 @@ A resumed run skips this section, because its todos already carry the slices.
    `status: awaiting-you`, `awaiting: review the PR`, and `pr` to the PR URL. Set `stage: in-review`
    in the concern's `concern.md`.
 
-   **Append each proposed map edit to `map.md`'s `## Proposed edits`.** Number each one after the
-   last edit there. `/critique` already appended its systemic findings, so add only the rest:
+   **Record each proposed map edit under `implementation.md`'s `## Proposed map edits`,** in the
+   shape `skills/map/SKILL.md` gives under `## Proposed map edits`. Number each one after the last
+   entry there. `/critique` already recorded its systemic findings, so add only the rest:
    - a settled deviation that reaches beyond this concern;
    - new fog that the build uncovered;
    - a missing `after` that the census found.
 
-   Where the map awaits nothing else, set its `status: awaiting-you`, and its `awaiting` to the
-   edits it holds. `/map` applies or rejects each edit.
+   `/map` applies or declines each edit. This skill never writes `map.md`.
 7. **Announce the landing.** This message ends the run.
 
    **Landed — `<map-slug>/<concern>`**
@@ -325,7 +335,7 @@ A resumed run skips this section, because its todos already carry the slices.
    - **CI:** every check passed, after <n> fixes. With no CI: the proof commands were the gate,
      and all <n> pass.
    - **Deviations:** one sentence each, or none.
-   - **Proposed map edits:** one sentence each, or none.
+   - **Proposed map edits:** one sentence each, from `implementation.md`, or none.
    - **Record:** `<the absolute path of implementation.md>`.
 
    Then the ledger, in the shape `/critique` defines. The record holds the same ledger.
@@ -344,9 +354,9 @@ A resumed run skips this section, because its todos already carry the slices.
    left armed fires later, about workers that finished long ago.
 
    **Keep the concern's todos and KV keys.** The concern closes when its PR merges, not at the
-   landing. A review that asks for changes reruns this skill, and the branch key then tells that
-   resume from a collision. `/map` closes a merged concern when it runs, and `/sweep` does the
-   same on demand.
+   landing. A review that asks for changes reruns this skill on the amended documents, as a review
+   rerun under `## Input`. The branch key then tells that rerun from a collision. `/map` closes a
+   merged concern when it runs, and `/sweep` does the same on demand.
 
    **Close is silent.** `Landed` already carried the PR URLs, the CI result, and the record's path.
    Repeat none of it.
@@ -380,7 +390,7 @@ pr: <the PR URL>              # null until it opens; a list where the concern sp
 <each departure the user approved, or none>
 
 ## Proposed map edits
-<each edit this run appended to map.md, or none>
+<each edit this run recorded, in the shape /map gives, or None.>
 ```
 
 Omit `## Decided` where the user settled nothing during the run.

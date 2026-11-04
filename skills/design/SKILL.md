@@ -11,11 +11,12 @@ Decide how one concern gets built, before any code exists. This is a concern's s
 each stage.
 
 This skill writes `<concern>/design.md` under `docs_dir`. It also moves the concern's `stage`, and
-it can append a proposed edit to the map. It writes no code.
+it records each proposed map edit in that document. It never writes `map.md`, and it writes no
+code.
 
 `skills/map/SKILL.md` defines the docs directory, the frontmatter, and a concern's address under
-`## The docs directory`. It defines the approval under `## Approval of a document`. Follow both as
-written there.
+`## The docs directory`. It defines the approval under `## Approval of a document`, and the shape
+of an edit under `## Proposed map edits`. Follow each as written there.
 
 ## Input
 
@@ -82,9 +83,9 @@ signature. A call pattern is a diagram. Fence code and diagrams, and nothing els
 hold. A criterion the design cannot meet is a change to the requirements. Stop with a `Blocked`
 that names the criterion, and the user reruns `/requirements`.
 
-**A finding that changes the map goes to the map.** A new concern, a split, or new fog becomes a
-numbered item under `map.md`'s `## Proposed edits`. `/map` applies or rejects it. Edit no other
-section of `map.md`, apart from the decisions in step 5.
+**A finding that changes the map becomes a proposed map edit.** A new concern, a split, or new
+fog becomes the next entry under this document's `## Proposed map edits`. `/map` applies or
+declines it.
 
 ## Step 3 — Put each decision to the user
 
@@ -161,14 +162,21 @@ Declined: <the alternative>. <why it lost>.
 ## Decisions
 
 - **<topic>:** <the choice> (criticality <level>, reversible: <yes | partly | no>). Chosen over <the declined options>.
+
+## Proposed map edits
+
+None.
 ````
+
+`## Proposed map edits` always appears, after the parts that apply.
 
 ## Step 5 — Approve
 
 Follow `## Approval of a document` in `/map`, with `awaiting: approve design`.
 
-On approval, add one line to `map.md`'s `## Decisions so far` for each decision that shapes the
-map or another concern. End each line with `See [[<concern>/design]].` Then report the file's
+On approval, record each decision that shapes the map or another concern under
+`## Proposed map edits`, as a `decision` entry. End each with `See [[<concern>/design]].` Where an
+entry is pending, set `awaiting: settle proposed map edits`, per `/map`. Then report the file's
 path, and stop:
 
 ```

@@ -2,7 +2,7 @@
 name: worktree
 description: Cut, provision, and tear down one concern worktree in a bare-plus-worktrees repository
 when_to_use: >-
-  When a concern needs a working tree of its own, or when a closed concern gives one back.
+  When a concern needs a working tree of its own, or when a concern gives one back at its landing.
   Trigger phrases: "cut a worktree", "provision this worktree", "tear the concern down".
   Also invoked by the implement skill, once per repository per concern.
 argument-hint: "[cut | provision | teardown] [container] [concern] [branch] [base]"
@@ -301,7 +301,7 @@ diverges.
 
 ## Teardown
 
-Tear the stack down at concern close. Remove the worktree after the push succeeds.
+Tear the stack down at the concern's landing. Remove the worktree after the push succeeds.
 
 ```bash
 COMPOSE_PROJECT_NAME="<repo>-<map-slug>-<concern>" docker compose \
