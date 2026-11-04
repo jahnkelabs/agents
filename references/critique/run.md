@@ -177,7 +177,7 @@ to an agent still at work, or to a dead one.
 
 Write, arm, and cancel one guard per batch, and one per refutation round. The rule's **Idle timers
 are the fallback, not the signal** and **The guard pad** give every step. The guard body names the
-pass and the batch in place of the milestone and the wave. The watch list carries one row per
+pass and the batch in place of the concern and the wave. The watch list carries one row per
 agent: process id, name, lens, and report channel. The channel is the report pad's name, or the
 report file's absolute path.
 
@@ -216,7 +216,7 @@ Run the filter below on each in-design finding first. A finding that matches a c
 escalates first, and its rework waits for the user's answer.
 
 Then apply each in-design fix yourself, the way you apply an accepted fix. That
-is the rework. It lands uncommitted in the milestone worktree, at the place the front end named.
+is the rework. It lands uncommitted in the concern worktree, at the place the front end named.
 The front end's caller commits it.
 
 Put each deviation to the user under `Blocked`. Batch 2 waits for the answer. A fix the user

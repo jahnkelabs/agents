@@ -177,7 +177,7 @@ because it may be a local repository with no remote.
 
 **A concern's stage lives only in its `concern.md`.** Its values are `open`, `requirements`,
 `design`, `implementing`, `in-review`, and `done`. Each stage skill sets the stage when it starts,
-and `/implement` sets `in-review` at the landing. An approval changes a document's `status`, never
+and `/implement` sets `in-review` at the landing. `/map` sets `done` once the PR merges. An approval changes a document's `status`, never
 the concern's `stage`. No other file repeats the stage, so no two copies can disagree.
 
 **Obsidian shows the progress through Bases.** Every file carries `type` in its frontmatter, so a
@@ -280,22 +280,36 @@ change.
 | Design | `maps/<map-slug>/<concern>/design.md` | `design` |
 | Implementation record | `maps/<map-slug>/<concern>/implementation.md` | `implementation` |
 | Research for a map | `maps/<map-slug>/research/<topic>.md` | `research` |
-| Inbox item | `maps/<map-slug>/inbox/<id>.md` | `inbox` |
+| Inbox item of a map | `maps/<map-slug>/inbox/<id>.md` | `inbox` |
+| Inbox item outside any map | `inbox/<id>.md` | `inbox` |
 | Standalone research | `research/<slug>.md` | `research` |
 | Retro | `retro/<slug>.md` | `retro` |
 
 `src/schema.ts` in `jahnkelabs/agents-obsidian` defines the inbox item format.
 
+**`map.md`'s `repos` maps each repository name to its local container path.** `/map` writes it,
+and `/implement` cuts each worktree from it. A missing or stale path stops `/implement`, which
+then asks you for it.
+
+```yaml
+repos:
+  <repo>: <absolute container path>
+```
+
 Each document carries only its own review state. `status` is `draft`, `awaiting-you`, or
 `approved`. `awaiting` names the one thing you owe, or it is `null`. `implementation.md` adds `pr`.
 `concern.md` adds `order`, `outcome`, `after`, and `stage`.
 
+`design.md` holds only the parts that apply, such as `## Structure` and
+`## Call, query, and network patterns`.
+
 | Agent-to-agent name | Form | Tags |
 |---|---|---|
-| Task todo | — | `map:<map-slug>`, `concern:<concern>`, `project:<repo>`, `task:<letter>` |
-| Worker report pad | `<map-slug>/<concern>/<task>` | `transient`, `map:<map-slug>`, `concern:<concern>` |
-| Brief and guard pad | — | `transient`, `map:<map-slug>`, `concern:<concern>` |
+| Task todo | — | `map:<map-slug>`, `concern:<map-slug>-<concern>`, `project:<repo>`, `task:<letter>` |
+| Worker report pad | `<map-slug>/<concern>/<task>` | `transient`, `map:<map-slug>`, `concern:<map-slug>-<concern>` |
+| Brief and guard pad | — | `transient`, `map:<map-slug>`, `concern:<map-slug>-<concern>` |
 | Critique pad | `critique/<slug>/<pass>/<lens>-<n>` | `transient`, plus the map and concern tags when a concern resolved |
+| Research worker pad, for a map | `research/<map-slug>/<slug>/<area-slug>` | `transient`, `map:<map-slug>`, plus the concern tag when a concern's stage called |
 | Research and retro worker pad | `research/<slug>/<area-slug>`, `retro/<slug>/<area-slug>` | `transient` |
 | KV | `map:<map-slug>:concern:<concern>:branch:<repo>` | — |
 | KV | `map:<map-slug>:concern:<concern>:worktree:<repo>` | — |
@@ -303,8 +317,14 @@ Each document carries only its own review state. `status` is `draft`, `awaiting-
 | Worktree | `<container>/<map-slug>-<concern>` | — |
 | Compose project | `<repo>-<map-slug>-<concern>` | — |
 
-`/implement` deletes the concern's todos and KV keys when it closes. `/research`, `/retro`, and
-`/critique` archive their worker pads after they synthesize.
+**One tag names one concern.** `concern:<map-slug>-<concern>` stands alone, because two maps can
+each hold a `c1-ingest`. Solo matches any tag a listing receives, so a list by that one tag
+reaches this concern and no other.
+
+**A concern closes when its PR merges.** `/implement` keeps the concern's todos and KV keys at the
+landing. `/map` checks each `in-review` concern's PR whenever it runs. It moves a merged one to
+`stage: done`, and deletes its todos and KV keys. `/sweep` runs the same close-out on demand.
+`/research`, `/retro`, and `/critique` archive their worker pads after they synthesize.
 
 Skills use whichever Solo project is currently selected, and say which one in their first
 confirmation.
@@ -421,7 +441,8 @@ what it found and stops. So does a worker that would have to depart meaningfully
 approved requirements or design. Neither one improvises. The record is the worker's report
 scratchpad, and its completion signal says that it escalated, so you have one place to look. Other
 workers in the wave finish, and everything appears together at the join. A settled deviation
-updates `design.md` or `requirements.md`, and `implementation.md` records it.
+updates `design.md` or `requirements.md`, and `implementation.md` records it under
+`## Deviations from the design`.
 
 **Critique is adversarial, with one agent per lens.** A lens is one question about the target,
 such as requirements fidelity, correctness, or security. `references/critique/lenses/` holds one
@@ -483,5 +504,5 @@ The run commits the remedies, pushes, and opens one draft PR per repository.
 **`/implement` ends at a green draft PR and a record.** It watches CI and fixes a failing check,
 twice at most. A repository with no CI takes the proof commands as its gate. The run then writes
 `implementation.md` and sets the concern's `stage: in-review`. It reports `Landed`. It then closes
-its workers, cancels its guards, removes the worktree, and deletes the concern's todos and KV keys.
-You review the PR. `/implement` never sets `done`, which follows the merge.
+its workers, cancels its guards, and removes the worktree. It keeps the concern's todos and KV
+keys. You review the PR. `/implement` never sets `done`. `/map` sets it once the PR merges.

@@ -110,8 +110,10 @@ order, and put this task's content in each:
 
 A mid-run amendment edits that pad in place. Never write a second pad for one worker.
 
-**Tag every brief, guard, and report pad `transient`, `map:<map-slug>`, and `concern:<concern>`.**
-The tags name the concern each pad belongs to, so a cleanup finds every pad by its concern.
+**Tag every brief, guard, and report pad `transient`, `map:<map-slug>`, and
+`concern:<map-slug>-<concern>`.** The concern tag names one concern by itself, so a cleanup finds
+every pad of that concern with one tag. Two maps can each hold a `c1-ingest`, and the map slug
+keeps their tags apart.
 
 `## Completion` carries the body text, and the rule gives the call:
 
@@ -141,7 +143,7 @@ another's. That destroys an escalation record that nothing recreates.
    on a mutated copy under <this worker's scratch directory, absolute>. Never mutate the
    repository for a proof.
 4. Write your report to scratchpad "<map-slug>/<concern>/<task>", with no H1, tagged transient,
-   map:<map-slug>, and concern:<concern>. Keep the id it returns. Record what you did, the
+   map:<map-slug>, and concern:<map-slug>-<concern>. Keep the id it returns. Record what you did, the
    verification output, each proof command and its result, and anything you found that the task
    did not anticipate. Begin the report with "ESCALATION:" if
    you stop rather than finish.

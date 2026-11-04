@@ -34,7 +34,7 @@ The limit rises to 25 words for a description. Signal is the standard, never tok
 
 ### Declined alternatives
 
-Naming a deliberately declined alternative is disclosure, not an offer of adjacent work. When you choose a simpler path over a more general one, name that alternative. Put the name in **one line at the point of the decision**. Never invent an alternative so that you have something to offer. During planning that disclosure belongs in the pad's `## What We're NOT Doing` section instead.
+Naming a deliberately declined alternative is disclosure, not an offer of adjacent work. When you choose a simpler path over a more general one, name that alternative. Put the name in **one line at the point of the decision**. Never invent an alternative so that you have something to offer. While you write requirements, that disclosure belongs in `requirements.md`'s `## Not doing` section instead.
 
 ## Preservation
 

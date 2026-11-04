@@ -24,8 +24,8 @@ Each concern then runs its own stages, and the user starts each one:
 review                     the user reviews the PR
 ```
 
-This skill writes markdown files and nothing else. It creates no todo, cuts no worktree, and
-writes no code.
+This skill writes markdown files. It creates no todo, cuts no worktree, and writes no code. Its
+one other write is `## Close merged concerns`, which deletes a merged concern's todos and KV keys.
 
 ## The docs directory
 
@@ -43,7 +43,8 @@ to an absolute path before you report a path under it.
 │   │   ├── design.md           type: design           /design
 │   │   └── implementation.md   type: implementation   /implement
 │   ├── research/<topic>.md     type: research         /research, called during a map
-│   └── inbox/<id>.md           type: inbox            an item that waits on the user
+│   └── inbox/<id>.md           type: inbox            an item of this map that waits on the user
+├── inbox/<id>.md               type: inbox            an item outside any map
 ├── research/<slug>.md          type: research         standalone /research
 └── retro/<slug>.md             type: retro            /retro
 ```
@@ -140,6 +141,29 @@ With no arguments:
 > What should I map? Give me a topic, a research or retro file, or an existing map's slug.
 >
 > ⏸ waiting on you: name what to map
+
+## Close merged concerns
+
+A concern closes when its PR merges. Run this close-out first, in either mode, before anything
+else.
+
+1. Find each `concern.md` under `<docs_dir>/maps/*/` that reads `stage: in-review`.
+2. Read the `pr` field of that concern's `implementation.md`. Read the state of each PR it names:
+   ```bash
+   gh pr view <the PR URL> --json state
+   ```
+3. Where every PR reads `MERGED`, close the concern:
+   ```
+   set stage: done in its concern.md
+   kv_delete every map:<map-slug>:concern:<concern>:* key
+   todo_delete every todo tagged concern:<map-slug>-<concern>
+   ```
+
+A concern that spans repositories holds a list in `pr`, and it closes only once every PR merges.
+Leave every other concern as it stands. Name each closed concern in one line, and say nothing
+where none closed.
+
+`/sweep` runs the same close-out on demand, without `/map`.
 
 ## Chart a map
 
@@ -253,7 +277,9 @@ Write `<docs_dir>/maps/<map-slug>/map.md`:
 ---
 type: map
 map: <map-slug>
-repos: [<repo>, <repo>]
+repos:
+  <repo>: <absolute container path>
+  <repo>: <absolute container path>
 status: draft
 awaiting: null
 ---
@@ -298,6 +324,9 @@ views:
 ## Proposed edits
 ````
 
+**`repos` maps each repository name to its container path**, the one step 1 derived. `/implement`
+cuts each worktree from that path, so no later stage derives it again.
+
 Each section has one job:
 
 - **`## Destination`** holds the outcomes, and each one is checkable.
@@ -322,12 +351,8 @@ outcome: <one sentence with no "and">
 after: <concern> | null
 stage: open
 ---
-Repo: `<repo>` at `<absolute container path>`.
-
 Not started. `/requirements <map-slug>/c<n>-<short-topic>` creates its documents.
 ```
-
-The `Repo:` line carries the container from step 1, so a later stage need not derive it again.
 
 ### Step 6 — Approve the map
 

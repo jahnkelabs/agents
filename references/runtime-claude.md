@@ -114,7 +114,7 @@ through the other one.
 
 ## The editing worker: git denied per command
 
-An editing worker changes the target, and the rule puts it in its milestone worktree. The preamble
+An editing worker changes the target, and the rule puts it in its concern worktree. The preamble
 names that path, because Claude sets no working directory. Keep the git commands and drop the
 three editing tools:
 
@@ -137,9 +137,9 @@ PTY, so neither flag reaches it.
 ## The one policy Claude cannot implement
 
 **No per-launch working directory.** `rules/solo-agent-orchestration.md` gives an immutable-target
-worker its own scratch directory, and an editing worker its milestone worktree. Claude sets
+worker its own scratch directory, and an editing worker its concern worktree. Claude sets
 neither. The CLI carries no working-directory flag. `--add-dir` grants tool access rather than
-scoping it, and `--worktree` cuts a new worktree instead of entering the milestone's own.
+scoping it, and `--worktree` cuts a new worktree instead of entering the concern's own.
 `spawn_agent` takes only `agent_tool_id`, `agent_tool_installation_id`, `extra_args`,
 `include_agent_instructions`, `name`, and `project_id`.
 

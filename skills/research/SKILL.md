@@ -128,6 +128,11 @@ pad**. Fill its six sections:
                     delivery_process_id=<orchestrator process_id>
 ```
 
+**A call from a map carries the map slug.** Where `/map`, `/requirements`, or `/design` calls,
+name each worker `research-<map-slug>-<area-slug>`, and its findings pad
+`research/<map-slug>/<slug>/<area-slug>`. Tag every brief, guard, and findings pad
+`map:<map-slug>`. Add `concern:<map-slug>-<concern>` where a concern's stage called.
+
 Send only the pointer, per **The pointer shape** under **The PTY ceiling**:
 
 ```

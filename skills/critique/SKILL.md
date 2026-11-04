@@ -48,7 +48,7 @@ the pass, because two repositories in one concern would otherwise write one pad 
 
 Omit the pass, and the second call's pads overwrite the first's. `run.md` archives every pad
 after the merge, so that overwrite leaves no trace. Tag every pad `transient`, and
-`map:<map-slug>` and `concern:<concern>` where a concern resolved.
+`map:<map-slug>` and `concern:<map-slug>-<concern>` where a concern resolved.
 
 **Resolve the runtimes here.** The critique roster is their only source. When `/implement` calls,
 use the roster `/implement` passed, including its `--critique` override.

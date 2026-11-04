@@ -41,7 +41,7 @@ Read each of these fully:
 - the `design.md` of each concern that `after` names, for the interfaces this one consumes;
 - each file under the map's `research/` that bears on this concern;
 - the concern's `design.md`, where one exists, because this run then revises it;
-- the code the concern changes, in each repository the `Repo:` line names.
+- the code the concern changes, at each container path that `map.md`'s `repos` names.
 
 Run a real `git fetch` before you read the code. Where the tree sits behind its default branch,
 read the remote's version with `git show origin/<default>:<path>`. A design built on a stale tree
@@ -64,7 +64,7 @@ and all.
 | `## Structure` | the concern creates or changes a file | the files and modules, as a tree |
 | `## Data model` | the concern stores data, or changes the shape of data | the schema or the types, as real code |
 | `## Interfaces` | another unit calls this one, or it calls another unit | signatures, commands, or endpoints, as real code |
-| `## Call patterns` | data moves between units, through a query, or over a network | each flow, as a diagram |
+| `## Call, query, and network patterns` | data moves between units, through a query, or over a network | each flow, as a diagram |
 | `## Failure handling` | a step can fail in a way that a caller sees | each failure, and what the caller sees |
 | `## Decisions` | always | one line per decision |
 
@@ -144,7 +144,7 @@ Declined: <the alternative>. <why it lost>.
 
 Declined: <the alternative>. <why it lost>.
 
-## Call patterns
+## Call, query, and network patterns
 
 ```
 <source> ──► <step> ──► <step> ──► <sink>

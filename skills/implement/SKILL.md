@@ -26,9 +26,9 @@ completion — see [Escalation](#escalation).
   passes it here.
 - **`--critique <models>`** — the critique roster. Pass it to `/critique` unchanged. Without it,
   `/critique` takes its own default.
-- **Existing todos tagged `map:<map-slug>` and `concern:<concern>`** — this is a resumed run. The
-  todos *are* the slicing, so reuse them rather than slicing again. Pick up at the first wave with
-  open tasks.
+- **Existing todos tagged `concern:<map-slug>-<concern>`** — this is a resumed run. List them by
+  that one tag, which names this concern alone. The todos *are* the slicing, so reuse them rather
+  than slicing again. Pick up at the first wave with open tasks.
 
 `docs_dir` is the plugin's `userConfig` directory, and it defaults to `~/Code/agent-docs`.
 
@@ -45,7 +45,6 @@ Read every document below fully before you cut anything:
 ```
 <docs_dir>/maps/<map-slug>/
 ├── map.md                    repos, guiding principles, out of scope, ## Proposed edits
-├── inbox/<id>.md             an inbox item that belongs to this map
 └── <concern>/
     ├── concern.md            type: concern; the concern's stage and its after
     ├── requirements.md       acceptance criteria: criterion, proof command, invariant
@@ -58,14 +57,15 @@ authorizes the concern's branch pushes and its draft PR, per `rules/pr-first-con
 Stop where either document is not approved. Send the user to `/requirements` or `/design`,
 whichever one is not.
 
-**The inbox item format has one definition.** `src/schema.ts` in `jahnkelabs/agents-obsidian`
-defines it. Read it there, and never restate it.
+**The inbox item format has one definition.** An item that belongs to this map lives at
+`<docs_dir>/maps/<map-slug>/inbox/<id>.md`. `src/schema.ts` in `jahnkelabs/agents-obsidian`
+defines its format. Read it there, and never restate it.
 
 The skills commit nothing under `docs_dir`. It may be a local git repository with no remote.
 
 **Keep each document's frontmatter current.** A concern's stage lives only in its `concern.md`.
-Set `stage: implementing` when the run starts, and `stage: in-review` at the landing. The stage
-moves to `done` after the merge, and this skill never sets it.
+Set `stage: implementing` when the run starts, and `stage: in-review` at the landing. `/map` sets
+`stage: done` once the PR merges, and this skill never sets it.
 
 ## Speaking
 
@@ -87,6 +87,7 @@ Stop on these, and on nothing else:
 
 ```
   no concern, or a stage document that is not approved
+  a container path that map.md lacks, or that holds no git repository
   a /worktree refusal
   a census hit that needs a behavior the design does not describe
   a worker deviation
@@ -100,15 +101,16 @@ Cut one worktree and branch for each repository the concern touches. `map.md`'s 
 frontmatter names the map's repositories. The design's `## Structure` says which of them this
 concern touches.
 
-1. **Resolve each repository's container.** `concern.md` records it, on its `Repo:` line, which
-   `/map` writes. Where that line is missing, take the session's working directory where it
-   belongs to that repository, and `<the Solo project's path>/<repo>` otherwise. Where neither
-   holds it, ask the user for its path, and write it to the `Repo:` line.
+1. **Read each repository's container from `map.md`.** Its `repos` frontmatter maps each
+   repository name to its container path, and `/map` writes it. Where the map names no path for
+   a repository, or the path holds no git repository, stop. Ask the user for the path, as an open
+   question. Guess no path.
 
-   Derive the container from that path with the one derivation `/worktree` states, under
-   `## Derive the container from any worktree`. Use it verbatim, and write no second copy.
-   `git rev-parse --show-toplevel` is the wrong command here. It returns `<container>/main` in a
-   converted repository, and `/worktree cut` then refuses the container as a plain clone.
+   `/map` derived each path with the one derivation `/worktree` states, under
+   `## Derive the container from any worktree`. A path the user supplies takes that derivation
+   too. Use it verbatim, and write no second copy. `git rev-parse --show-toplevel` is the wrong
+   command here. It returns `<container>/main` in a converted repository, and `/worktree cut`
+   then refuses the container as a plain clone.
 2. **Choose the base.** The base is `origin/HEAD`, unless this concern stacks on an unmerged one.
    It stacks where its `concern.md` `after` names a concern whose PR has not merged. That
    concern's `implementation.md` carries the PR in its `pr` field. Read its branch and its state:
@@ -221,7 +223,8 @@ A resumed run skips this section, because its todos already carry the slices.
    the only place the spec belongs.
    ```
    todo_create(title="<task>: <name>", body=<task spec>,
-               tags=["map:<map-slug>", "concern:<concern>", "project:<repo>", "task:<letter>"])
+               tags=["map:<map-slug>", "concern:<map-slug>-<concern>", "project:<repo>",
+                     "task:<letter>"])
    todo_add_blocker(todo_id=<dependent>, blocker_id=<prerequisite>)
    ```
    Keys and tags are lowercase. Lowercase any slug that carries an uppercase timestamp.
@@ -335,19 +338,15 @@ A resumed run skips this section, because its todos already carry the slices.
    close_process(process_id=<each worker of this run>)
    lock_release for any lock a dead worker left held
    stop the stack and remove the worktree, per /worktree's teardown block
-   todo_delete every todo that carries both map:<map-slug> and concern:<concern>
-   kv_delete every map:<map-slug>:concern:<concern>:* key
    git worktree prune in each container, per solo-agent-orchestration
    ```
    The branch lives on the remote once the push succeeds, so the worktree is disposable. A guard
    left armed fires later, about workers that finished long ago.
 
-   **Check both tags on each todo.** `todo_list` matches any tag it receives. Two maps can each
-   hold a concern named `c1-ingest`, so one tag alone reaches the other map's todos.
-
-   **Delete the todos rather than leaving them completed.** `todo_complete` keeps the todo, so a
-   finished run otherwise leaves one per task in Solo forever. Each report scratchpad already holds
-   what the task did.
+   **Keep the concern's todos and KV keys.** The concern closes when its PR merges, not at the
+   landing. A review that asks for changes reruns this skill, and the branch key then tells that
+   resume from a collision. `/map` closes a merged concern when it runs, and `/sweep` does the
+   same on demand.
 
    **Close is silent.** `Landed` already carried the PR URLs, the CI result, and the record's path.
    Repeat none of it.

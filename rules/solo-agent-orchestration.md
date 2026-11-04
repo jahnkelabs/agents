@@ -187,7 +187,7 @@ A worker never shares a working tree with the user. Cut one worktree per concern
                        reuse <worktree>, cut nothing                    the path already holds <branch>
                      base = origin/HEAD, or the predecessor concern's branch when stacked
   record             kv_set map:<map-slug>:concern:<concern>:worktree:<repo>
-  remove             at concern close, after a successful push
+  remove             at the concern's landing, after a successful push
   sweep              git worktree prune at run close
 ```
 
@@ -198,10 +198,10 @@ The concern slug is lowercase, because the KV key carries it. The `record` key c
 **The branch test has three cases, and this map's own KV record tells them apart.**
 
 - **A resume.** `map:<map-slug>:concern:<concern>:branch:<repo>` already names this branch. Teardown removed the worktree and left the branch behind, so re-cut onto it. Pass no `-b`: `git worktree add <worktree> <branch>`.
-- **A closed map's leftover.** No KV key claims the branch. `gh pr list --head <branch> --state merged` returns a merged PR, or the remote no longer carries the ref. That map finished, and its close step deleted the KV that named the branch. Delete the branch and cut fresh. `rules/pr-first-contributions.md` carries this test under `## Branch staleness check`.
+- **A closed concern's leftover.** No KV key claims the branch. `gh pr list --head <branch> --state merged` returns a merged PR, or the remote no longer carries the ref. That concern's PR merged, and its close-out deleted the KV that named the branch. Delete the branch and cut fresh. `rules/pr-first-contributions.md` carries this test under `## Branch staleness check`.
 - **A collision.** No KV key claims the branch, and no merged PR explains it. Another live map owns it. Rename this map's concern, and escalate. Renaming the other map's branch breaks its open PR.
 
-**The branch carries the map slug because teardown outlives the KV record.** Teardown keeps the branch, and a map's close step deletes every `map:<map-slug>:*` key. Drop the prefix, and a second map that reuses a concern slug finds a branch no KV key claims. It then escalates over a PR that merged and closed. A map numbers its concerns `c1`, `c2`, and `c3`, so that is the common case rather than the rare one.
+**The branch carries the map slug because teardown outlives the KV record.** Teardown keeps the branch, and a concern's close-out deletes every `map:<map-slug>:concern:<concern>:*` key once its PR merges. Drop the prefix, and a second map that reuses a concern slug finds a branch no KV key claims. It then escalates over a PR that merged and closed. A map numbers its concerns `c1`, `c2`, and `c3`, so that is the common case rather than the rare one.
 
 **Test the recorded worktree path too.** `map:<map-slug>:concern:<concern>:worktree:<repo>` holds it, so this costs one `kv_get`. Where the path exists and holds this concern's branch, reuse it and cut nothing. Where it exists and holds anything else, stop and report both paths. A run that stopped before teardown leaves a worktree standing on unpushed commits and on uncommitted work. A resumed map therefore finds a path another worktree still holds, and `git worktree add` exits 128 there.
 
@@ -209,7 +209,7 @@ A concern slug is therefore unique inside its map. The map slug separates it fro
 
 A plain clone fails loudly. Test the layout before you cut anything, and print the conversion command rather than a worktree path.
 
-The worktree is disposable once the push succeeds, because the branch then lives on the remote. Remove it at concern close.
+The worktree is disposable once the push succeeds, because the branch then lives on the remote. Remove it at the concern's landing.
 
 A worker's working directory is a worktree, so its lock keys carry that worktree's path. A worker writing in two repositories has two, and each file locks under the worktree that holds it.
 

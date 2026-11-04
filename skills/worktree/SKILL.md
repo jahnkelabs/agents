@@ -41,7 +41,7 @@ timestamp, so one map's worktrees sort together and two maps never interleave. T
 worktree keeps the name `main`, and it carries no prefix.
 
 The branch carries the map slug too: `<type>/<map-slug>-<concern>`. Teardown keeps the
-branch, and `/implement`'s close step deletes the KV that names it. The prefix is therefore what
+branch, and a concern's close-out deletes the KV that names it once its PR merges. The prefix is therefore what
 tells a resume from another map's leftover. `rules/solo-agent-orchestration.md` states that
 reasoning once.
 
@@ -65,8 +65,8 @@ on git 2.50.1.
 `--path-format=absolute` is load-bearing. Without it `--git-common-dir` may answer the relative
 `.git`, and `dirname` then returns `.`. Verified on git 2.50.1.
 
-`/implement` records the container with this derivation, so the path it hands this skill needs no
-repair.
+`/map` records the container with this derivation, in `map.md`'s `repos`. The path `/implement`
+hands this skill therefore needs no repair.
 
 ## What the caller passes
 
