@@ -8,7 +8,6 @@ tier:
 intent:
   concern: "`requirements.md`, every acceptance criterion and its proof command."
   pr: "the PR body and the linked issue, read as the requirements."
-  plan: "this milestone's work item in the plan pad: Files, Exit criterion, Proof, and Invariants."
 ---
 # Requirements fidelity
 

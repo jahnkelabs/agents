@@ -8,7 +8,6 @@ tier:
 intent:
   concern: "`requirements.md` for the problem the concern solves, and `design.md` for where its fix belongs."
   pr: "the PR body and the linked issue, read as the bug report or the problem statement."
-  plan: "the plan pad's `## Overview`, and this milestone's work item."
 ---
 # Root cause
 
@@ -38,8 +37,8 @@ Then decide where the cause lives:
 **A systemic cause becomes a proposed map edit, never a local patch.** The fix names a new concern.
 That concern states the shared cause, its location, and the callers it affects. The finding
 proposes no change to code, inside this concern or outside it, and no better workaround. In
-`apply` mode, the critique appends each systemic finding to the caller's plan pad, under
-`## Proposed edits`, and the ledger's `proposed edit:` line carries it into `Landed`.
+`apply` mode, the critique records each systemic finding under `## Proposed map edits` in the
+calling stage's document, and the ledger's `proposed edit:` line carries it into `Landed`.
 
 ## Examples
 

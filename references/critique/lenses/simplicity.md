@@ -8,7 +8,6 @@ tier:
 intent:
   concern: "`design.md`, for the structure a rewrite must keep."
   pr: "the PR body, for the behavior a rewrite must keep."
-  plan: "this milestone's work item in the plan pad, for the behavior a rewrite must keep."
 ---
 # Simplicity
 

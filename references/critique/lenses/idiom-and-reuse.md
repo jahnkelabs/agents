@@ -8,7 +8,6 @@ tier:
 intent:
   concern: "`design.md`, for the conventions it adopts."
   pr: "the conventions in the files around the diff, and the repository's own rules and lint config."
-  plan: "the plan pad's `## Design` section, and the repository's rules."
 ---
 # Idiom and reuse
 

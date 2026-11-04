@@ -5,7 +5,7 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   cat <<'USAGE'
 Usage: wt-clone.sh <source> <destination>
 
-Copies a file or a directory into a milestone worktree. It uses a
+Copies a file or a directory into a concern worktree. It uses a
 copy-on-write clone where the filesystem supports one, and a plain copy
 everywhere else.
 

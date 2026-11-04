@@ -14,7 +14,9 @@ Contribute code through pull requests by default. The PR is the unit of contribu
 - **Branch:** Cut a feature branch from the latest default branch, or from the unmerged branch this work depends on. Name it for the work and prefix it by type: `feat/…`, `fix/…`, `chore/…`. Never commit on the default branch.
 - **Commits:** Only create commits when the user asks or when the PR workflow clearly requires it. No secrets, no `--no-verify`, and no amend unless the user allows it.
 - **Pushes:** Never push or open a PR without explicit approval. Approval for one push does not carry to the next.
-- **Draft by default:** Open PRs as drafts. Mark ready for review only when the user says so.
+- **Authorized pushes:** Starting `/implement` on an approved design authorizes the concern's branch pushes and its draft PR. That start is the explicit approval. Every other push still needs its own.
+- **Draft by default:** Open PRs as drafts. Mark ready for review only when the user says so, whatever authorized the push.
+- **CI before review:** Ask the user to review a PR only after every CI check passes.
 - **Destructive git:** No `reset --hard`, force-push, or history rewrite without explicit approval.
 
 ## Branch staleness check
@@ -48,8 +50,8 @@ Resolution must succeed before either signal means anything. A `git diff` agains
 ## Before presenting work
 
 - **Run the repo's quality gates**—tests, lint, type checks, whatever the project uses. Report a failure with the shortest decisive output. Do not hide it and do not work around it. If a failure is out of scope, say so plainly. Do not leave it silently broken.
-- **Leave a clean tree.** `git status` shows no uncommitted changes and no stray untracked files. A milestone worktree exempts the files the provisioning contract generated. `/worktree` defines that exempt set, and deleting one of them removes the override the stack runs on.
-- **Summarize and stop.** State what changed, the quality gate results, and `git log --oneline "origin/${BASE}"..HEAD`. Set `BASE` to the parent branch when the work stacks, and to `${DEFAULT}` otherwise. Use the remote ref, because a local branch may lag. A stacked branch logged against the default branch reports its parent's commits as its own. Then wait. Do not push as part of "finishing".
+- **Leave a clean tree.** `git status` shows no uncommitted changes and no stray untracked files. A concern worktree exempts the files the provisioning contract generated. `/worktree` defines that exempt set, and deleting one of them removes the override the stack runs on.
+- **Summarize and stop.** State what changed, the quality gate results, and `git log --oneline "origin/${BASE}"..HEAD`. Set `BASE` to the parent branch when the work stacks, and to `${DEFAULT}` otherwise. Use the remote ref, because a local branch may lag. A stacked branch logged against the default branch reports its parent's commits as its own. Then wait. Do not push as part of "finishing", unless an authorization above covers the push.
 
 ## Push and open the PR
 
@@ -66,6 +68,24 @@ EOF
 
 A PR for this branch may already be open. Push the new commits, then update its title and description. Do not open a duplicate. Return the PR URL to the user.
 
+## Wait for CI
+
+Wait for every check before you ask for a review. Poll once a minute, for one hour at most:
+
+```bash
+for _ in $(seq 60); do
+  gh pr checks <PR URL> > /dev/null 2>&1; [ $? -eq 8 ] || break
+  sleep 60
+done
+gh pr checks <PR URL> --json name,bucket
+```
+
+`gh pr checks` exits 8 while a check is pending. A check still `pending` after the hour may wait on something that never comes, such as a manual approval or a missing runner. Take it to the user, and name each pending check.
+
+Fix a failed check on the branch, then wait again. Push that fix only with approval, or where an authorization above covers the branch. Report the result with the PR URL. Take a failure you cannot fix within scope to the user. Quote the shortest decisive line of its log.
+
+A repository with no CI has no checks to wait for. Its quality gates are then the gate, and the review request says so. A PR that reports no check after three polls one minute apart has no CI.
+
 ## Stacked PRs
 
 A branch whose work depends on another unmerged branch opens its PR against that branch. Pass `--base` to say so:
@@ -80,7 +100,7 @@ Without `--base`, `gh` targets the default branch. The PR then shows the parent 
 
 **Merge a stack from base to head.** GitHub retargets an open PR when its base merges, so the child survives the parent's merge. Merging the child first orphans the parent's review.
 
-**A set of PRs may instead merge together.** One change that spans several repositories lands one PR per repository. Each one bases on its own repository's default branch, unless that repository already carries an unmerged predecessor branch. Where it does, the stacking rule above wins, and that PR bases on the predecessor. A milestone can both span repositories and stack in one of them. None of the set stands alone either: merging one and dropping the rest leaves the change half-applied. Say in each body that the set merges together, and name the sibling PR URLs.
+**A set of PRs may instead merge together.** One change that spans several repositories lands one PR per repository. Each one bases on its own repository's default branch, unless that repository already carries an unmerged predecessor branch. Where it does, the stacking rule above wins, and that PR bases on the predecessor. One change can both span repositories and stack in one of them. None of the set stands alone either: merging one and dropping the rest leaves the change half-applied. Say in each body that the set merges together, and name the sibling PR URLs.
 
 ## Title and description
 

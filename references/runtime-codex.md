@@ -74,7 +74,7 @@ rejects it beside `-s/--sandbox`, so it cannot carry this posture.
 ## Three policies Codex cannot implement
 
 **No per-worker deny list for an editing worker.** An editing worker changes the target, so its
-working directory is its milestone worktree, and `workspace-write` permits `git add` there. All
+working directory is its concern worktree, and `workspace-write` permits `git add` there. All
 three sandbox modes are coarse, and none of them denies one command. Two Codex editing workers
 that share a tree can therefore cross-commit, and no launch flag prevents it. For that worker the
 git prohibition is a request rather than a structure. Keep each worker in its own tree, or accept

@@ -8,7 +8,6 @@ tier:
 intent:
   concern: "`design.md`, every decision and each declined alternative."
   pr: "the architecture the code around the diff already follows: its layers, module boundaries, and data flow."
-  plan: "the plan pad's `## Design` section, and the prose of this milestone's work item."
 ---
 # Design conformance
 

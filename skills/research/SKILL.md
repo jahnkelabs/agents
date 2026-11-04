@@ -1,6 +1,6 @@
 ---
 name: research
-description: Investigate a codebase with parallel agents and write the findings to a Solo scratchpad
+description: Investigate a codebase with parallel agents and write the findings to a file in the docs directory
 when_to_use: >-
   When the user wants to understand how something works across a codebase and wants the
   findings written down rather than explained in chat. Trigger phrases: "how does X work",
@@ -10,8 +10,12 @@ argument-hint: "[question or area]"
 
 # Research
 
-Investigate a codebase and produce a factual map of what exists. This skill runs standalone, and
-it is also the research phase inside `/plan`.
+Investigate a codebase and produce a factual description of what exists. This skill runs
+standalone, and `/map`, `/requirements`, and `/design` call it for the research they need.
+
+The report is a file under `docs_dir`, never a Solo scratchpad. `docs_dir` is the plugin's
+`userConfig` directory, and it defaults to `~/Code/agent-docs`. The user reads that file, and Solo
+holds only the worker traffic.
 
 ## Your only job is to document what exists
 
@@ -41,27 +45,31 @@ Determine the Solo project with `list_projects`, then use **whichever project is
 selected**. Do not match paths or assume a name. Confirm it in the gate, so the user catches a
 wrong scope before you write anything.
 
-Check for prior work before you investigate: `scratchpad_list(query="<topic keywords>")`. If an
-existing research pad covers this, read it and extend it. Do not duplicate it.
+Check for prior work before you investigate. List `<docs_dir>/research/` and, when a map called
+you, `<docs_dir>/maps/<map-slug>/research/`. If an existing file covers this, read it and extend
+it. Do not duplicate it.
 
-Then present the gate, in the shape `rules/chat-vocabulary.md` defines:
+Then present the gate, in the shape `rules/chat-vocabulary.md` defines. It is an `Approve` of one
+proposal:
 
 **Approve — /research scope**
 
-```
-  Solo project: <name>  (<path>)
+- **Found:** the Solo project, `<name>` at `<path>`. The repos in scope, each with its evidence:
+  the current repo, N code refs, or named in the request. A prior research file, if one exists.
+- **Deciding:** whether this scope and these questions fit what you want to understand.
+- **Criticality:** low. The report depends on it, and nothing else does.
+- **Reversible:** yes. A wrong scope costs one more run.
 
-  Repos in scope:
-    <repo>  ─ <evidence: current repo / N code refs / named in request>
+**A. Investigate these areas with `<N>` parallel Solo agents**
 
-  Not included: <area> (<why>)
+- **Pros:** `<what this scope covers, as the specific questions: 1. …, 2. …>`
+- **Cons:** `<what it leaves out, and why>`
+- **Risks:** `<what a wrong omission costs>`
+- **Constraints:** `<the repos it reads, and that it writes only the report file>`
 
-  I plan to investigate (<N> parallel Solo agents):
-    1. <specific question>
-    2. <specific question>
-```
+**Recommendation:** A. `<the ground: the evidence that these areas answer the question>`
 
-Accept this scope, or tell me which area to add or cut.
+Accept this scope, or name the area to add or cut.
 
 ⏸ waiting on you: accept the `/research` scope, or name what to change
 
@@ -114,11 +122,19 @@ pad**. Fill its six sections:
   ## Tool guidance  read the files you need fully, no limit or offset; report file paths, line
                     numbers, and factual descriptions of how the pieces connect; note which repo
                     each finding belongs to when more than one is in scope
-  ## Output format  write findings to scratchpad "research/<slug>/<area-slug>" — the orchestrator
-                    owns the research pad
+  ## Output format  write findings to scratchpad "research/<slug>/<area-slug>", tagged
+                    `transient` — the orchestrator owns the research file
   ## Completion     timer_set per `solo-agent-orchestration`'s **Workers signal completion**,
                     delivery_process_id=<orchestrator process_id>
 ```
+
+**A call from a map carries the map slug.** Where `/map`, `/requirements`, or `/design` calls,
+name each worker `research-<map-slug>-<area-slug>`, and its findings pad
+`research/<map-slug>/<slug>/<area-slug>`. Where a concern's stage called, name the worker
+`research-<map-slug>-<concern>-<area-slug>` instead.
+
+**Tag every brief, guard, and findings pad `transient`.** Add `map:<map-slug>` where a map called,
+and `concern:<map-slug>-<concern>` where a concern's stage called.
 
 Send only the pointer, per **The pointer shape** under **The PTY ceiling**:
 
@@ -144,7 +160,7 @@ Keep the returned `timer_id`. When the last area signals, `timer_cancel(timer_id
 you synthesize. A guard you leave armed fires later and arrives as an instruction about areas
 that finished long ago.
 
-Workers write only their own findings pad. You own the research pad.
+Workers write only their own findings pad. You own the research file.
 
 ## Step 3 — Synthesize
 
@@ -152,34 +168,31 @@ On wake, read every worker's scratchpad. Connect findings across components, and
 `file:line` reference. Resolve a contradiction by reading the code again rather than by picking
 one report.
 
-Then `close_process` each worker and archive its per-area scratchpad — the synthesized pad
-replaces them.
+Then `close_process` each worker. Archive its per-area scratchpad, its brief pad, and the guard
+pad. The research file replaces them.
 
-## Step 4 — Write the pad
+## Step 4 — Write the file
 
 Reuse the slug built in step 2.
 
-**Standalone:**
+**Standalone:** write `<docs_dir>/research/<slug>.md`.
+
+**Called from `/map`, `/requirements`, or `/design`:** write
+`<docs_dir>/maps/<map-slug>/research/<topic>.md`. The caller names the map slug and the topic,
+and the file carries `map: <map-slug>` in its frontmatter.
+
+The file opens with frontmatter and holds the document below:
 
 ```
-scratchpad_write(
-  name="research/<slug>",
-  tags=["research", "project:<repo>"],
-  content=<document below>
-)
-```
-
-One `project:<repo>` tag per repo in scope. Record the returned `scratchpad_id`.
-
-**Called from `/plan`:** do not create a pad. Return the same content for `/plan` to place
-under `### Research` in the plan pad's `## Appendix`.
-
-```
-# Research: <topic>
-
-**Date**: <YYYY-MM-DD>
-**Repos**: `<name>` — <absolute path>
-
+---
+type: research
+map: <map-slug>          # only when a map called
+repos:
+  <name>: <absolute container path>
+date: <YYYY-MM-DD>
+status: draft
+awaiting: null
+---
 ## Summary
 <the answer to the question asked>
 
@@ -200,31 +213,32 @@ live. Group by repo when more than one is in scope.
 ## Step 5 — Report
 
 Report the action, the location, and the decision needed. Do not report the findings — the user
-reads the pad.
+reads the file.
 
 ```
 Researched <topic> — <N> areas, <N> Solo agents.
 
-  Pad: research/<slug>  (id <n>)
+  File: <absolute path of the research file>
 
-Next: /plan research/<slug> to plan from it, or /critique research/<slug> to challenge it.
+Next: /map to chart from it, /requirements <concern> or /design <concern> to build on it,
+or /critique <path> to challenge it.
 ```
+
+A caller that invoked this skill receives the file path instead, and it reports the next step
+itself.
 
 ## Follow-ups
 
-Extend the same pad rather than creating another:
+Extend the same file rather than creating another:
 
-- New material under an existing heading → `scratchpad_append_section`
-- A section replacement → `scratchpad_edit` with the target object `solo-agent-orchestration`'s
-  **Locks and reports** section defines, and the current `expected_revision`. Any other shape
-  fails the call outright, so the edit never reaches the pad
-- A dated addition at the end → `scratchpad_append`
+- New material under an existing heading → edit that section in place
+- A dated addition at the end → append a `## Update <YYYY-MM-DD>` section
 
-On a revision mismatch, re-read and retry — something else touched the pad.
+Read the file again before each edit, because the user may have changed it.
 
 ## Notes
 
 - Read mentioned files fully before spawning anything
-- Read-only: no branches, no commits, no code changes
+- Read-only against the codebase: no branches, no commits, no code changes
 - No todos — research precedes tracked work
-- The pad must stand alone. `/plan` may read it in a session that has none of this context
+- The file must stand alone. A later skill may read it in a session that has none of this context

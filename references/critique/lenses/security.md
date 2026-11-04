@@ -8,7 +8,6 @@ tier:
 intent:
   concern: "`requirements.md` and `design.md`, for who may do what, and where the trust boundary sits."
   pr: "the PR body and the linked issue, and the checks the code around the diff already applies."
-  plan: "this milestone's work item and the plan pad's `## Design` section."
 ---
 # Security
 

@@ -1,6 +1,6 @@
 ---
 name: retro
-description: Analyse past sessions for recurring failures and hand the findings to /plan
+description: Analyse past sessions for recurring failures and hand the findings to /map
 when_to_use: >-
   When the user wants to know what keeps going wrong across sessions rather than inside one.
   Trigger phrases: "run a retro", "what keeps going wrong", "analyse my transcripts", "why do
@@ -10,8 +10,11 @@ argument-hint: "[area of concern]"
 
 # Retro
 
-Analyse past sessions and hand what you find to `/plan`. This skill reads the transcript corpus
-and changes nothing.
+Analyse past sessions and hand what you find to `/map`. This skill reads the transcript corpus
+and changes nothing except its own report file.
+
+The report is a file under `docs_dir`, never a Solo scratchpad. `docs_dir` is the plugin's
+`userConfig` directory, and it defaults to `~/Code/agent-docs`.
 
 Open discovery, and no fixed metric set. The user names an area of concern, or you propose one.
 One Solo agent then investigates each area.
@@ -30,7 +33,7 @@ all three.
 
 ## This skill never edits a skill or a rule
 
-Every finding goes to `/plan`, and `/plan` gates on the user's approval. A change to a skill
+Every finding goes to `/map`, and `/map` gates on the user's approval. A change to a skill
 therefore stays on the one path the user already reviews. No step below edits another file, and
 never add one that does.
 
@@ -57,9 +60,9 @@ session is one file, and the file name is the session id.
 
 ## Step 1 — State the corpus scope, and confirm it
 
-**Read the previous run's scope first.** Run `scratchpad_list(tags=["retro"])` and read the
-newest pad's `## Corpus scope` section. It names what an earlier run examined, so this run can
-extend that rather than repeat it.
+**Read the previous run's scope first.** List `<docs_dir>/retro/`, take the newest file by its
+slug, and read its `## Corpus scope` section. It names what an earlier run examined, so this run
+can extend that rather than repeat it.
 
 Then count the corpus cheaply. Read no transcript yet:
 
@@ -75,28 +78,28 @@ Propose areas only when the user named none. An area is a question about behavio
 sessions, not a metric. `Which escalations never reached the user?` is an area.
 `Count the escalations` is a metric.
 
-Then present the gate, in the shape `rules/chat-vocabulary.md` defines:
+Then present the gate, in the shape `rules/chat-vocabulary.md` defines. It is an `Approve` of one
+proposal:
 
 **Approve — /retro corpus scope**
 
-```
-  Solo project: <name>  (<path>)
+- **Found:** the Solo project, `<name>` at `<path>`. The corpus: `<dir>` with N sessions from
+  `<YYYY-MM-DD>` to `<YYYY-MM-DD>`, in N files and `<total bytes>`. The previous retro,
+  `<docs_dir>/retro/<slug>.md`, which covered `<dates>`, or none.
+- **Deciding:** whether this corpus and these areas fit what you want to learn.
+- **Criticality:** low. The report depends on it, and nothing else does.
+- **Reversible:** yes. A wrong scope costs one more run.
 
-  Corpus scope:
-    projects   <dir>  ─ <N> sessions
-    dates      <YYYY-MM-DD> to <YYYY-MM-DD>
-    size       <N> files, <total bytes>
+**A. Examine this corpus with `<N>` parallel Solo agents**
 
-  Previous retro: retro/<slug>, which covered <dates>   (or "none")
+- **Pros:** `<the areas of concern, as specific questions: 1. …, 2. …>`
+- **Cons:** `<what it leaves out, and why>`
+- **Risks:** `<what a wrong omission hides>`
+- **Constraints:** `<the corpus it reads, and that it writes only the report file>`
 
-  Areas of concern (<N> parallel Solo agents):
-    1. <specific question>
-    2. <specific question>
+**Recommendation:** A. `<the ground: the evidence that these areas hold the failures>`
 
-  Not included: <area> (<why>)
-```
-
-Accept this corpus scope, or tell me which area to add or cut.
+Accept this corpus scope, or name the area to add or cut.
 
 ⏸ waiting on you: accept the `/retro` corpus scope, or name what to change
 
@@ -127,7 +130,7 @@ scratchpad, so it cannot edit the skills it reports on. `solo-agent-orchestratio
 posture, and the adapter gives the arguments. Read what the adapter says its runtime cannot bound.
 
 Write the worker's brief to a scratchpad, per `solo-agent-orchestration`'s **The worker brief
-pad**. Fill its six sections:
+pad**. Tag the brief pad and the guard pad `transient`. Fill its six sections:
 
 ```
   ## Solo context   agent_instructions, pasted verbatim
@@ -138,9 +141,9 @@ pad**. Fill its six sections:
   ## Tool guidance  the corpus mechanics below, plus: work from the extracted event log, never
                     from a grep over raw JSONL; report every count with the command that produced
                     it; quote the session id and the entry's `.timestamp` for every claim; report
-                    what the corpus shows, never the fix — `/plan` owns that
-  ## Output format  write findings to scratchpad "retro/<slug>/<area-slug>" — the orchestrator
-                    owns the retro pad
+                    what the corpus shows, never the fix — `/map` owns that
+  ## Output format  write findings to scratchpad "retro/<slug>/<area-slug>", tagged `transient`
+                    — the orchestrator owns the retro file
   ## Completion     timer_set per `solo-agent-orchestration`'s **Workers signal completion**,
                     delivery_process_id=<orchestrator process_id>
 ```
@@ -199,31 +202,26 @@ timer_fire_when_idle_all(processes=[<pids>], max_wait_ms=<generous guard>,
 Keep the returned `timer_id`. When the last area signals, `timer_cancel(timer_id=<id>)` before
 you synthesize.
 
-## Step 3 — Synthesize and write the pad
+## Step 3 — Synthesize and write the file
 
 On wake, read every worker's scratchpad. Connect findings across areas, and keep every session id
 and command. Re-run a command yourself when two workers disagree on a count.
 
-Then `close_process` each worker and archive its per-area scratchpad.
+Then `close_process` each worker. Archive its per-area scratchpad, its brief pad, and the guard
+pad.
 
-Reuse the slug built in step 2:
+Reuse the slug built in step 2, and write `<docs_dir>/retro/<slug>.md`.
 
-```
-scratchpad_write(
-  name="retro/<slug>",
-  tags=["retro"],
-  content=<document below>
-)
-```
-
-**Keep this pad, and never archive it.** The next run reads its `## Corpus scope` section to
+**Keep this file, and never delete it.** The next run reads its `## Corpus scope` section to
 learn what this run already examined. That section is the only record of the scope.
 
 ```
-# Retro: <topic>
-
-**Date**: <YYYY-MM-DD>
-
+---
+type: retro
+date: <YYYY-MM-DD>
+status: draft
+awaiting: null
+---
 ## Corpus scope
 projects   <dir>
 dates      <YYYY-MM-DD> to <YYYY-MM-DD>
@@ -243,26 +241,27 @@ below carries to another run.
 Every finding carries its session id and the command behind its number. Drop a count with no
 command, because nobody can reproduce it.
 
-## Step 4 — Hand to /plan
+## Step 4 — Hand to /map
 
-Report the pad, then hand the proposed changes to `/plan`:
+Report the file, then hand the proposed changes to `/map`:
 
 ```
 Retro over <N> sessions — <N> areas, <N> Solo agents.
 
-  Pad: retro/<slug>  (id <n>)
+  File: <absolute path of the retro file>
 
   Runs are not comparable — this run's counts stand alone.
 
-Next: /plan retro/<slug> turns the proposed changes into slices.
+Next: /map turns the proposed changes into concerns.
 ```
 
-`/plan` owns every change from here. It grills, it censuses the inbound references, and it gates
-on approval. That gate is why this skill edits nothing itself.
+`/map` owns every change from here. It charts the concerns, and it gates on approval. A
+concern's `/requirements` and `/design` then grill the user, and `/implement` censuses the inbound
+references. That path is why this skill edits nothing itself.
 
 ## Notes
 
 - Read-only against the corpus: no edits, in any repository
 - Model-invocable, because it has no side effect to gate
 - No todos — a retro precedes tracked work
-- The pad must stand alone. `/plan` may read it in a session with none of this context
+- The file must stand alone. `/map` may read it in a session with none of this context

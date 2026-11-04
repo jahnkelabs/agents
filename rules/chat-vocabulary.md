@@ -20,7 +20,7 @@ Declined: a `references/chat-vocabulary.md` adapter. A missing convention fails 
 
 **A reserved heading marks a message the user must act on. Nothing else carries one.**
 
-Four of the six headings block and wait for a reply. `Landed` asks the user to read a milestone
+Four of the six headings block and wait for a reply. `Landed` asks the user to read a concern
 result, and `Running` reports where the run is. Neither one stops the run.
 
 The heading works only while it stays rare. One heading on a message that asks nothing teaches
@@ -29,9 +29,11 @@ the user to read every turn again.
 ## Default policy
 
 - **Default:** Send no heading, and send no footer.
-- **Cadence:** In an `/implement` run, speak on your own initiative on five occasions only.
-- **The five occasions:** a gate, a wave join, a milestone landing, an escalation, and a failure.
-- **Every other skill:** speak where the skill's own steps say to speak. A `/research` pad report
+- **Cadence:** In an `/implement` run, speak on your own initiative on four occasions only.
+- **The four occasions:** `Running` at a wave join, `Landed` at a concern landing, an escalation,
+  and `Failed` at a failure. A worker deviation takes `Blocked`. A critique escalation takes
+  `Approve`, `Deciding`, or `Blocked`, as `/critique` picks it.
+- **Every other skill:** speak where the skill's own steps say to speak. A `/research` report
   is one such message, and it carries no heading.
 - **Global parts:** the six headings and the footer hold in every skill. The cadence above holds
   in `/implement` alone.
@@ -45,8 +47,8 @@ the user to read every turn again.
 ```
 **Approve — <topic>**     a gate. Nothing proceeds without a reply.
 **Deciding — <topic>**    a question the user must answer, with or without options.
-**Running — <milestone>** the wave state of a milestone that has not landed yet.
-**Landed — <milestone>**  a milestone shipped. PR URLs, gates, ledger.
+**Running — <concern>**   the wave state of a concern that has not landed yet.
+**Landed — <concern>**    a concern shipped. PR URLs, gates, ledger.
 **Blocked — <what>**      work stopped and needs the user.
 **Failed — <what>**       something broke that the orchestrator cannot resolve.
 ⏸ waiting on you: <x>     the last line of every message that waits.
@@ -54,9 +56,9 @@ the user to read every turn again.
 
 Each heading carries exactly one meaning, and no heading carries a second. Nothing else in a run
 gets a heading. `Approve`, `Deciding`, `Blocked`, and `Failed` each stop the run and wait for the
-user. `Landed` reports a milestone and `Running` reports its waves, and the run continues.
+user. `Landed` reports a concern and `Running` reports its waves, and the run continues.
 
-**`Running` covers the whole milestone, not the wave that ended.** It names every wave, with the
+**`Running` covers the whole concern, not the wave that ended.** It names every wave, with the
 state of each task. A block that covers one wave leaves the reader asking again ten minutes
 later.
 
@@ -72,7 +74,7 @@ it. `Deciding` asks the user to answer a question you cannot answer yourself.
 
 **`Deciding` covers two shapes.** The first offers options. You state them and your recommendation,
 and the user picks one. The second offers none, because you hold nothing to offer. A skill's first
-question is commonly that shape: `What should I plan?` names no options, and inventing some would
+question is commonly that shape: `What should I research?` names no options, and inventing some would
 be worse than asking.
 
 Pick by that test alone, never by how large the question feels. A roster you assembled is an
@@ -105,7 +107,7 @@ does a question that carries no heading of its own.
 
 **A question opens the gate it belongs to.** A skill's first question is that gate's opening
 message. The questions after it are follow-ups inside the same open gate. `/implement` invoked with
-no arguments asks which plan to run. That question opens a gate rather than standing outside one. So
+no arguments asks which concern to run. That question opens a gate rather than standing outside one. So
 "inside an open gate" covers a first question too, and no waiting message falls outside this rule.
 
 **Which messages do not.** `Landed` and `Running` carry no footer, because the run continues. A
@@ -159,7 +161,7 @@ restating it.
 
 **A question that offers nothing to rank drops part 2.** It has no option to weigh and nothing to
 recommend. The heading, the question, and the footer are the whole message. The first question of
-`/plan`, `/research`, and `/retro` is that shape. `/implement`'s lists the active plan pads, so it
+`/research` and `/retro` is that shape. `/implement`'s lists the concerns ready to build, so it
 offers options and takes the full shape.
 
 Write each field label in bold, with the colon inside the bold. Start each field on its own line,

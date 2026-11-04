@@ -1,13 +1,13 @@
 ---
 name: bare-convert
-description: Set up or convert a repository into the bare-plus-worktrees layout that milestone worktrees need
+description: Set up or convert a repository into the bare-plus-worktrees layout that concern worktrees need
 argument-hint: "[set-up | convert | script] [url or clone path]"
 disable-model-invocation: true
 ---
 
 # Bare convert
 
-Turn a repository into a container, so `/worktree` can cut a milestone tree inside it. Three
+Turn a repository into a container, so `/worktree` can cut a concern worktree inside it. Three
 modes: **set up**, **convert**, and **script**.
 
 Set up clones a repository this machine does not hold yet. Convert rewrites a clone you already
@@ -32,7 +32,7 @@ The container is the repository's own path, at whatever depth it sits.
 <container>/                       the repository's own path
   .git/                            bare repository
   main/                            the user's stable worktree, never removed
-  <plan-slug>-<milestone-slug>/    a milestone worktree
+  <map-slug>-<concern>/            a concern worktree
 ```
 
 ## Set up
@@ -191,7 +191,7 @@ the repository carries no script.
 
 Its one argument is the container path, which convert calls `<clone>` above.
 
-`/bare-convert` runs per repository, and `/worktree` runs per milestone. A repository's own script
+`/bare-convert` runs per repository, and `/worktree` runs per concern. A repository's own script
 therefore belongs with this skill.
 
 ### Read the contract, then read the repository
@@ -246,7 +246,7 @@ chmod +x "<container>/main/scripts/wt-provision.sh"
 bash -n "<container>/main/scripts/wt-provision.sh"
 ```
 
-**The user commits the script, and this skill never does.** A milestone worktree is a fresh
+**The user commits the script, and this skill never does.** A concern worktree is a fresh
 checkout, so a script outside `HEAD` reaches none of them. `rules/pr-first-contributions.md` owns
 how that commit lands. This skill writes the file and stops.
 

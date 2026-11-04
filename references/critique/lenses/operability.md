@@ -8,7 +8,6 @@ tier:
 intent:
   concern: "`design.md`, for the rollout plan and any observability it names."
   pr: "the PR body, and the logging, metrics, and configuration patterns the service already uses."
-  plan: "this milestone's work item and the plan pad's `## Design` section."
 ---
 # Operability
 
