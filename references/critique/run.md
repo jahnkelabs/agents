@@ -23,8 +23,8 @@ nothing escalates. `## Batch 1, then the rework loop` states both paths.
 |---|---|
 | Target | the diff text itself, or the exact refs and container paths; never a name alone |
 | Target note | a fact every agent needs about the target, or none |
-| Intent | the `intent` kind that applies (`concern`, `pr`, or `plan`) and the content its `intent.<kind>` key names, or none |
-| Lens set | the catalog in `references/critique/lenses/`, or the integration set below |
+| Intent | the `intent` kind that applies (`concern` or `pr`) and the content its `intent.<kind>` key names, or none |
+| Lens set | the catalog in `references/critique/lenses/`, or the subset the front end names |
 | Output mode | `apply` or `report` |
 | Rework | in `apply` mode, where a batch 1 rework lands |
 | Proof commands | in `apply` mode, the commands that rerun after the fixes land |
@@ -46,7 +46,6 @@ tier:
 intent:
   concern: <what it reads from a concern pad>
   pr: <what it reads on someone else's PR>
-  plan: <what it reads from a plan pad>
 ---
 # <Lens name>
 
@@ -61,7 +60,7 @@ location · concrete failure, or before and after · fix · severity
 ```
 
 The frontmatter keys are `lens`, `batch`, `applies_when`, `tier.<runtime>.model`, `tier.<runtime>.effort`,
-`intent.concern`, `intent.pr`, and `intent.plan`. The body headings are `## Question`,
+`intent.concern`, and `intent.pr`. The body headings are `## Question`,
 `## Finding`, and `## Out of mandate`. Other body sections follow them.
 
 Read each lens file in full before you spawn its agent. This file restates no lens's content.
@@ -70,7 +69,7 @@ Read each lens file in full before you spawn its agent. This file restates no le
 
 Read each lens file's `applies_when` key against the target. `always` covers every target that
 holds code. A target that holds no code takes only the lenses whose question it can answer. Where
-the front end names that set, as `/critique` does for a plan pad, take the set it names.
+the front end names that set, as `/critique` does for a requirements or design document, take the set it names.
 
 Each agent reads the part of the intent that its `intent` frontmatter key names for the target kind. Where that part is
 absent, the brief carries `none` as its intent. A lens whose question checks the target against
@@ -420,29 +419,6 @@ Pick the heading by what stopped:
 The `**Found:**` field names the finding, its location, and the criterion that matched. An
 `Approve` offers the proposed fix as option A, and dropping the finding as option B. A C6
 recommendation names the ground it rests on, because the stated grounds do not rank the fixes.
-
-## The integration lenses
-
-The front end selects this set for an integration pass, and nothing else selects it. Each question
-needs more than one milestone's diff to answer. These lenses have no lens files.
-
-They run without batches and without rework: one agent per lens, all four at once, at
-`opus · high`. Their intent is the plan pad, and the pass runs in `report` mode.
-
-| Lens | Question |
-|---|---|
-| **Cross-milestone contract drift** | Does a caller one milestone changed still match a callee another milestone changed? |
-| **Plan completeness** | Did every slice the plan declared land in some milestone? |
-| **Claim consistency** | Do two milestones state one fact two ways? |
-| **Stack coherence** | Do the branches stack in the order the milestones shipped? |
-
-**The integration pass may not raise a finding that lives wholly inside one milestone's diff.**
-The per-milestone pass already ran that finding through the filter, and the user already decided.
-Drop it rather than present it. One run had to drop a finding by hand as
-`re-litigating the disabled-step export semantics, which you and I already settled`.
-
-**No question appears in both sets.** The catalog checks one target at a time. Plan completeness
-asks whether every slice landed somewhere, which no single target answers.
 
 ## Clean up
 

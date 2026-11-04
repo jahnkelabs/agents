@@ -8,7 +8,6 @@ tier:
 intent:
   concern: "`design.md` for the data model and its expected volumes, and `requirements.md` for any stated limit."
   pr: "the PR body, and the schema, indexes, and query patterns the repository already holds."
-  plan: "this milestone's work item and the plan pad's `## Design` section."
 ---
 # Data access and performance
 

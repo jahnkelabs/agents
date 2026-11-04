@@ -1,19 +1,19 @@
 ---
 name: worktree
-description: Cut, provision, and tear down one milestone worktree in a bare-plus-worktrees repository
+description: Cut, provision, and tear down one concern worktree in a bare-plus-worktrees repository
 when_to_use: >-
-  When a milestone needs a working tree of its own, or when a closed milestone gives one back.
-  Trigger phrases: "cut a worktree", "provision this worktree", "tear the milestone down".
-  Also invoked by the implement skill, once per repository per milestone.
-argument-hint: "[cut | provision | teardown] [container] [milestone] [branch] [base]"
+  When a concern needs a working tree of its own, or when a closed concern gives one back.
+  Trigger phrases: "cut a worktree", "provision this worktree", "tear the concern down".
+  Also invoked by the implement skill, once per repository per concern.
+argument-hint: "[cut | provision | teardown] [container] [concern] [branch] [base]"
 ---
 
 # Worktree
 
-Give every milestone worker its own working tree. Three modes: **cut**, **provision**, and
+Give every concern worker its own working tree. Three modes: **cut**, **provision**, and
 **teardown**.
 
-A milestone loop needs this before it can run. A fresh worktree holds no `.env`, no
+A concern build needs this before it can run. A fresh worktree holds no `.env`, no
 `auth.json`, no `vendor/`, and no `node_modules/`. It also cannot start a container stack
 without colliding with the stack already running. Every gate in the corpus fails on an
 unprovisioned worktree for reasons unrelated to the change.
@@ -32,17 +32,17 @@ The container is the repository's own path, at whatever depth it sits.
 <container>/                       the repository's own path
   .git/                            bare repository
   main/                            the user's stable worktree, never removed
-  <plan-slug>-<milestone-slug>/    a milestone worktree
-  <plan-slug>-<milestone-slug>/    a second milestone worktree
+  <map-slug>-<concern>/            a concern worktree
+  <map-slug>-<concern>/            a second concern worktree
 ```
 
-Every milestone worktree carries the plan slug as a prefix. The plan slug leads with a sortable
-timestamp, so one plan's worktrees sort together and two plans never interleave. The stable
+Every concern worktree carries the map slug as a prefix. The map slug leads with a sortable
+timestamp, so one map's worktrees sort together and two maps never interleave. The stable
 worktree keeps the name `main`, and it carries no prefix.
 
-The branch carries the plan slug too: `<type>/<plan-slug>-<milestone-slug>`. Teardown keeps the
+The branch carries the map slug too: `<type>/<map-slug>-<concern>`. Teardown keeps the
 branch, and `/implement`'s close step deletes the KV that names it. The prefix is therefore what
-tells a resume from another plan's leftover. `rules/solo-agent-orchestration.md` states that
+tells a resume from another map's leftover. `rules/solo-agent-orchestration.md` states that
 reasoning once.
 
 Every slug is lowercase, because a KV key carries it.
@@ -65,19 +65,19 @@ on git 2.50.1.
 `--path-format=absolute` is load-bearing. Without it `--git-common-dir` may answer the relative
 `.git`, and `dirname` then returns `.`. Verified on git 2.50.1.
 
-`/plan` records the container with this derivation, so the path it hands `/implement` needs no
+`/implement` records the container with this derivation, so the path it hands this skill needs no
 repair.
 
 ## What the caller passes
 
-Every mode takes the container, the milestone slug, and the branch. Cut alone takes the base,
+Every mode takes the container, the concern slug, and the branch. Cut alone takes the base,
 because only cut creates anything.
 
 ```
 <container>        the repository's own path
-<milestone-slug>   the milestone slug, lowercase — the `[milestone]` argument
-<branch>           <type>/<plan-slug>-<milestone-slug>, resolved by the caller
-<base>             origin/HEAD, or the predecessor milestone's branch when the milestones stack
+<concern>          the concern slug, lowercase — the `[concern]` argument
+<branch>           <type>/<map-slug>-<concern>, resolved by the caller
+<base>             origin/HEAD, or the predecessor concern's branch when the concerns stack
 ```
 
 **Never rebuild the branch name here.** `<type>` is `feat`, `fix`, or `chore`, chosen for the work
@@ -89,7 +89,7 @@ Three more values follow from those four, and this skill states each derivation 
 
 ```
 <worktree>    <container>/ then <branch> with its <type>/ prefix removed
-<plan-slug>   <branch> with its <type>/ prefix and its -<milestone-slug> suffix removed
+<map-slug>    <branch> with its <type>/ prefix and its -<concern> suffix removed
 <repo>        the basename of <container>
 ```
 
@@ -97,7 +97,7 @@ Three more values follow from those four, and this skill states each derivation 
 
 ## Cut
 
-Use this mode to create a milestone worktree and provision it.
+Use this mode to create a concern worktree and provision it.
 
 Refuse a plain clone. Test the container itself, never `<container>/main`:
 
@@ -132,9 +132,9 @@ git -C "<container>/main" worktree add "<worktree>" -b "<branch>" "<base>"
 ```
 
 Pass no `-b` on a resume, because the branch already exists. Where the recorded path already holds
-this milestone's branch, reuse that worktree and cut nothing.
+this concern's branch, reuse that worktree and cut nothing.
 
-Record the path under `plan:<slug>:milestone:<m>:worktree:<repo>`, as the orchestration rule
+Record the path under `map:<map-slug>:concern:<concern>:worktree:<repo>`, as the orchestration rule
 requires. Then run provision mode against the new worktree.
 
 **Provision mode can refuse, and cut then ends `Blocked` with the worktree standing.** Report that
@@ -161,7 +161,7 @@ Report that refusal to the user:
 found:      <worktree>/scripts/wt-provision.sh is missing, or it is not executable
 needed:     the script this repository commits, per ## The provisioning contract below
 next:       /bare-convert script <container>
-kept:       <worktree>, so the script can land on this milestone's branch
+kept:       <worktree>, so the script can land on this concern's branch
 ```
 
 ⏸ waiting on you: run /bare-convert script <container>, or commit the script yourself
@@ -170,7 +170,7 @@ kept:       <worktree>, so the script can land on this milestone's branch
 A script that never existed leaves nothing to undo. Remove the tree, and the retry meets the same
 absence, so the run loops instead of reporting.
 
-**A milestone worktree is a checkout, so `HEAD` must carry the script.** A script left untracked
+**A concern worktree is a checkout, so `HEAD` must carry the script.** A script left untracked
 in `<container>/main` reaches no worktree cut afterwards. `/bare-convert` states that too.
 
 ```bash
@@ -178,8 +178,8 @@ in `<container>/main` reaches no worktree cut afterwards. `/bare-convert` states
 ```
 
 **Run the script from the target worktree, not from `main`.** Pass `main` as the source argument
-only, which is the whole of its role. A milestone whose own branch updates the script must run
-the updated one. A stacked milestone inherits its predecessor's version the same way.
+only, which is the whole of its role. A concern whose own branch updates the script must run
+the updated one. A stacked concern inherits its predecessor's version the same way.
 
 **Clean up after a failed provision.** The worktree and the branch both exist by then, so the
 retry fails on two paths that are already taken:
@@ -236,7 +236,7 @@ services:
 `ports: !reset []` removes every published port on Compose v5.1.2, verified. Compose discards
 the base port list rather than merging it.
 
-An override that names a subset leaves the rest publishing. The second milestone stack then
+An override that names a subset leaves the rest publishing. The second concern stack then
 fails to bind, and the gate fails for a reason unrelated to the change. Check the generated
 override before you start anything:
 
@@ -258,23 +258,23 @@ The compose network sits closer to production than a host-published port, which 
 `rules/testing-philosophy.md` asks for.
 
 **Name the project explicitly.** Export
-`COMPOSE_PROJECT_NAME=<repo>-<plan-slug>-<milestone-slug>`. Compose otherwise derives the
+`COMPOSE_PROJECT_NAME=<repo>-<map-slug>-<concern>`. Compose otherwise derives the
 project name from the directory basename, verified.
 
-The plan slug matters here, exactly as it does in the worktree path. Two live plans can
-name a milestone `m1`, and `<repo>-m1` then gives both stacks one network and one volume set.
+The map slug matters here, exactly as it does in the worktree path. Two live maps can
+name a concern `c1`, and `<repo>-c1` then gives both stacks one network and one volume set.
 The worktree paths would stay distinct while the stacks merged.
 
-### Each milestone stack is fully isolated
+### Each concern stack is fully isolated
 
 Its own containers, its own volumes, its own network, and no published ports.
-`COMPOSE_PROJECT_NAME` gives one milestone one Compose project, and a project creates a container
+`COMPOSE_PROJECT_NAME` gives one concern one Compose project, and a project creates a container
 for every service its base file declares.
 
-Isolation therefore needs no naming convention inside the stack. Two milestones can hold a
+Isolation therefore needs no naming convention inside the stack. Two concerns can hold a
 bucket, a topic, or a database of the same name. Neither project can see the other's.
 
-The milestone owns those volumes, which is why teardown removes them.
+The concern owns those volumes, which is why teardown removes them.
 
 ## The clone helper
 
@@ -301,10 +301,10 @@ diverges.
 
 ## Teardown
 
-Tear the stack down at milestone close. Remove the worktree after the push succeeds.
+Tear the stack down at concern close. Remove the worktree after the push succeeds.
 
 ```bash
-COMPOSE_PROJECT_NAME="<repo>-<plan-slug>-<milestone-slug>" docker compose \
+COMPOSE_PROJECT_NAME="<repo>-<map-slug>-<concern>" docker compose \
   --project-directory "<worktree>" \
   -f "<worktree>/docker-compose.yml" \
   -f "<worktree>/docker-compose.worktree.yml" down -v --remove-orphans
@@ -315,7 +315,7 @@ from somewhere else, and none of them sets a working directory. A relative `-f` 
 file, or it finds another repository's stack.
 
 `down -v` removes the named volumes, and `--remove-orphans` removes a container that the
-current file no longer declares. The milestone owns both, so neither removal reaches another
+current file no longer declares. The concern owns both, so neither removal reaches another
 stack.
 
 **Check that the tree holds nothing to lose, then force the removal.**

@@ -8,7 +8,6 @@ tier:
 intent:
   concern: "`requirements.md`, each acceptance criterion a test must cover."
   pr: "the behavior the PR body describes, and the test conventions the repository already uses."
-  plan: "this milestone's work item in the plan pad, its Exit criterion and Verification lists."
 ---
 # Tests
 

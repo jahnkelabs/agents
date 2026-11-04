@@ -8,7 +8,6 @@ tier:
 intent:
   concern: "`requirements.md` and `design.md`, for the behavior the text must now describe."
   pr: "the PR body, for the behavior the text must now describe."
-  plan: "this milestone's work item in the plan pad, for the behavior the text must now describe."
 ---
 # Claims
 
@@ -37,9 +36,9 @@ alters. Read each hit outside the diff, and ask whether it is still true. Check 
 
 ## Examples
 
-- `references/critique/lenses/root-cause.md:41` · says "until M4". M4 names a milestone of the plan that
+- `skills/foo/SKILL.md:41` · says "until the next milestone". It names a milestone of the plan that
   wrote the file, and no reader of the shipped file has that plan. Fix: state the behavior by its
-  condition, such as "where the caller supplies a plan pad". Severity `nit`.
+  condition, such as "where the caller supplies a concern". Severity `nit`.
 
 - `README.md:164` · says two skills carry `disable-model-invocation`. The change deletes one, so one
   remains. Fix: "One skill carries it." Severity `risk`.

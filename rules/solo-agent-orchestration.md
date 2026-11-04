@@ -113,7 +113,7 @@ Idle detection cannot do more than that, for three reasons:
 The guard body names a pad and obeys the ceiling. Write the branches into the pad, never into the body. Every line of the body reads correctly alone, and the pad id sits last.
 
 ```
-Guard fired for <milestone>, wave <n>.
+Guard fired for <concern>, wave <n>.
 A worker that never signalled is a failure to investigate, not a completion.
 Procedure: scratchpad_read(scratchpad_id=<guard pad id>)
 ```
@@ -146,7 +146,7 @@ The pad carries the watch list and one branch per outcome:
 
 One session already paid for this. The third spawn attempt abandoned `spawn_agent` and launched Codex directly. It used the exact bypass flag this rule and `references/runtime-codex.md` both prohibit by name. Nothing told the retry loop when to stop, so the loop found the prohibited flag on its own.
 
-**Bound a worker's writes by whether it edits the target.** Two classes exist. An immutable-target worker reads the target and writes only scratch. An editing worker changes the target, and its working directory is its milestone worktree. One posture does not fit both. Decide the class first, then read the runtime's adapter for the arguments.
+**Bound a worker's writes by whether it edits the target.** Two classes exist. An immutable-target worker reads the target and writes only scratch. An editing worker changes the target, and its working directory is its concern worktree. One posture does not fit both. Decide the class first, then read the runtime's adapter for the arguments.
 
 **The immutable-target worker.** Every critic, every research agent, and every retro agent is one. It writes only its own scratch directory, it reads the whole disk, and it never writes the target.
 
@@ -161,55 +161,55 @@ Two limits survive on Claude, at the same version and date:
 - **Read, Edit and Write bypass the sandbox.** They use the permission system instead, so a tool deny list still governs them.
 - **A linked worktree keeps `.git` writable.** The sandbox allows writes to the main repository's shared `.git`, so it does not deny git.
 
-**The editing worker.** A sandbox that permits its edits permits `git add` in its milestone worktree. No directory-scoped posture denies git there. A per-command deny list does, where the runtime scopes one to a single worker.
+**The editing worker.** A sandbox that permits its edits permits `git add` in its concern worktree. No directory-scoped posture denies git there. A per-command deny list does, where the runtime scopes one to a single worker.
 
 Where no runtime in the roster can, the denial does not exist. **Disclose the gap rather than restate the promise.** Name the runtime that cannot enforce it, and name the exposure. Two workers in one tree cross-commit each other's work, silently, and the undo costs a lot of time. Give each worker its own tree, or accept the risk knowingly and say so.
 
 **Carry the invariant preamble once, where the runtime allows it.** Two things are identical across every worker in a wave. They are what a worker must not touch, and what to do when stuck.
 
-The working directory is not one of them. A milestone that spans repositories cuts one worktree per repository. **A task receives one preamble per repository it writes in.** Each one names that repository's own worktree, and it scopes the task's declared paths to that repository. Most tasks write in one repository and take one preamble. A `same-worker` task may span two, and it then takes two. A runtime with a system-prompt argument takes the preamble there. That shortens each `send_input` and makes the constraints harder to drop by accident. A runtime without one carries the preamble in the brief pad's `## Boundaries`. `send_input` still carries the pointer alone.
+The working directory is not one of them. A concern that spans repositories cuts one worktree per repository. **A task receives one preamble per repository it writes in.** Each one names that repository's own worktree, and it scopes the task's declared paths to that repository. Most tasks write in one repository and take one preamble. A `same-worker` task may span two, and it then takes two. A runtime with a system-prompt argument takes the preamble there. That shortens each `send_input` and makes the constraints harder to drop by accident. A runtime without one carries the preamble in the brief pad's `## Boundaries`. `send_input` still carries the pointer alone.
 
-## One worktree per milestone
+## One worktree per concern
 
-A worker never shares a working tree with the user. Cut one worktree per milestone and per repository. Cut it from a bare-plus-worktrees layout, and use these paths:
+A worker never shares a working tree with the user. Cut one worktree per concern and per repository. Cut it from a bare-plus-worktrees layout, and use these paths:
 
 ```
   container          <the repository's own path>                 at whatever depth it sits
   bare repo          <container>/.git                            `git rev-parse --is-bare-repository` returns true
   stable             <container>/main                            the user's worktree, never removed
-  worktree           <container>/<plan-slug>-<milestone-slug>    one plan's worktrees sort together
-  branch             <type>/<plan-slug>-<milestone-slug>         the plan slug keeps two plans off one branch
+  worktree           <container>/<map-slug>-<concern>            one map's worktrees sort together
+  branch             <type>/<map-slug>-<concern>                 the map slug keeps two maps off one branch
   example container  ~/Code/jahnkelabs/agents
-  example worktree   ~/Code/jahnkelabs/agents/<plan-slug>-<milestone-slug>
+  example worktree   ~/Code/jahnkelabs/agents/<map-slug>-<concern>
   create             test the branch and the path, then cut:
                        git worktree add <worktree> -b <branch> <base>   no such branch yet
                        git worktree add <worktree> <branch>             the branch already exists
                        reuse <worktree>, cut nothing                    the path already holds <branch>
-                     base = origin/HEAD, or the predecessor milestone's branch when stacked
-  record             kv_set plan:<slug>:milestone:<m>:worktree:<repo>
-  remove             at milestone close, after a successful push
+                     base = origin/HEAD, or the predecessor concern's branch when stacked
+  record             kv_set map:<map-slug>:concern:<concern>:worktree:<repo>
+  remove             at concern close, after a successful push
   sweep              git worktree prune at run close
 ```
 
-The milestone slug is lowercase, because the KV key carries it. The `record` key carries the repository too, because one milestone cuts one worktree per repository. Without it the second cut overwrites the first, and teardown then leaks a worktree with its stack still running.
+The concern slug is lowercase, because the KV key carries it. The `record` key carries the repository too, because one concern cuts one worktree per repository. Without it the second cut overwrites the first, and teardown then leaks a worktree with its stack still running.
 
 **Test the branch and the path before you cut.** `git worktree add -b` fails outright when the branch already exists. `git worktree add` fails the same way when another worktree already holds the path. Run both tests, because a stopped run can leave either one behind.
 
-**The branch test has three cases, and this plan's own KV record tells them apart.**
+**The branch test has three cases, and this map's own KV record tells them apart.**
 
-- **A resume.** `plan:<slug>:milestone:<m>:branch:<repo>` already names this branch. Teardown removed the worktree and left the branch behind, so re-cut onto it. Pass no `-b`: `git worktree add <worktree> <branch>`.
-- **A closed plan's leftover.** No KV key claims the branch. `gh pr list --head <branch> --state merged` returns a merged PR, or the remote no longer carries the ref. That plan finished, and its close step deleted the KV that named the branch. Delete the branch and cut fresh. `rules/pr-first-contributions.md` carries this test under `## Branch staleness check`.
-- **A collision.** No KV key claims the branch, and no merged PR explains it. Another live plan owns it. Rename this plan's milestone, and escalate. Renaming the other plan's branch breaks its open PR.
+- **A resume.** `map:<map-slug>:concern:<concern>:branch:<repo>` already names this branch. Teardown removed the worktree and left the branch behind, so re-cut onto it. Pass no `-b`: `git worktree add <worktree> <branch>`.
+- **A closed map's leftover.** No KV key claims the branch. `gh pr list --head <branch> --state merged` returns a merged PR, or the remote no longer carries the ref. That map finished, and its close step deleted the KV that named the branch. Delete the branch and cut fresh. `rules/pr-first-contributions.md` carries this test under `## Branch staleness check`.
+- **A collision.** No KV key claims the branch, and no merged PR explains it. Another live map owns it. Rename this map's concern, and escalate. Renaming the other map's branch breaks its open PR.
 
-**The branch carries the plan slug because teardown outlives the KV record.** Teardown keeps the branch, and a plan's close step deletes every `plan:<slug>:*` key. Drop the prefix, and a second plan that reuses a milestone slug finds a branch no KV key claims. It then escalates over a PR that merged and closed. `/implement` labels milestones `m1`, `m2`, and `m3`, so that is the common case rather than the rare one.
+**The branch carries the map slug because teardown outlives the KV record.** Teardown keeps the branch, and a map's close step deletes every `map:<map-slug>:*` key. Drop the prefix, and a second map that reuses a concern slug finds a branch no KV key claims. It then escalates over a PR that merged and closed. A map numbers its concerns `c1`, `c2`, and `c3`, so that is the common case rather than the rare one.
 
-**Test the recorded worktree path too.** `plan:<slug>:milestone:<m>:worktree:<repo>` holds it, so this costs one `kv_get`. Where the path exists and holds this milestone's branch, reuse it and cut nothing. Where it exists and holds anything else, stop and report both paths. A run that stopped before teardown leaves a worktree standing on unpushed commits and on uncommitted work. A resumed plan therefore finds a path another worktree still holds, and `git worktree add` exits 128 there.
+**Test the recorded worktree path too.** `map:<map-slug>:concern:<concern>:worktree:<repo>` holds it, so this costs one `kv_get`. Where the path exists and holds this concern's branch, reuse it and cut nothing. Where it exists and holds anything else, stop and report both paths. A run that stopped before teardown leaves a worktree standing on unpushed commits and on uncommitted work. A resumed map therefore finds a path another worktree still holds, and `git worktree add` exits 128 there.
 
-A milestone slug is therefore unique inside its plan. The plan slug separates it from every other plan's.
+A concern slug is therefore unique inside its map. The map slug separates it from every other map's.
 
 A plain clone fails loudly. Test the layout before you cut anything, and print the conversion command rather than a worktree path.
 
-The worktree is disposable once the push succeeds, because the branch then lives on the remote. Remove it at milestone close.
+The worktree is disposable once the push succeeds, because the branch then lives on the remote. Remove it at concern close.
 
 A worker's working directory is a worktree, so its lock keys carry that worktree's path. A worker writing in two repositories has two, and each file locks under the worktree that holds it.
 
@@ -253,7 +253,7 @@ Workers do one job and report. The orchestrator owns git, todo lifecycle, KV, an
 | A pointer that names the pad id first | Truncation keeps the tail, so the pad id goes last |
 | A pointer that addresses a pad by its title | Solo renamed the pad to its first H1, so the title resolves nothing |
 | An H1 heading in a brief pad or a guard pad | Solo overwrites the name you gave the pad, and a listing then loses it |
-| Cutting a milestone branch with `-b` and no existence test | A resumed run fails outright, because teardown left the branch behind |
+| Cutting a concern branch with `-b` and no existence test | A resumed run fails outright, because teardown left the branch behind |
 | Cutting onto a recorded worktree path with no existence test | A run that stopped before teardown leaves the worktree standing, so `git worktree add` exits 128 |
 | Treating an idle timer as the completion signal | No debounce, and a thinking worker looks like a finished one |
 | Scheduling an idle timer before workers produce output | An all-idle watch list returns `already_satisfied` and creates no timer |

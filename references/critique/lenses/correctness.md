@@ -8,7 +8,6 @@ tier:
 intent:
   concern: "`requirements.md`, for what a right result is."
   pr: "the PR body and the linked issue, for what a right result is."
-  plan: "this milestone's work item in the plan pad, for what a right result is."
 ---
 # Correctness
 
