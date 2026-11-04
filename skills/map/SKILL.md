@@ -131,9 +131,10 @@ The chat approval takes this shape:
 ## Proposed map edits
 
 `requirements.md`, `design.md`, and `implementation.md` each carry a `## Proposed map edits`
-section. The stage that owns the document records there each finding that changes the map: a new
-concern, a split, a principle, new fog, an out-of-scope line, a constraint on another concern, a
-missing `after`, or a decision that shapes the map. `## Update a map` gathers and settles them.
+section. The stage that owns the document records there each finding that changes the map. A
+finding of that kind is one of these: a new concern, a split, a principle, new fog, or an
+out-of-scope line. It can also be a constraint on another concern, a missing `after`, or a
+decision that shapes the map. `## Update a map` gathers and settles them.
 
 Each entry takes this shape:
 
@@ -449,7 +450,7 @@ edit in the batch.
 
 **Apply each edit once.** A session that dies between applying an edit and marking it leaves the
 edit `pending`. Before you create a concern for an edit, look for a `concern.md` whose body cites
-that edit's id. When you create one, write that citation on its own body line, as
+that edit's id. When you create one, write that citation on its own body line. An example is
 `From c1-ingest/implementation.md edit 2.` Before you add a line to `map.md`, check whether its
 section already holds it.
 
@@ -464,9 +465,9 @@ section already holds it.
 
 **Mark each settled entry in its source document.** Replace `pending` with `applied`, or with
 `declined: <the reason>`, so the same edit does not return. Add one line to `## Decisions so far`
-for each settled edit. Apart from that marker, the document's `awaiting`, and the close-out's
-`status` write to a merged concern's `implementation.md`, this skill never edits a document that
-another skill owns.
+for each settled edit. This skill never edits a document that another skill owns, with three
+exceptions. It writes that marker and the document's `awaiting`. Its close-out also writes the
+`status` of a merged concern's `implementation.md`.
 
 **Never rename a concern.** Its slug names its KV keys, its branch, and its worktree. Change its
 `order` or its `outcome` instead.
