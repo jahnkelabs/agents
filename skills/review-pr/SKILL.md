@@ -93,35 +93,60 @@ Turn the ledger into a draft, with one comment per finding:
   cause is a suggestion to the author, not a defect in this diff.
 
 Each comment states the concrete failure, or the before and after, and the fix. It names its
-severity. It says nothing about lenses, refuters, or this workflow, because the author needs none
-of it.
+severity. Apart from the disclaimer below, it says nothing about lenses, refuters, or this
+workflow. The author needs none of it.
 
 Quote only text from the PR diff or the PR body. Never quote a file outside the diff.
 
 Write no bare `@name` in a comment, because GitHub notifies that login. Put code in backticks.
 
-The summary opens with one sentence on what the PR does. It then counts the findings by severity,
-and lists the summary-only findings.
+**Everything the review posts discloses that AI agents drafted it, and who approved it.** Resolve
+the approver from the account that will post:
+
+```bash
+gh api user --jq '.login'
+gh api user --jq '.name // .login'
+```
+
+The summary opens with this disclaimer, as its own paragraph:
+
+```
+Drafted by AI review agents. Reviewed by <name> (<login>), and posted with their explicit approval.
+```
+
+Where the account has no name, write `Reviewed by <login>`. Each inline comment ends with a short
+tag, as its own paragraph. GitHub's Files view shows an inline comment without the summary:
+
+```
+— AI-drafted; approved for posting by <login>
+```
+
+Write the login without an `@`, so the disclaimer notifies no one.
+
+After the disclaimer, the summary gives one sentence on what the PR does. It then counts the
+findings by severity, and lists the summary-only findings.
 
 Write the payload to a file in this session's scratch directory, never in the repository:
 
 ```json
 {
   "commit_id": "<headRefOid>",
-  "body": "<the summary>",
+  "body": "<the disclaimer>\n\n<the summary>",
   "comments": [
-    { "path": "src/token.php", "line": 88, "side": "RIGHT", "body": "<the comment>" }
+    { "path": "src/token.php", "line": 88, "side": "RIGHT",
+      "body": "<the comment>\n\n— AI-drafted; approved for posting by <login>" }
   ]
 }
 ```
 
-The payload carries no `event`, so GitHub holds the review as pending. Show the draft in chat: the
-summary, then each comment under its `path:line`.
+The payload carries no `event`, so GitHub holds the review as pending. Show the draft in chat
+exactly as it will post. Give the summary with its disclaimer, then each comment and its tag under
+its `path:line`.
 
 ## Step 5 — Approve, then post
 
-Post nothing until you approve this draft. One approval covers one draft, and a changed draft
-needs a new approval. The gate takes the decision format in `rules/chat-vocabulary.md`:
+Post nothing until you approve this draft. One approval covers one draft, its disclaimer and tags
+included, and a changed draft needs a new approval. The gate takes the decision format in `rules/chat-vocabulary.md`:
 
 > **Approve — post the review on PR `#<N>`**
 >
@@ -162,6 +187,9 @@ needs a new approval. The gate takes the decision format in `rules/chat-vocabula
 
 Before you post, read `headRefOid` again. Where it moved, stop and say so, because the comments'
 lines belong to the old head.
+
+Run `gh api user --jq '.login'` again too. Where it no longer matches the disclaimer's login,
+stop and say so. The disclaimer would then name someone who did not post it.
 
 Post with one call. `gh api` fills `{owner}` and `{repo}` from the current directory's repository:
 
