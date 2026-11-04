@@ -1,22 +1,19 @@
 ---
 name: implement
-description: Execute an approved plan as a loop of milestones, each landing its own PRs
-argument-hint: "[plan/<slug>] [--critique <models>]"
+description: Implement one approved concern of a map, from its requirements and design to a draft PR with CI green
+argument-hint: "[<map-slug>/<concern>] [--critique <models>]"
 ---
 
 # Implement
 
-Orchestrate execution of an approved plan. You own git, todo lifecycle, and worker
-coordination. Workers write code and nothing else.
-
-The plan declares **slices**. This skill composes them into **milestones**, and each milestone
-ships its own PRs before the next one starts.
+Build one concern of a map, from its approved requirements and design, up to a draft PR with CI
+green. You own git, todo lifecycle, and worker coordination. Workers write code and nothing else.
 
 ```
-  slice       one worker's unit of work. Narrow, vertical, one repository.
-  milestone   a consumable chunk of a plan, sequenced in a DAG. May span
-              repositories. The unit of delivery.
-  wave        the concurrency schedule inside a milestone, from file overlap.
+  concern   one outcome of a map. It lands as one branch and one draft PR per
+            repository it touches.
+  slice     one worker's unit of work. Narrow, vertical, one repository.
+  wave      the concurrency schedule inside the concern, from file overlap.
 ```
 
 A **task** is one worker, one todo, one report scratchpad, one model tier. A task carries one
@@ -25,132 +22,206 @@ completion — see [Escalation](#escalation).
 
 ## Input
 
-- **A plan pad** (`plan/<slug>` or an id) — the normal case. A calling skill passes it here.
-- **`--critique <models>`** — the critique roster. Without it, read the pad's `### References`.
-- **Existing todos for the slug** — this is a resumed run. The todos *are* the composition, so
-  reuse them rather than composing again. Pick up at the first milestone with open tasks.
+- **`<map-slug>/<concern>`** — the concern's directory under `<docs_dir>/maps/`. A calling skill
+  passes it here.
+- **`--critique <models>`** — the critique roster. Pass it to `/critique` unchanged. Without it,
+  `/critique` takes its own default.
+- **Existing todos tagged `map:<map-slug>` and `concern:<concern>`** — this is a resumed run. The
+  todos *are* the slicing, so reuse them rather than slicing again. Pick up at the first wave with
+  open tasks.
 
-Read the pad fully. If none exists, send the user to `/plan`.
+`docs_dir` is the plugin's `userConfig` directory, and it defaults to `~/Code/agent-docs`.
 
-With no plan pad named, list the active pads via `scratchpad_list(tags=["plan"])` and ask which
-one. That opens a `Deciding` gate, per `rules/chat-vocabulary.md`, and a caller never reaches it.
+With no concern named, list each concern whose `design.md` carries `status: approved` and whose
+`stage` is `design` or `implementing`. Ask which one. That opens a `Deciding` gate, per
+`rules/chat-vocabulary.md`, and a caller never reaches it.
 
-Use whichever Solo project is currently selected, consistent with `/plan`.
+Use whichever Solo project is currently selected.
+
+### The documents
+
+Read every document below fully before you cut anything:
+
+```
+<docs_dir>/maps/<map-slug>/
+├── map.md                    repos, guiding principles, out of scope, ## Proposed edits
+├── inbox/<id>.md             an inbox item that belongs to this map
+└── <concern>/
+    ├── concern.md            type: concern; the concern's stage and its after
+    ├── requirements.md       acceptance criteria: criterion, proof command, invariant
+    ├── design.md             structure, data model, interfaces, failure handling, decisions
+    └── implementation.md     this skill writes it; see ## The record
+```
+
+**Both stage documents must carry `status: approved`.** Starting this skill on an approved design
+authorizes the concern's branch pushes and its draft PR, per `rules/pr-first-contributions.md`.
+Stop where either document is not approved. Send the user to `/requirements` or `/design`,
+whichever one is not.
+
+**The inbox item format has one definition.** `src/schema.ts` in `jahnkelabs/agents-obsidian`
+defines it. Read it there, and never restate it.
+
+The skills commit nothing under `docs_dir`. It may be a local git repository with no remote.
+
+**Keep each document's frontmatter current.** A concern's stage lives only in its `concern.md`.
+Set `stage: implementing` when the run starts, and `stage: in-review` at the landing. The stage
+moves to `done` after the merge, and this skill never sets it.
 
 ## Speaking
 
-`rules/chat-vocabulary.md` reserves the headings and the footer. Speak on five occasions and no
-others: a gate, a wave join, a milestone landing, an escalation, and a failure.
+`rules/chat-vocabulary.md` reserves the headings and the footer. Speak on four occasions and no
+others: a wave join, the landing, an escalation, and a failure. The question that opens a run with
+no concern named is the one gate.
 
 Narrate no worker completion. That ban cites 78% of one run's assistant turns, which counted one
 message per worker. A wave join instead emits one `Running` block covering every wave of the
-milestone, and `references/implement-waves.md` defines it.
+concern, and `references/implement-waves.md` defines it.
 
 ## The exit criterion
 
-The plan declares one machine-checkable end state per work item, and the command that proves it.
-Run each milestone to the criteria of the work items it carries. Never ask the user whether to
-continue, and never re-ask a question the plan already answered.
+The requirements declare the end state. Each acceptance criterion carries a proof command and its
+invariants. Run the concern to every criterion. Never ask the user whether to continue, and never
+re-ask a question the requirements or the design already answered.
 
 Stop on these, and on nothing else:
 
 ```
-  no plan pad
+  no concern, or a stage document that is not approved
   a /worktree refusal
-  census drift
-  a critique escalation, C1 to C6
-  the roster gate
-  the push gate
+  a census hit that needs a behavior the design does not describe
   a worker deviation
-  an integration finding that invalidates an open PR
+  a critique escalation: C1 to C6, a batch 1 deviation, or batch 1 failing after two reworks
+  a check that still fails after two CI fixes
 ```
 
-## Compose the milestones
+## Cut the worktree
 
-Skip anything the `/plan` fork already confirmed — do not re-ask what the user just settled.
+Cut one worktree and branch for each repository the concern touches. `map.md`'s `repos`
+frontmatter names the map's repositories. The design's `## Structure` says which of them this
+concern touches.
 
-1. **Compose milestones from the plan's slices.** A milestone's outcome is one sentence with no
-   `and`. Add slices while that sentence stays true. Open a new milestone once the sentence needs
-   an `and`. That is the whole test.
+1. **Resolve each repository's container.** `concern.md` records it, on its `Repo:` line, which
+   `/map` writes. Where that line is missing, take the session's working directory where it
+   belongs to that repository, and `<the Solo project's path>/<repo>` otherwise. Where neither
+   holds it, ask the user for its path, and write it to the `Repo:` line.
 
-   A milestone may span repositories, and it then lands **one PR per repository it touches**.
-   Each PR title states the milestone's outcome, scoped to its repository.
-2. **Order the milestones into a DAG.** Aggregate every slice's `after` constraint onto the
-   milestones that hold the two slices. That aggregate is the dependency half of the order.
+   Derive the container from that path with the one derivation `/worktree` states, under
+   `## Derive the container from any worktree`. Use it verbatim, and write no second copy.
+   `git rev-parse --show-toplevel` is the wrong command here. It returns `<container>/main` in a
+   converted repository, and `/worktree cut` then refuses the container as a plain clone.
+2. **Choose the base.** The base is `origin/HEAD`, unless this concern stacks on an unmerged one.
+   It stacks where its `concern.md` `after` names a concern whose PR has not merged. That
+   concern's `implementation.md` carries the PR in its `pr` field. Read its branch and its state:
+   ```bash
+   gh pr view <the predecessor's PR URL> --json headRefName,state
+   ```
+   The base is then that branch, in this repository.
+3. **Write the branch key, then cut:**
+   ```
+   kv_set(key="map:<map-slug>:concern:<concern>:branch:<repo>", value="<branch>")
+   /worktree cut <container> <concern> <branch> <base>
+   ```
+   **The key goes first, and that order is load-bearing.** `/worktree` reads the key to tell a
+   resume from a collision. Write it after the cut, and a run that dies between the two takes the
+   collision branch. It then escalates over its own branch.
 
-   **File overlap forces ordering, never parallelism.** Add an edge for every file two milestones
-   share. The loop is sequential either way, so this edge decides which of the two ships first.
-   The second branch would otherwise carry a conflict the user never approved.
-3. **Schedule the waves inside each milestone.** `references/implement-waves.md` carries the
-   rules that turn file overlap into a wave order.
+   **Pass the container path, never the repository name.** `/worktree` substitutes it into
+   `--git-dir`. Pass `agents` instead, and cut mode resolves against the session's working
+   directory and refuses an already-converted repository. `<repo>` stays the short name in every
+   KV key here.
+
+   That skill owns the layout, the provisioning, the naming, and every refusal it states. Add
+   nothing to its procedure, and do not paraphrase it.
+
+   **A `Blocked` from `/worktree` stops the run.** It refuses a plain clone, and it refuses a
+   repository that carries no provisioning script. Pass that report to the user as it stands, and
+   cut no second worktree. The tree it kept is the one the retry reuses.
+
+   The branch is `<type>/<map-slug>-<concern>`, per `solo-agent-orchestration`. **Pass the branch
+   and the base to `/worktree`, which builds neither.** `<type>` is `feat`, `fix`, or `chore`, and
+   this skill holds that choice. Let `/worktree` construct the name a second time, and the two can
+   differ from the key you just wrote.
+
+   **A resumed run may find the worktree still standing.** A run that stopped before teardown
+   leaves one behind, and `solo-agent-orchestration` carries both tests. Reuse a recorded path
+   that holds this concern's branch, and stop where it holds anything else.
+
+   `/worktree` records the tree path under `map:<map-slug>:concern:<concern>:worktree:<repo>`.
+   Both keys carry the concern and the repository, and `solo-agent-orchestration` says why.
+
+## Slice the concern
+
+A resumed run skips this section, because its todos already carry the slices.
+
+1. **Derive the slices from the requirements and the design.** A slice is narrow and vertical:
+   one coherent change, in exactly one repository, that stands on its own. Each slice carries:
+   ```
+   files        every path it touches; the census below completes this list
+   criteria     the acceptance criteria it satisfies, with their proof commands and invariants
+   constraint   optional: same-worker as <slice>, or after <slice>
+   ```
+   The design's `## Structure` gives the files, and the requirements give the criteria. Every
+   criterion lands in at least one slice.
+
+   **`constraint` has exactly two forms.** `same-worker as <slice>` ties two slices that must not
+   drift apart. A shared clause that must stay byte-identical is one case. A rename and its call
+   sites is another. `after <slice>` marks a genuine dependency, such as documenting a result.
+   Anything else is scheduling, and file overlap already decides it.
+
+   **Split any slice that spans two repositories.** A slice that straddles two repositories fits
+   neither worktree.
+2. **Run the inbound-reference census in the worktree.** It is a required step, not a
+   thoroughness reminder. Every slice must declare every path it touches. The census finds the
+   paths you did not think of.
+
+   Take each file a slice changes, and each symbol it renames or removes. Search for three kinds
+   of inbound reference:
+   ```
+   caller     every site that imports, calls, includes, or spawns the thing you change
+   test       every test that exercises it, by name or through its public entry point
+   standard   every rule, ADR, README, or skill whose text your change makes false
+   ```
+   Add every path the search returns to that slice's files. A hit in another repository belongs to
+   another slice, because a slice covers exactly one repository.
+
+   The third kind is the one that gets missed. A change to a rule falsifies the README table that
+   describes it. No import points from one to the other, so grep the prose as well as the code.
+
+   Nineteen of thirty sessions shipped an incomplete file list, and one run reported ten affected
+   waves of fourteen. The census decides which tasks run in parallel, because file overlap orders
+   the waves.
+
+   **A census hit can be a deviation.** A path outside the design's `## Structure` stays in scope
+   when its change only follows the design. A falsified README sentence is one such path. A path
+   that needs a behavior the design does not describe is a deviation. Stop and put it to the user. Do not
+   widen the design yourself.
+
+   **A census hit can reveal a missing `after`.** An open PR of another concern may change a file
+   this concern changes, with no `after` between the two. Record a proposed map edit that orders
+   them. The later branch would otherwise carry a conflict the user never approved.
+3. **Schedule the waves.** `references/implement-waves.md` carries the rules that turn file
+   overlap into a wave order.
 4. **Assign each task a model and effort tier.** A task does not inherit these from the session.
    Judge by what the task demands. A mechanical edit against precise line references is not a
    contract-preserving rewrite, and the two should not cost the same. `list_agent_tools` resolves
    the runtime, and model and effort vary within it.
-5. **Gate the roster.** This is an approval stop, not an announcement. Milestones and their PR
-   titles come first. Waves and tiers come second, inside the milestone that holds them.
 
-   **Approve — roster for `plan/<slug>`**
-
-   ```
-   2 milestones, 4 workers.
-
-     M1  reserve a chat vocabulary for messages that need a reply
-         agents  feat(rules): reserve a chat vocabulary for messages that need a reply
-         wave 1
-           A  rules/chat-vocabulary.md                       opus · xhigh
-              Author one rule from scratch, matching house style across six
-              existing files.
-         wave 2
-           B  skills/{research,retro,grill}/SKILL.md         sonnet · medium
-              Three localized edits against precise line references.
-
-     M2  deliver each milestone as its own PRs
-         agents  feat(skills): deliver each milestone as its own PRs
-         after M1 — both touch README.md
-         wave 1
-           C  skills/{plan,implement}/SKILL.md               opus · xhigh
-              Rewrite two skills onto one delivery vocabulary that must not
-              drift between them.
-           D  rules/pr-first-contributions.md                sonnet · high
-              Add stacked-PR guidance to a general rule without turning it
-              into an appendix.
-
-     Critique per milestone: <models> — from the plan.
-     Sandbox: <runtime> cannot deny a worker's git writes.
-   ```
-
-   Adjust any milestone boundary, model, effort, or grouping, or approve as proposed.
-
-   ⏸ waiting on you: approve the roster, or name what to change
-
-   **The summary is the justification.** One task reads "three localized edits against precise
-   line references". Another reads "a rewrite of two skills onto one vocabulary". Each argues for
-   a different tier by itself. Write the summary so the tier follows from it, and add no separate
-   rationale field.
-
-   The roster is where a milestone that does two things, or two milestones that should be one,
-   becomes obvious.
-
-   **The critique roster comes from the plan.** `/plan` records it under `### References`, and
-   `--critique` overrides that. Restate it in this gate as a line the user can change, and do not
-   ask again. One run holds one roster, or nobody can compare its milestone findings. Ask only
-   where neither the argument nor the pad names one, and then ask inside this gate. One stop, not
-   two. `list_agent_tools` resolves the enabled runtimes. Never hardcode a roster.
+   **Write each task's summary so its tier follows from it.** One task reads "three localized
+   edits against precise line references". Another reads "a rewrite of two skills onto one
+   vocabulary". Each argues for a different tier by itself, and needs no separate rationale.
 
    **Disclose a runtime that cannot deny a worker's git writes.** `rules/solo-agent-orchestration.md`
    carries the posture, and the adapter names what each runtime can enforce. Read both before you
-   propose a runtime. Where one cannot deny those writes, include the `Sandbox` line above and
-   name the exposure. Two workers in one tree cross-commit each other's work. Omit that line where
-   every runtime in the roster denies them. Do not restate a flag, and never promise a denial the
-   roster cannot give.
-6. **Create the todos** — one per approved task, tagged with its milestone. The body carries the
-   **task spec**: the slices it covers, their files, their verification, and their proof
-   commands. The plan holds slices; the todo holds the grouping, which exists nowhere else. The
-   worker reads its own todo, so this is the only place the spec belongs.
+   pick a runtime. Where one cannot deny those writes, the first `Running` block carries a
+   `Sandbox:` line. It names the exposure: two workers in one tree cross-commit each other's work.
+   Never promise a denial the runtime cannot give.
+5. **Create the todos** — one per task. The body carries the **task spec**: the slices it covers,
+   their files, their criteria, and their proof commands. The requirements hold the criteria. The
+   todo holds the grouping, which exists nowhere else. The worker reads its own todo, so this is
+   the only place the spec belongs.
    ```
    todo_create(title="<task>: <name>", body=<task spec>,
-               tags=["plan:<slug>", "milestone:<m>", "project:<repo>", "task:<letter>"])
+               tags=["map:<map-slug>", "concern:<concern>", "project:<repo>", "task:<letter>"])
    todo_add_blocker(todo_id=<dependent>, blocker_id=<prerequisite>)
    ```
    Keys and tags are lowercase. Lowercase any slug that carries an uppercase timestamp.
@@ -164,226 +235,208 @@ Skip anything the `/plan` fork already confirmed — do not re-ask what the user
    Two checks in the corpus could never fire. `grep -rn 'App\\Models'` searched for two literal
    backslashes, and `grep -ci Test` matched an unrelated domain string. Both read as passing
    evidence.
+6. **Open the record.** Write `implementation.md` in the shape `## The record` gives, with
+   `status: draft`, `awaiting: null`, and `pr: null`. Fill its `## Slices` section now.
 
-## The milestone loop
+## Build the concern
 
-**This loop is sequential.** Run the milestones in DAG order, one at a time. One pass ships one
-milestone, then starts again at step 1. Two milestones never run at once, whatever their DAG
-edges allow. This skill therefore offers no concurrency setting, and it asks the user for none.
-The waves inside one milestone still run their tasks concurrently — that is step 3's job.
-
-1. **Cut a worktree and branch for each repository the milestone touches.** Write the branch key
-   first, then cut:
+1. **Run the waves.** `references/implement-waves.md` carries the spawn, the brief pad, the
+   pointer, the guard, and the join. Each wave commits its own tasks at its join, so no task
+   commit follows the last wave.
+2. **Critique the concern's diff, once per repository it touches.** Name the base explicitly, and
+   pass the concern:
    ```
-   kv_set(key="plan:<slug>:milestone:<m>:branch:<repo>", value="<branch>")
-   /worktree cut <container path from the plan's **Repos**: line> <milestone> <branch> <base>
+   /critique --base <that repository's base> --concern <map-slug>/<concern>
    ```
-   **The key goes first, and that order is load-bearing.** `/worktree` reads the key to tell a
-   resume from a collision. Write it after the cut, and a run that dies between the two takes the
-   collision branch. It then escalates over its own branch.
+   The base is the ref `## Cut the worktree` chose for that repository. Without `--base`,
+   `/critique` falls back to the default branch. A stacked concern then reviews its predecessor's
+   diff as its own, and re-raises findings the user already settled.
 
-   **Pass the container path, never the repository name.** `/worktree` substitutes it into
-   `--git-dir`. Pass `agents` instead, and cut mode resolves against the session's working
-   directory and refuses an already-converted repository. `/plan` records the container path on
-   its `**Repos**:` line. `<repo>` stays the short name in every KV key here.
+   **One `--base` cannot express two repositories.** One repository may stack on a predecessor
+   branch while another starts from `origin/HEAD`. One ref is then wrong for one of them.
 
-   That skill owns the layout, the provisioning, the naming, and every refusal it states. Add
-   nothing to its procedure, and do not paraphrase it.
+   `/critique` runs in `apply` mode here. Its runner performs the batch 1 rework itself, and it
+   applies each accepted fix. Both land uncommitted in this concern's worktrees. It also appends
+   each systemic finding to `map.md`'s `## Proposed edits`.
 
-   **A `Blocked` from `/worktree` stops this milestone.** It refuses a plain clone, and it refuses
-   a repository that carries no provisioning script. Pass that report to the user as it stands, and
-   cut no second worktree. The tree it kept is the one the retry reuses.
-
-   The branch is `<type>/<slug>-<milestone>`, per `solo-agent-orchestration`. The base is
-   `origin/HEAD`, or the predecessor milestone's branch in that repository when the milestones
-   stack there. **Pass both to `/worktree`, which builds
-   neither.** `<type>` is `feat`, `fix`, or `chore`, and this skill holds that choice. Let
-   `/worktree` construct the name a second time, and the two can differ from the key you just
-   wrote.
-
-   **A resumed run may find the worktree still standing.** A run that stopped before teardown
-   leaves one behind, and `solo-agent-orchestration` carries both tests. Reuse a recorded path
-   that holds this milestone's branch, and stop where it holds anything else.
-
-   `/worktree` records the tree path under `plan:<slug>:milestone:<m>:worktree:<repo>`. Both keys
-   carry the milestone and the repository, and `solo-agent-orchestration` says why.
-2. **Re-check the census in the worktree.** The plan's `**Files**:` lists came from a census at
-   plan time. Repeat it now for this milestone's slices, in the tree you just cut.
-   `/plan` names what it searches for: the caller, the test, and the standard your change
-   falsifies.
-
-   **Escalate on drift.** A path the census now returns, and the plan does not declare, is a
-   deviation. Stop and put it to the user. Do not widen a task's declared paths yourself.
-3. **Run the milestone's waves.** `references/implement-waves.md` carries the spawn, the brief
-   pad, the pointer, the guard, and the join. Each wave commits its own tasks at its join, so no
-   task commit follows the last wave.
-4. **Critique this milestone's diff, once per repository it touches.** Name the base explicitly,
-   and pass the plan:
-   ```
-   /critique --base <that repository's effective base> --plan <the plan pad>
-   ```
-   A repository's effective base is the ref step 1 cut from there. That is `origin/HEAD`, or the
-   predecessor milestone's branch where those milestones stack.
-
-   **One `--base` cannot express two repositories.** Repository A stacks on `fix/<slug>-m1` while
-   repository B starts from `origin/HEAD`. One ref is then wrong for one of them. It either fails
-   to resolve, or it pulls in commits this milestone never touched.
-
-   Without `--base`, `/critique` falls back to the default branch and reviews the predecessor's
-   diff as this milestone's. It then re-raises findings the user already settled.
-
-   Use the roster the plan supplied, in every invocation. `/critique` does not ask again.
-5. **Apply the filter and present what survives.** `/critique` owns the filter, the ledger, and
-   the presentation of a finding. Point at it and add nothing. Fix no finding unilaterally. Each
-   repository's invocation returns its own ledger, so present them grouped by repository.
-
-   **Commit the remedies.** `/critique` applies each accepted fix in this milestone's worktrees,
-   and it leaves them uncommitted. Commit them here, once per repository, before the push gate:
+   `/critique` owns the filter, the ledger, the escalations, and the presentation of a finding.
+   Point at it and add nothing. Fix no finding unilaterally.
+3. **Commit the critique's changes, once per repository:**
    ```bash
-   git add <the paths the ledger's fixes touched>
-   git commit -m "fix(<scope>): apply the critique remedies for milestone <m>"
+   git add <the paths the rework and the ledger's fixes touched>
+   git commit -m "fix(<scope>): apply the critique remedies for <concern>"
    ```
-   This is the one commit outside a wave join. Skip it, and the push gate counts commits over a
-   dirty tree.
-6. **Gate the push.** `pr-first-contributions` forbids a push without explicit approval, and this
-   gate is where you ask. Re-run its staleness check first.
+   This commit and the CI fixes are the only commits outside a wave join. Skip this one, and the
+   PR omits every remedy.
+4. **Push, and open one draft PR per repository.** Re-run the staleness check and the quality
+   gates from `pr-first-contributions` first. Then push and open the PR, per its
+   `## Push and open the PR`. No push gate exists, because the approved design authorized these
+   pushes and this draft PR.
 
-   **Approve — push milestone `<m>`**
-
-   ```
-     <repo>   <N> commits   base <branch>   "<the PR title>"
-     <repo>   <N> commits   base <branch>   "<the PR title>"
-
-     Quality gates: <results>
-   ```
-
-   ⏸ waiting on you: approve the push for milestone `<m>`
-7. **Push and open one PR per repository the milestone touches.** Follow
-   `pr-first-contributions`, which owns the stacked-PR base and the title spec. Update an open PR
+   The title states the concern's outcome, in the title spec the rule gives. Update an open PR
    rather than opening a second one.
-8. **Run the integration critique, once the last milestone has pushed.** This is a step, not an
-   option. Skip it on every earlier milestone.
+
+   **A stacked concern opens its PR on its predecessor's branch, then registers the chain:**
+   ```bash
+   gh pr create --draft --base "<the predecessor concern's branch>" --title "<title>" --body "…"
+   gh stack link --base <the default branch> <the first branch> … <this concern's branch>
    ```
-   /critique --integration <slug> --plan <the plan pad>
+   The rule's `## Stacked PRs` says what the body names. `gh stack link` registers the chain as a
+   native GitHub stack. Never use `gh stack submit`, because it cannot take a PR title or body.
+   Where `gh stack` is not installed, skip the link, and say so in `Landed`.
+5. **Wait for CI.**
+   ```bash
+   gh pr checks <the PR URL> --watch
    ```
-   It runs the four integration lenses with the roster the plan supplied. One of them is the
-   reason this step exists: did every slice the plan declared land in some milestone? A
-   per-milestone critique sees one milestone's diff, so it cannot answer that.
+   On a failed check, read its log with `gh run view <run id> --log-failed`. Fix the cause in the
+   worktree, within the design. Commit only the paths the fix touched, push, and watch again.
 
-   Every milestone pushed its branch, so the diffs live on the remote. `/critique` step 1 states
-   how it resolves them. Pass the slug and the plan, and add nothing to that procedure.
+   **Two CI fixes is the limit.** A check that still fails after the second fix stops the run under
+   `Blocked`. A fix that departs from the design is a deviation, and it stops the run at once.
 
-   **This pass needs no worktree, and that is why it can run.** Step 10 of an earlier milestone
-   removed the worktree of every repository this milestone leaves alone.
+   **A repository with no CI takes the proof commands as its gate.** A repository with no workflow
+   under `.github/workflows/` has no CI. Run every proof command in the worktree instead, and
+   `Landed` says that the proof commands were the gate.
 
-   **The integration pass edits nothing, and `/critique` owns that.** Its ledger line reads
-   `remedy:` rather than `fixed:`. Every milestone it reviews already shipped its PRs, so an
-   accepted remedy lands as a follow-up milestone. Propose that milestone and let the user approve
-   it. Escalate as `Blocked` where a finding invalidates a PR the run already opened.
+   Right after a push, a repository with workflows can report no checks yet. Run the command again
+   before you read that as no CI.
+6. **Write the record.** Complete `implementation.md`, per `## The record`. Set
+   `status: awaiting-you`, `awaiting: review the PR`, and `pr` to the PR URL. Set `stage: in-review`
+   in the concern's `concern.md`.
 
-   **It runs before the landing so its result reaches the user inside `Landed`.** Run it after,
-   and the run speaks a sixth time.
-9. **Announce the landing.** It reports and does not block.
+   **Append each proposed map edit to `map.md`'s `## Proposed edits`.** Number each one after the
+   last edit there. `/critique` already appended its systemic findings, so add only the rest:
+   - a settled deviation that reaches beyond this concern;
+   - new fog that the build uncovered;
+   - a missing `after` that the census found.
 
-   **Landed — `<milestone>`**
+   Where the map awaits nothing else, set its `status: awaiting-you`, and its `awaiting` to the
+   edits it holds. `/map` applies or rejects each edit.
+7. **Announce the landing.** This message ends the run.
 
+   **Landed — `<map-slug>/<concern>`**
+
+   <the concern's outcome, and what the build did, in two sentences or fewer>
+
+   - **PR:** <the PR URL>, draft, base `<base>`, <N> commits. One line per repository.
+   - **CI:** every check passed, after <n> fixes. With no CI: the proof commands were the gate,
+     and all <n> pass.
+   - **Deviations:** one sentence each, or none.
+   - **Proposed map edits:** one sentence each, or none.
+   - **Record:** `<the absolute path of implementation.md>`.
+
+   Then the ledger, in the shape `/critique` defines. The record holds the same ledger.
+
+   `Landed` carries no footer. The run ends here, and the user reviews the PR. CI passed before
+   this message, as `pr-first-contributions` requires before the review prompt.
+8. **Tear down and close.** Do all of these, in this order:
    ```
-   <the milestone's outcome, in one sentence>
-
-     <repo>   <PR url>   <N> commits   base <the default branch>
-     <repo>   <PR url>   <N> commits   base <the predecessor milestone's branch>
-
-     Quality gates: <results>
-     Critique:      <N> findings, <M> presented, <models>
-     Integration:   <N> findings, <M> presented, <models>
+   timer_cancel(timer_id=<each guard this run armed>)
+   close_process(process_id=<each worker of this run>)
+   lock_release for any lock a dead worker left held
+   stop the stack and remove the worktree, per /worktree's teardown block
+   todo_delete every todo that carries both map:<map-slug> and concern:<concern>
+   kv_delete every map:<map-slug>:concern:<concern>:* key
+   git worktree prune in each container, per solo-agent-orchestration
    ```
+   The branch lives on the remote once the push succeeds, so the worktree is disposable. A guard
+   left armed fires later, about workers that finished long ago.
 
-   Then the ledger, in the shape `/critique` defines. `Landed` carries no footer, because the
-   run continues.
+   **Check both tags on each todo.** `todo_list` matches any tag it receives. Two maps can each
+   hold a concern named `c1-ingest`, so one tag alone reaches the other map's todos.
 
-   **The last milestone's block carries the `Integration:` line and the integration ledger too.**
-   Omit both on every earlier milestone, because step 8 ran nothing there.
-10. **Tear down and clean up.** Do all four, in this order:
-    ```
-    timer_cancel(timer_id=<each guard armed for this milestone>)
-    close_process(process_id=<each worker of this milestone>)
-    lock_release for any lock a dead worker left held
-    stop the stack and remove the worktree, per /worktree's teardown block
-    ```
-    The branch lives on the remote once the push succeeds, so the worktree is disposable. A guard
-    left armed fires during a later milestone, about workers that finished long ago.
+   **Delete the todos rather than leaving them completed.** `todo_complete` keeps the todo, so a
+   finished run otherwise leaves one per task in Solo forever. Each report scratchpad already holds
+   what the task did.
 
-Then start the next milestone.
+   **Close is silent.** `Landed` already carried the PR URLs, the CI result, and the record's path.
+   Repeat none of it.
 
-**Critique and triage block the next milestone. The user's PR review does not.** A finding that
-survives the filter may change what the next milestone should do, so the loop waits for it. The
-run would otherwise stall behind a human queue. Open the PR, announce the landing, and move on.
+## The record
+
+`<docs_dir>/maps/<map-slug>/<concern>/implementation.md` is the user's record of the build:
+
+```markdown
+---
+type: implementation
+map: <map-slug>
+concern: <concern>
+status: awaiting-you          # draft while the run builds
+awaiting: review the PR       # null while the run builds
+pr: <the PR URL>              # null until it opens; a list where the concern spans repositories
+---
+## Where the code is
+<each repository: its branch, its PR and base, its commits, and the CI result or the proof gate>
+
+## Slices
+<each task: its letter, its slices, its files, and its wave>
+
+## Decided: <topic>
+<one section per decision the user settled during the run, in the decision format>
+
+## Critique ledger
+<the ledger, in the shape /critique defines>
+
+## Deviations from the design
+<each departure the user approved, or none>
+
+## Proposed map edits
+<each edit this run appended to map.md, or none>
+```
+
+Omit `## Decided` where the user settled nothing during the run.
+
+**A stop keeps the record current too.** A `Blocked` or `Failed` sets `status: awaiting-you`, and
+`awaiting` to the footer's one thing. The answer sets them back to `draft` and `null`.
 
 ## Escalation
 
 A worker escalates when it cannot self-resolve. It also escalates when finishing would mean
-deviating meaningfully from what the user approved. A worker that writes an undeclared path
-deviates from the task.
+deviating meaningfully from the approved requirements or design. A worker that writes an
+undeclared path deviates from the task.
 
-**In-flight workers in the same wave finish.** They hold disjoint file scopes, so no other work
-depends on the problem.
+**A deviation stops the run.** In-flight workers in the same wave finish. They hold disjoint file
+scopes, so no other work depends on the problem. Do not start the next wave until the user
+resolves the deviation.
 
 The worker's report scratchpad is the durable record, and its completion signal says whether it
-escalated. The wave join is the only place an escalation appears. Resolve every escalation before
-the milestone lands, or the run stops here.
+escalated. The wave join is the only place a worker's escalation appears.
 
-**Blocked — milestone `<m>` wave `<N>`**
+**Blocked — `<concern>` wave `<N>`**
 
 ```
   A  ✓ committed
-  B  ⚠ escalated — <what the worker found>
+  B  ⚠ escalated
   C  ⊘ blocked behind B
-
-The plan assumed <X>; the code actually does <Y>.
-Options: <adjust the plan / a different approach / drop the slice>
-
-I recommend <the option>, because <the ground it rests on>.
 ```
+
+- **Found:** the design assumed <X>; the code actually does <Y>. Task B's report is scratchpad
+  <id>.
+- **Deciding:** how task B proceeds, because each way forward departs from the approved design.
+- **Criticality:** <high, medium, or low>, and why.
+- **Reversible:** <yes, partly, or no>, and what undoing it costs.
+
+**A. <amend the design>**, **B. <a different approach>**, and **C. <drop the slice>** each take
+their own section, with the five option fields.
+
+**Recommendation:** <the option>, because <the ground it rests on>.
 
 ⏸ waiting on you: pick one option for task `B`
 
-**The recommendation is mandatory.** `rules/chat-vocabulary.md` requires one on every question, and
-a `Blocked` options list ranks nothing by itself. Name the option you would take and the ground it
-rests on. An `Approve` gate needs no separate line, because its proposal is its own
-recommendation.
+`rules/chat-vocabulary.md` gives the full question shape. **The recommendation is mandatory.** A
+`Blocked` options list ranks nothing by itself, so name the option you would take and its ground.
 
-Do not start the next wave until you resolve this. If the plan needs a change, update the pad so
-it stays the record of what the user actually agreed.
+**A settled deviation updates the documents.** Edit `design.md` or `requirements.md`, so each one
+stays the record of what the user agreed. Record the deviation under
+`## Deviations from the design` in `implementation.md`. A deviation that reaches beyond this
+concern also becomes a proposed map edit.
 
 Automated verification failing is not automatically an escalation — a worker that can fix it
-within the plan's intent should. It escalates when the fix would require departing from the plan.
-
-## Close
-
-Close the run after the last milestone lands. Every milestone pushed its own PRs and tore down
-its own worktrees, and step 9 reported the integration critique. Nothing here opens a PR.
-
-1. `scratchpad_archive(scratchpad_id=<plan pad>)` — it has served its purpose
-2. `todo_delete` every todo tagged `plan:<slug>` — the run ended, so nothing reads the grouping now
-3. `kv_delete` every `plan:<slug>:*` key
-4. `close_process` any surviving worker
-5. `git worktree prune` in each container, per `solo-agent-orchestration`
-
-**Delete the todos rather than leaving them completed.** `todo_complete` keeps the todo, so a
-closed run otherwise leaves one per task in Solo forever. The README says todos exist only while
-this skill runs a plan, and step 2 is what makes that true. Each report scratchpad already holds
-what the task did.
-
-**Close is silent.** Each `Landed` already carried its own PR URLs, quality gates, and ledger.
-Repeat none of it here. `rules/chat-vocabulary.md` reserves five occasions, and a closing report
-is a sixth.
-
-**The integration critique runs before this section, and that order matters.** It compares the
-landed branches against the plan pad. Archive the pad first, and you remove half of that
-comparison.
+within the design should. It escalates when the fix would require departing from the design.
 
 ## Notes
 
-- Never commit to the default branch; never push or open a PR without explicit approval
-- If the plan turns out to be wrong, fix the plan and re-approve. Never let implementation
-  quietly diverge from the approved record
+- Never commit to the default branch. Push and open a PR only as `pr-first-contributions`
+  authorizes: this concern's branch, and its draft PR. Marking the PR ready waits for the user
+- If the design turns out to be wrong, stop and put it to the user. Never let the build quietly
+  diverge from the approved documents
