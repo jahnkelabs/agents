@@ -131,8 +131,10 @@ pad**. Fill its six sections:
 **A call from a map carries the map slug.** Where `/map`, `/requirements`, or `/design` calls,
 name each worker `research-<map-slug>-<area-slug>`, and its findings pad
 `research/<map-slug>/<slug>/<area-slug>`. Where a concern's stage called, name the worker
-`research-<map-slug>-<concern>-<area-slug>` instead. Tag every brief, guard, and findings pad
-`map:<map-slug>`. Add `concern:<map-slug>-<concern>` where a concern's stage called.
+`research-<map-slug>-<concern>-<area-slug>` instead.
+
+**Tag every brief, guard, and findings pad `transient`.** Add `map:<map-slug>` where a map called,
+and `concern:<map-slug>-<concern>` where a concern's stage called.
 
 Send only the pointer, per **The pointer shape** under **The PTY ceiling**:
 
@@ -166,8 +168,8 @@ On wake, read every worker's scratchpad. Connect findings across components, and
 `file:line` reference. Resolve a contradiction by reading the code again rather than by picking
 one report.
 
-Then `close_process` each worker and archive its per-area scratchpad — the research file
-replaces them.
+Then `close_process` each worker. Archive its per-area scratchpad, its brief pad, and the guard
+pad. The research file replaces them.
 
 ## Step 4 — Write the file
 

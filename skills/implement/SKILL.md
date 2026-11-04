@@ -31,8 +31,14 @@ completion — see [Escalation](#escalation).
   - **A resumed run** is a concern at `stage: implementing` with at least one todo that is not
     `completed`. The todos *are* the slicing, so reuse them rather than slicing again. Pick up at
     the first wave with open tasks.
-  - **A run stopped after its last join** is a concern at `stage: implementing` whose todos are
-    all `completed`. Every wave is built, so pick up at step 2 of `## Build the concern`, the critique.
+  - **A run stopped after the waves** is a concern at `stage: implementing` whose todos are all
+    `completed`. `implementation.md` records where it stopped, per repository. Read it, and pick up
+    in `## Build the concern`:
+    - no ledger for the repository under `## Critique ledger`: step 2, the critique;
+    - a ledger, and no PR for the repository in `pr`: step 3, the commit;
+    - a PR for the repository in `pr`: step 5, the CI wait. A review rerun keeps `pr` from the
+      last landing, so confirm that the worktree holds no uncommitted change and no unpushed
+      commit. Where it holds either, start at step 3.
   - **A review rerun** is a concern at `stage: in-review`. The review amended the documents, and
     the kept todos record what the run already built. Slice the amended documents again, and give
     each new task the next letter after the kept ones.
@@ -249,7 +255,9 @@ letters each new task after the last kept one.
    backslashes, and `grep -ci Test` matched an unrelated domain string. Both read as passing
    evidence.
 6. **Open the record.** Write `implementation.md` in the shape `## The record` gives, with
-   `status: draft`, `awaiting: null`, and `pr: null`. Fill its `## Slices` section now.
+   `status: draft`, `awaiting: null`, and `pr: null`. Fill its `## Slices` section now. Set
+   `## Critique ledger` to `Not run.` A review rerun resets the ledger the same way, and it keeps
+   `pr` as it stands.
 
 ## Build the concern
 
@@ -274,6 +282,11 @@ letters each new task after the last kept one.
 
    `/critique` owns the filter, the ledger, the escalations, and the presentation of a finding.
    Point at it and add nothing. Fix no finding unilaterally.
+
+   **Write each repository's ledger to the record as its call returns,** under
+   `implementation.md`'s `## Critique ledger`. Its proposed map edits are already there, because
+   `/critique` recorded them. The ledger also records each escalation the user settled, so a
+   resume raises none of them again.
 3. **Commit the critique's changes, once per repository:**
    ```bash
    git add <the paths the rework and the ledger's fixes touched>
@@ -288,6 +301,8 @@ letters each new task after the last kept one.
 
    The title states the concern's outcome, in the title spec the rule gives. Update an open PR
    rather than opening a second one.
+
+   **Write each PR URL to `implementation.md`'s `pr` as the PR opens.** A resume reads it there.
 
    **A stacked concern opens its PR on its predecessor's branch, then registers the chain:**
    ```bash
@@ -307,15 +322,12 @@ letters each new task after the last kept one.
    **Two CI fixes is the limit.** A check that still fails after the second fix stops the run under
    `Blocked`. A fix that departs from the design is a deviation, and it stops the run at once.
 
-   **A repository with no CI takes the proof commands as its gate.** A repository with no workflow
-   under `.github/workflows/` has no CI. Run every proof command in the worktree instead, and
-   `Landed` says that the proof commands were the gate.
-
-   Right after a push, a repository with workflows can report no checks yet. Run the command again
-   before you read that as no CI.
-6. **Write the record.** Complete `implementation.md`, per `## The record`. Set
-   `status: awaiting-you`, `awaiting: review the PR`, and `pr` to the PR URL. Set `stage: in-review`
-   in the concern's `concern.md`.
+   **A repository with no CI takes the proof commands as its gate.** `## Wait for CI` in
+   `pr-first-contributions` defines no CI, and it bounds the wait. Run every proof command in the
+   worktree instead, and `Landed` says that the proof commands were the gate.
+6. **Write the record.** Complete `implementation.md`, per `## The record`. Its ledger and its
+   `pr` are already there. Set `status: awaiting-you` and `awaiting: review the PR`. Set
+   `stage: in-review` in the concern's `concern.md`.
 
    **Record each proposed map edit under `implementation.md`'s `## Proposed map edits`,** in the
    shape `skills/map/SKILL.md` gives under `## Proposed map edits`. Number each one after the last
@@ -384,7 +396,7 @@ pr: <the PR URL>              # null until it opens; a list where the concern sp
 <one section per decision the user settled during the run, in the decision format>
 
 ## Critique ledger
-<the ledger, in the shape /critique defines>
+<the ledger, in the shape /critique defines, one per repository; Not run. until the critique returns>
 
 ## Deviations from the design
 <each departure the user approved, or none>
@@ -435,10 +447,11 @@ their own section, with the five option fields.
 `rules/chat-vocabulary.md` gives the full question shape. **The recommendation is mandatory.** A
 `Blocked` options list ranks nothing by itself, so name the option you would take and its ground.
 
-**A settled deviation updates the documents.** Edit `design.md` or `requirements.md`, so each one
-stays the record of what the user agreed. Record the deviation under
-`## Deviations from the design` in `implementation.md`. A deviation that reaches beyond this
-concern also becomes a proposed map edit.
+**A settled deviation lives only in `implementation.md`.** Record it under
+`## Deviations from the design`. Never edit `design.md` or `requirements.md`: an approved document
+changes only when the user reruns its skill. `/critique --concern` reads that section as part of
+the intent, so it checks the code against the departure the user approved. A deviation that
+reaches beyond this concern also becomes a proposed map edit.
 
 Automated verification failing is not automatically an escalation — a worker that can fix it
 within the design should. It escalates when the fix would require departing from the design.

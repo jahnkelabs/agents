@@ -30,8 +30,8 @@ With no arguments:
 >
 > ⏸ waiting on you: name the concern
 
-**Stop where the map still awaits its first approval**, with `awaiting: approve the map`. Send the
-user to `/map <map-slug>`.
+**Stop where the user has not approved the map yet.** That holds where `map.md` reads
+`status: draft`, or `awaiting: approve the map`. Send the user to `/map <map-slug>`.
 
 ## Step 1 — Read
 

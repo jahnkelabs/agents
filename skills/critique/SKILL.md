@@ -68,7 +68,9 @@ Each lens file names its intent per target kind, in its `intent` frontmatter. Th
 supplies the `concern` kind.
 
 - **`--concern <map-slug>/<concern>`** resolves the concern's `requirements.md` and `design.md`
-  under `<docs_dir>/maps/<map-slug>/<concern>/`. The intent is those two documents.
+  under `<docs_dir>/maps/<map-slug>/<concern>/`. The intent is those two documents. Where
+  `implementation.md` holds `## Deviations from the design`, that section joins the intent beside
+  `design.md`. Each entry is a departure the user approved, and `design.md` does not record it.
 - **No `--concern`** supplies no intent. `run.md` drops every lens that checks the target against
   one, and names each in the ledger's header. A standalone `/critique src/foo.php` has nothing to
   check requirements against.

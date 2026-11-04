@@ -72,7 +72,8 @@ holds code. A target that holds no code takes only the lenses whose question it 
 the front end names that set, as `/critique` does for a requirements or design document, take the set it names.
 
 Each agent reads the part of the intent that its `intent` frontmatter key names for the target kind. Where that part is
-absent, the brief carries `none` as its intent. A lens whose question checks the target against
+absent, the brief carries `none` as its intent. Where the key names `design.md` and the intent
+carries the concern's approved deviations, the agent reads them with `design.md`. A lens whose question checks the target against
 that intent then has nothing to check, so it drops out. Every other lens runs on the target alone.
 
 Name every lens that did not run in the ledger's header, with its reason. When the front end

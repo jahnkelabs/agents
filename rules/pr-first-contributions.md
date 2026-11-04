@@ -78,7 +78,7 @@ gh pr checks <PR URL> --watch
 
 Fix a failed check on the branch, then watch again. Push that fix only with approval, or where an authorization above covers the branch. Report the result with the PR URL. Take a failure you cannot fix within scope to the user. Quote the shortest decisive line of its log.
 
-A repository with no CI has no checks to wait for. Its quality gates are then the gate, and the review request says so.
+A repository with no CI has no checks to wait for. Its quality gates are then the gate, and the review request says so. A PR that reports no check after three polls one minute apart has no CI.
 
 ## Stacked PRs
 

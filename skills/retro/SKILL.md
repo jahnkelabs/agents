@@ -130,7 +130,7 @@ scratchpad, so it cannot edit the skills it reports on. `solo-agent-orchestratio
 posture, and the adapter gives the arguments. Read what the adapter says its runtime cannot bound.
 
 Write the worker's brief to a scratchpad, per `solo-agent-orchestration`'s **The worker brief
-pad**. Fill its six sections:
+pad**. Tag the brief pad and the guard pad `transient`. Fill its six sections:
 
 ```
   ## Solo context   agent_instructions, pasted verbatim
@@ -207,7 +207,8 @@ you synthesize.
 On wake, read every worker's scratchpad. Connect findings across areas, and keep every session id
 and command. Re-run a command yourself when two workers disagree on a count.
 
-Then `close_process` each worker and archive its per-area scratchpad.
+Then `close_process` each worker. Archive its per-area scratchpad, its brief pad, and the guard
+pad.
 
 Reuse the slug built in step 2, and write `<docs_dir>/retro/<slug>.md`.
 

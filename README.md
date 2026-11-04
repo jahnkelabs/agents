@@ -187,8 +187,8 @@ Base shows each concern's `order`, `outcome`, `after`, and `stage`. The map hold
 **Findings flow back to the map.** A stage that finds work the map missed records a proposed map
 edit under `## Proposed map edits`, in the document that stage owns. When `/implement` calls
 `/critique`, it records each systemic finding in `implementation.md` too. `/map` is the only writer
-of `map.md`. It gathers the pending edits and applies or declines each one, one `Approve` at a
-time.
+of `map.md`. It gathers the pending edits, a decision included, and puts them to you in one
+`Approve`. It then applies or declines each one.
 
 ```mermaid
 flowchart LR
@@ -312,7 +312,7 @@ Each concern document carries only its own review state. `status` is `draft`, `a
 | `done` | every concern reads `stage: done` |
 
 A proposed map edit returns `approved` to `awaiting-you`. The close-out sets `done` once every
-concern is `done`. An edit that adds a concern reopens a `done` map.
+concern is `done` and no edit waits. An edit that adds a concern reopens a `done` map.
 
 `design.md` holds only the parts that apply, such as `## Structure` and
 `## Call, query, and network patterns`.
@@ -456,8 +456,8 @@ what it found and stops. So does a worker that would have to depart meaningfully
 approved requirements or design. Neither one improvises. The record is the worker's report
 scratchpad, and its completion signal says that it escalated, so you have one place to look. Other
 workers in the wave finish, and everything appears together at the join. A settled deviation
-updates `design.md` or `requirements.md`, and `implementation.md` records it under
-`## Deviations from the design`.
+lives only under `implementation.md`'s `## Deviations from the design`. `/implement` never edits
+`design.md` or `requirements.md`, and the critique reads that section as part of the intent.
 
 **Critique is adversarial, with one agent per lens.** A lens is one question about the target,
 such as requirements fidelity, correctness, or security. `references/critique/lenses/` holds one

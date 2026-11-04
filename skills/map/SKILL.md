@@ -147,8 +147,9 @@ Each entry takes this shape:
 - **The marker** is `pending` until this skill settles the entry. It then reads `applied` or
   `declined: <the reason>`.
 - **`awaiting` names the pending edit.** The stage that records an edit sets its document's
-  `awaiting` to `settle proposed map edits`, once nothing else waits on that document. This skill
-  sets it to `null` when it settles the document's last pending entry.
+  `awaiting` to `settle proposed map edits`, once nothing else waits on that document. When this
+  skill settles the document's last pending entry, it sets `awaiting: null` only where `awaiting`
+  reads `settle proposed map edits`. Each writer clears only its own value.
 - **An empty section reads `None.`**
 
 ## Input
@@ -183,11 +184,16 @@ else.
 3. Where every PR reads `MERGED`, close the concern:
    ```
    set stage: done in its concern.md
+   set status: approved in its implementation.md, and set its awaiting to
+     settle proposed map edits where an entry reads pending, or null where none does
    kv_delete every map:<map-slug>:concern:<concern>:* key
    todo_delete every todo tagged concern:<map-slug>-<concern>
    ```
-4. Where every concern of a map now reads `stage: done`, set that map's `status: done` and
-   `awaiting: null`.
+4. Settle the status of each map whose concern this step closed. Where the map has at least one
+   `concern.md`, and every concern reads `stage: done`, read `## Proposed map edits` in each
+   concern document:
+   - no entry reads `pending`: set `map.md`'s `status: done` and `awaiting: null`;
+   - an entry reads `pending`: set `status: awaiting-you` and `awaiting: approve proposed map edits`.
 
 A concern that spans repositories holds a list in `pr`, and it closes only once every PR merges.
 Leave every other concern as it stands. Name each closed concern in one line, and say nothing
@@ -333,7 +339,7 @@ views:
     name: Concerns
     order:
       - order
-      - file.name
+      - concern
       - outcome
       - after
       - stage
@@ -367,11 +373,13 @@ done           every concern reads stage: done
 
 - **`draft` to `awaiting-you`:** step 6 puts the map to the user.
 - **`approved` or `done` to `awaiting-you`:** `## Update a map` finds a pending map edit, or the
-  user names a change.
+  user names a change. The close-out does the same where it closes the last concern while an edit
+  is pending.
 - **`awaiting-you` to `approved`:** the user approves the map, or the last edit settles.
 - **`awaiting-you` to `done`:** the last edit settles, and every concern still reads `stage: done`.
   An edit that adds a concern therefore reopens a finished map.
-- **`approved` to `done`:** the close-out under `## Close merged concerns` closes the last concern.
+- **`approved` to `done`:** the close-out under `## Close merged concerns` closes the last concern,
+  and no edit is pending.
 
 Each section has one job:
 
@@ -425,23 +433,23 @@ edit, and each change the user names.
 `design.md`, and `implementation.md`. Every entry marked `pending` is a pending edit. Where any is
 pending, set `map.md`'s `status: awaiting-you` and `awaiting: approve proposed map edits`.
 
-Take the edits one per message, in concern `order`, then in each document's numbering. Read the
-file each edit cites. Put each edit to the user as an `Approve`, and name it by its id, as in
-`c1-ingest/implementation.md` edit 2. Give it two sections:
+Read the file each edit cites. Put every pending edit to the user in one `Approve` message, a
+`decision` entry included. No kind of edit skips it. Order the edits by concern `order`, then by
+each document's numbering. Name each edit by its id, as in `c1-ingest/implementation.md` edit 2.
+Give each one its proposed action, with its ground:
 
-- **A. Apply the edit,** as written or as you would reword it.
-- **B. Decline it.**
+- **apply,** as written or as you would reword it;
+- **decline,** with the reason.
 
-The recommendation names one of the two, with its ground.
-
-**A decision that shapes the map** is a record of what a stage already settled. Apply it to
-`## Decisions so far` without an `Approve`, and mark it `applied`.
+The user approves the batch as proposed, or names each edit to change. Apply the answer to every
+edit in the batch.
 
 **Apply an edit where it belongs:**
 
 - **A new concern** gets a new `concern.md` at `stage: open`, with the next unused number. Shift
   the `order` of each concern it goes ahead of.
 - **A principle, a fog line, or an out-of-scope line** goes into that section of `map.md`.
+- **A decision** needs no other place. Its line in `## Decisions so far`, below, applies it.
 - **A constraint on one concern** goes into that concern's `concern.md` body. Its next stage reads
   the line. A document that is already approved changes only when the user reruns its skill.
 
