@@ -1,7 +1,8 @@
 # agents
 
-Claude Code and Codex configuration: always-on rules, plus a research, plan, and implement workflow built
-on the [Solo](https://soloterm.dev) MCP server.
+Claude Code and Codex configuration: always-on rules, plus a workflow. The workflow charts a map of
+concerns and builds each concern through its own stages. It runs on the
+[Solo](https://soloterm.dev) MCP server. It writes every document you read as a markdown file.
 
 ## Install
 
@@ -69,8 +70,10 @@ overwrites a value you set, and it touches nothing else in that file. It does no
 
 | | |
 |---|---|
-| Solo MCP | `/research`, `/plan`, `/implement`, `/critique`, `/review-pr`, `/retro`, `/worktree` |
-| `gh` CLI, signed in | `/review-pr` |
+| Solo MCP | `/research`, `/map`, `/requirements`, `/design`, `/implement`, `/critique`, `/review-pr`, `/retro`, `/worktree` |
+| A docs directory | `/map`, `/requirements`, `/design`, `/implement`, `/research`, `/retro` — `~/Code/agent-docs` unless the plugin's `docs_dir` setting names another |
+| `gh` CLI, signed in | `/implement`, `/review-pr` |
+| Obsidian | reading maps and their progress through Bases — optional |
 | Vale 3.0 or later | checking the sentence-level half of `prose-discipline` — `brew install vale`. CI pins 3.17.1 |
 | jq | selecting the output style at install time — without it the install prints the instruction instead |
 | `gws` CLI, signed in | `/gws` |
@@ -146,18 +149,91 @@ A tagger reads word forms, not meaning, so both checks report some sentences tha
 `The waves are done` tags `done` as a past participle even though it acts as an adjective here.
 Both checks are warnings for that reason: read each one and decide.
 
+## The workflow
+
+**A map charts a body of work as concerns in order.** The map states the destination and the
+principles every concern holds to. It also states what is still unclear, and what stays out. A
+**concern** is one outcome, written as one sentence with no `and`. It lands as one branch and one
+draft PR per repository it touches.
+
+**You start each stage.** Each stage writes one document and then waits for your approval. The
+next stage starts only when you start it.
+
+```
+/map                       map.md: destination, principles, concerns in order, fog, out of scope
+/requirements <concern>    requirements.md: outcome, acceptance criteria, proof commands
+/design <concern>          design.md: the parts that apply, each with its declined alternative
+/implement <concern>       slices, waves, worktree, build, critique, draft PR, CI
+review                     you review the PR
+```
+
+`/research` and `/retro` feed the map. `/research` also answers a fact that `/map`,
+`/requirements`, or `/design` cannot look up. `/retro` hands its proposed changes to `/map`.
+
+**Human documents are files, and Solo is agent-to-agent only.** Everything you read is a markdown
+file under the docs directory. Solo holds briefs, guards, worker reports, todos, KV, and locks. No
+document you read lives in a scratchpad. The skills commit nothing under the docs directory,
+because it may be a local repository with no remote.
+
+**A concern's stage lives only in its `concern.md`.** Its values are `open`, `requirements`,
+`design`, `implementing`, `in-review`, and `done`. Each stage skill sets the stage when it starts,
+and `/implement` sets `in-review` at the landing. An approval changes a document's `status`, never
+the concern's `stage`. No other file repeats the stage, so no two copies can disagree.
+
+**Obsidian shows the progress through Bases.** Every file carries `type` in its frontmatter, so a
+Base can filter on it. `map.md` embeds a Base of its concerns, filtered by `type` and by map. The
+Base shows each concern's `order`, `outcome`, `after`, and `stage`. The map holds no table by hand.
+
+**Findings flow back to the map.** A stage that finds work the map missed appends a numbered item
+under `map.md`'s `## Proposed edits`. When `/implement` calls `/critique`, it appends each systemic
+finding there too. `/map` applies or rejects each edit, one `Approve` at a time.
+
+```mermaid
+flowchart LR
+    R["/research"]
+    RT["/retro"]
+    M["/map"]
+    Q["/requirements"]
+    D["/design"]
+    I["/implement"]
+    W["/worktree"]
+    BC["/bare-convert"]
+    C["/critique"]
+    RP["/review-pr"]
+    PR["draft PRs<br/>one per repo"]
+    U["you review the PR"]
+
+    R -->|"research file"| M
+    RT -->|"proposed changes"| M
+    M -->|"concerns in order"| Q
+    Q -->|"approved requirements"| D
+    D -->|"approved design"| I
+    BC -->|"a container per repo"| W
+    I -->|"cut a tree per repo"| W
+    I -->|"the concern's diff"| C
+    RP -->|"shares the engine"| C
+    I --> PR
+    PR --> U
+    Q -.->|"proposed edits"| M
+    D -.->|"proposed edits"| M
+    I -.->|"proposed edits"| M
+    C -.->|"systemic findings"| M
+```
+
 ## Skills
 
 | Skill | Purpose | Invocation |
 |---|---|---|
-| [`/research`](skills/research/SKILL.md) | Investigate a codebase with parallel Solo agents and write the findings to a Solo scratchpad | you or the agent |
-| [`/critique`](skills/critique/SKILL.md) | Adversarial review of a diff, plan, or files, with one critic agent per lens | you or the agent |
+| [`/research`](skills/research/SKILL.md) | Investigate a codebase with parallel Solo agents and write the findings to a file in the docs directory | you or the agent |
+| [`/map`](skills/map/SKILL.md) | Chart a body of work as a map of concerns in markdown files, or apply the edits its concerns propose | you or the agent |
+| [`/requirements`](skills/requirements/SKILL.md) | Grill you on one concern, and write its outcome and acceptance criteria, each with a proof command that can fail | you or the agent |
+| [`/design`](skills/design/SKILL.md) | Design one concern from its approved requirements, and put each design decision to you with real code and diagrams | you or the agent |
+| [`/implement`](skills/implement/SKILL.md) | Implement one approved concern, from its requirements and design to a draft PR with CI green | you or the agent |
+| [`/critique`](skills/critique/SKILL.md) | Adversarial review of a diff, a concern's documents, or files, with one critic agent per lens | you or the agent |
 | [`/review-pr`](skills/review-pr/SKILL.md) | Adversarial review of someone else's pull request, with a drafted review you approve before it posts | **you only** |
 | [`/grill`](skills/grill/SKILL.md) | Interrogate a decision one question at a time | you or the agent |
-| [`/retro`](skills/retro/SKILL.md) | Analyse past sessions for recurring failures and hand the findings to `/plan` | you or the agent |
-| [`/worktree`](skills/worktree/SKILL.md) | Cut, provision, and tear down one milestone worktree | you or the agent |
-| [`/plan`](skills/plan/SKILL.md) | Research, grill, and produce a plan in one Solo scratchpad | you or the agent |
-| [`/implement`](skills/implement/SKILL.md) | Compose a plan into milestones, and ship each one as its own PRs | you or the agent |
+| [`/retro`](skills/retro/SKILL.md) | Analyse past sessions for recurring failures and hand the findings to `/map` | you or the agent |
+| [`/worktree`](skills/worktree/SKILL.md) | Cut, provision, and tear down one concern worktree | you or the agent |
 | [`/gws`](skills/gws/SKILL.md) | Read and change Google Drive, Docs, Sheets, and Slides files through the `gws` CLI | you or the agent |
 | [`/bare-convert`](skills/bare-convert/SKILL.md) | Set up or convert a repository into the bare-plus-worktrees layout | **you only** |
 
@@ -165,15 +241,15 @@ Two skills keep `disable-model-invocation: true`, so the agent cannot decide to 
 `/bare-convert` moves your working tree, and `/review-pr` posts to GitHub. Neither appears in the
 agent's skill listing, so neither costs context until you invoke it.
 
-The other eight stay model-invocable. Six of them carry `when_to_use` trigger phrases. Say
-"grill me on this" or "find the bugs" and the skill runs without a command name. `/plan` and
-`/implement` carry none, so a command name still starts each one. `/implement` is
-model-invocable because `/plan` calls it. No skill calls `/plan`, so it stays model-invocable by
-default. A disabled skill cannot call another disabled skill.
+The other ten stay model-invocable. Seven of them carry `when_to_use` trigger phrases. Say
+"map this out", "grill me on this", or "find the bugs", and the skill runs without a command name.
+`/requirements`, `/design`, and `/implement` carry none, so a command name starts each one. A
+disabled skill cannot call another disabled skill.
 
-`/worktree` and `/gws` are the two trigger-phrase skills that also write. `/implement` calls
-`/worktree` per milestone, so it must be callable. Its destructive half lives in `/bare-convert`,
-which keeps the gate. `/gws` confirms every write with you before it sends one.
+`/map`, `/worktree`, and `/gws` are trigger-phrase skills that also write. `/map` writes markdown
+under the docs directory and nothing else. `/implement` calls `/worktree` per concern, so it must
+be callable. Its destructive half lives in `/bare-convert`, which keeps the gate. `/gws` confirms
+every write with you before it sends one.
 
 **No skill overrides the model.** Every skill respects your session's choice, including a `[1m]`
 variant. A skill sets `effort` only where the shape of the work justifies it:
@@ -186,57 +262,58 @@ variant. A skill sets `effort` only where the shape of the work justifies it:
 An effort override applies for the rest of the turn, and it resets on your next prompt. For
 one-off depth, put `ultrathink` in the prompt instead.
 
-```mermaid
-flowchart LR
-    R["/research"]
-    P["/plan"]
-    I["/implement"]
-    W["/worktree"]
-    BC["/bare-convert"]
-    M["milestone loop"]
-    C["/critique"]
-    RP["/review-pr"]
-    RT["/retro"]
-    PR["draft PRs<br/>one per repo"]
-
-    R -->|"research pad"| P
-    P -->|"1. implement now"| I
-    P -.->|"2. leave active"| P
-    P -.->|"critique the draft"| C
-    RT -->|"proposed changes"| P
-    I -->|"milestones in DAG order"| M
-    BC -->|"a container per repo"| W
-    M -->|"cut a tree per repo"| W
-    M -->|"before the landing"| C
-    RP -->|"shares the engine"| C
-    M --> PR
-    M -->|"next milestone"| M
-```
-
 ## How the system holds state
 
-**Solo is the working set.** Scratchpads hold research and plans. They are short-lived, and you
-archive them once the work ships. Todos exist only while `/implement` runs a plan. KV holds small
-orchestration pointers.
+**Files are the record, and Solo is the working set.** Every document you read is a markdown file
+under `<docs_dir>`. Solo holds agent-to-agent content only, and each item there is short-lived.
+Nothing in this repository stores your work.
 
-Nothing in this repository stores your work. Research and plans live in Solo, not in git.
+A slug is lowercase, and it joins `date +%Y-%m-%dt%H%M` to a short topic. A concern is named
+`c<n>-<short-topic>`, and it keeps that name for life. Its position lives in `order`, which may
+change.
 
-| Kind | Name / key | Tags |
+| File | Path under `<docs_dir>` | `type` |
 |---|---|---|
-| Research pad | `research/<YYYY-MM-DD>t<HHMM>-<topic>` | `research`, `project:<repo>` |
-| Plan pad | `plan/<YYYY-MM-DD>t<HHMM>-<topic>` | `plan`, `project:<repo>` |
-| Task todos | — | `plan:<slug>`, `milestone:<m>`, `project:<repo>`, `task:<letter>` |
-| Worker reports | `<slug>/<milestone>/<task>` | — |
-| Orchestration | `plan:<slug>:milestone:<m>:branch:<repo>` | — |
-| Orchestration | `plan:<slug>:milestone:<m>:worktree:<repo>` | — |
+| Map | `maps/<map-slug>/map.md` | `map` |
+| Concern | `maps/<map-slug>/<concern>/concern.md` | `concern` |
+| Requirements | `maps/<map-slug>/<concern>/requirements.md` | `requirements` |
+| Design | `maps/<map-slug>/<concern>/design.md` | `design` |
+| Implementation record | `maps/<map-slug>/<concern>/implementation.md` | `implementation` |
+| Research for a map | `maps/<map-slug>/research/<topic>.md` | `research` |
+| Inbox item | `maps/<map-slug>/inbox/<id>.md` | `inbox` |
+| Standalone research | `research/<slug>.md` | `research` |
+| Retro | `retro/<slug>.md` | `retro` |
+
+`src/schema.ts` in `jahnkelabs/agents-obsidian` defines the inbox item format.
+
+Each document carries only its own review state. `status` is `draft`, `awaiting-you`, or
+`approved`. `awaiting` names the one thing you owe, or it is `null`. `implementation.md` adds `pr`.
+`concern.md` adds `order`, `outcome`, `after`, and `stage`.
+
+| Agent-to-agent name | Form | Tags |
+|---|---|---|
+| Task todo | — | `map:<map-slug>`, `concern:<concern>`, `project:<repo>`, `task:<letter>` |
+| Worker report pad | `<map-slug>/<concern>/<task>` | `transient`, `map:<map-slug>`, `concern:<concern>` |
+| Brief and guard pad | — | `transient`, `map:<map-slug>`, `concern:<concern>` |
+| Critique pad | `critique/<slug>/<pass>/<lens>-<n>` | `transient`, plus the map and concern tags when a concern resolved |
+| Research and retro worker pad | `research/<slug>/<area-slug>`, `retro/<slug>/<area-slug>` | `transient` |
+| KV | `map:<map-slug>:concern:<concern>:branch:<repo>` | — |
+| KV | `map:<map-slug>:concern:<concern>:worktree:<repo>` | — |
+| Branch | `<type>/<map-slug>-<concern>` | — |
+| Worktree | `<container>/<map-slug>-<concern>` | — |
+| Compose project | `<repo>-<map-slug>-<concern>` | — |
+
+`/implement` deletes the concern's todos and KV keys when it closes. `/research`, `/retro`, and
+`/critique` archive their worker pads after they synthesize.
 
 Skills use whichever Solo project is currently selected, and say which one in their first
 confirmation.
 
 ## How the workflow behaves
 
-**Every worker is a Solo agent.** `/research`, `/plan`, `/implement`, `/critique`, and `/retro`
-fan out with `spawn_agent`, never with the host runtime's own sub-agent mechanism.
+**Every worker is a Solo agent.** `/research`, `/implement`, `/critique`, `/review-pr`, and
+`/retro` fan out with `spawn_agent`, never with the host runtime's own sub-agent mechanism.
+`/map`, `/requirements`, and `/design` reach the same workers through `/research`.
 [solo-agent-orchestration](rules/solo-agent-orchestration.md) carries the policy and the
 reasoning, so the policy also holds for a fan-out that no skill started. Each skill carries only
 its own worker brief and constraints.
@@ -256,50 +333,72 @@ get wrong: why these repos, why these investigation areas, why this is out of sc
 is then visible rather than buried. A gate prints a looked-up fact without argument. The
 selected Solo project needs no justification; a repo list inferred from file references needs
 one. A gate's opening message carries a reserved heading, and the decision format when it offers
-options, per [chat-vocabulary](rules/chat-vocabulary.md). `Approve` marks a proposal, and `Deciding` marks a
-question you cannot answer yourself.
+options, per [chat-vocabulary](rules/chat-vocabulary.md). `Approve` marks a proposal, and
+`Deciding` marks a question you cannot answer yourself.
 
-**`/plan` grills you.** One question per message, never two. Each question that offers options
-carries the decision format from [chat-vocabulary](rules/chat-vocabulary.md). That format states
-what was found, how critical the choice is, and whether it is reversible. Each option shows its
-pros, cons, risks, constraints, and an example where it has one. A mandatory recommendation names
-its ground. A question with nothing to rank carries only its heading, the question, and the
-footer. A prose question ends with the `⏸`
-footer, and the question tool needs none. Only the first question carries the
-`Deciding` heading, so a long grilling does not become a column of headings. The
-question whose answer changes the most other answers comes first. `/plan` looks up anything the
-filesystem or a tool can tell it, rather than asking you. Its scope gate names the decisions it
-expects to put to you. That gate also reports how far each tree sits behind its default branch.
-It stops when the questions left are details you would rather see than specify.
+**Each stage ends in one approval of its document.** The stage sets the document to `awaiting-you`
+and names what you owe. Where md-redline is present, the stage asks for a review of the file
+there. Otherwise it sends an `Approve` in chat that names the file's absolute path. Your approval
+sets `status: approved`, and the stage stops.
 
-**`/plan` censuses the inbound references before it writes the pad.** It searches for three
-kinds of reference to every file a slice changes. Those kinds are the caller, the test, and the
-standard whose text the change makes false. The third kind is the one that gets missed, because
-no import points to it. Nineteen of thirty sessions shipped an incomplete file list before this
-step existed.
+**`/map`, `/requirements`, and `/design` grill you.** One question per message, never two. Each
+question that offers options carries the decision format from
+[chat-vocabulary](rules/chat-vocabulary.md). That format states what was found, how critical the
+choice is, and whether it is reversible. Each option shows its pros, cons, risks, constraints, and
+an example where it has one. A mandatory recommendation names its ground. A question with nothing
+to rank carries only its heading, the question, and the footer. A prose question ends with the `⏸`
+footer, and the question tool needs none. Only the first question carries the `Deciding` heading,
+so a long grilling does not become a column of headings. The question whose answer changes the
+most other answers comes first. Each stage looks up anything the filesystem or a tool can tell it,
+rather than asking you. The `/map` scope gate names the decisions it expects to put to you. That
+gate also reports how far each tree sits behind its default branch. A stage stops grilling when the
+questions left are details you would rather see than specify.
 
-**Three words carry the delivery model, and each means one thing.** A **slice** is one worker's
-unit of work: narrow, vertical, one repository. A **milestone** is a consumable chunk of a plan
-and the unit of delivery, and it may span repositories. A **wave** is the concurrency schedule
-inside a milestone, taken from file overlap.
+**Every acceptance criterion carries a proof command that can fail.** `/requirements` runs each
+command against the current tree, where it can run. A command that already passes proves nothing,
+so the stage tightens it. Each criterion also names an invariant, which is what must not change
+while the concern reaches it. Workers and the critique run the commands again.
 
-**The plan declares slices; `/implement` composes the milestones.** A plan declares slices with
-their file scopes. It also declares the two constraints only it knows: which slices must share a
-worker, and which must follow another. Composing slices into milestones, ordering those
-milestones, and choosing a model and effort are scheduling. `/implement` decides the schedule at
-execution time, against facts that are current then.
+**`/design` shows each decision as code.** It walks six parts: structure, data model, interfaces,
+call patterns, failure handling, and decisions. It writes only the parts that apply. Each part
+names its declined alternative, and each acceptance criterion needs a part that makes it hold. A
+criterion the design cannot meet is a change to the requirements, so `/design` stops with a
+`Blocked`.
 
-**A milestone lands one PR per repository it touches.** Its outcome is one sentence with no
-`and`, and each of its PR titles states that outcome scoped to its repository. Two milestones
-that touch one file ship in sequence, because their branches would otherwise conflict. A
-milestone gets its own worktree per repository through `/worktree`, so no worker ever shares
-your tree.
+**`/implement` censuses the inbound references before it creates the todos.** It searches for
+three kinds of reference to every file a slice changes. Those kinds are the caller, the test, and
+the standard whose text the change makes false. The third kind is the one that gets missed,
+because no import points to it. Nineteen of thirty sessions shipped an incomplete file list before
+this step existed.
 
-**You approve the roster before anything spawns.** `/implement` presents the milestones and
-their PR titles first, then the waves and tiers inside each one. `/implement` writes each summary
-so the tier follows from it. A task described as "three localized edits against precise line
-references" argues for its own tier. Adjust any milestone boundary, model, effort, or grouping,
-or approve the roster as proposed.
+**Three words carry the delivery model, and each means one thing.** A **concern** is one outcome
+of a map, and the unit of delivery. A **slice** is one worker's unit of work: narrow, vertical,
+one repository. A **wave** is the concurrency schedule inside a concern, taken from file overlap.
+
+**`/implement` derives the slices from the approved documents.** The design's `## Structure`
+supplies the files, and the requirements supply the criteria. A slice may also carry one
+constraint: `same-worker as` another slice, or `after` another slice. `/implement` orders the
+waves from file overlap. It chooses a model and effort for each task against facts that are
+current at execution time. It writes each task's summary so the tier follows from it. A task
+described as "three localized edits against precise line references" argues for its own tier.
+
+**A concern lands one PR per repository it touches.** Its outcome is one sentence with no `and`,
+and each PR title states that outcome scoped to its repository. Two concerns that change one file
+need an `after` between them. The census proposes the map edit when it finds the `after` missing.
+A concern that comes `after` an unmerged one opens its PR on the predecessor's branch. A concern
+gets its own worktree per repository through `/worktree`, so no worker ever shares your tree.
+
+**Your approval of the documents authorizes the build.** `/implement` starts only on approved
+requirements and an approved design. Starting it authorizes the concern's branch pushes and its
+draft PR. No gate stands between the documents and the PR. It stops on these conditions and no
+others:
+
+- a stage document that is missing or not approved;
+- a `/worktree` refusal;
+- a census hit that needs a behavior the design does not describe;
+- a worker deviation;
+- a critique escalation;
+- a check that still fails after two CI fixes.
 
 **Both runtimes bound an immutable-target worker's writes by directory.** That worker reads the
 target and writes only scratch, and the operating system enforces the bound. On Claude the
@@ -311,22 +410,25 @@ the date of its last measurement.
 An editing worker is the harder case. No directory-scoped posture denies git in the worktree the
 worker edits. Claude denies `git add` per command, and Codex has no per-worker equivalent. The
 rule requires that gap disclosed rather than restated as a promise. `/worktree` cuts one tree per
-milestone and per repository, so several workers share one. Two Codex workers that stage in that
-tree cross-commit silently. `/implement` discloses the exposure at the roster gate, and it does
-not close it. A worker takes a lock only where a second run or a person may edit the same tree.
-The orchestrator commits each task's declared paths, so history stays granular.
+concern and per repository, so several workers share one. Two Codex workers that stage in that
+tree cross-commit silently. Where the runtime cannot deny the writes, the first `Running` block
+carries a `Sandbox:` line that discloses the exposure. `/implement` does not close it. A
+worker takes a lock only where a second run or a person may edit the same tree. The orchestrator
+commits each task's declared paths at the wave join, so history stays granular.
 
 **Workers escalate on deviation, not on failure.** A worker that cannot self-resolve records
 what it found and stops. So does a worker that would have to depart meaningfully from the
-approved plan. Neither one improvises. The record is the worker's report scratchpad, and its
-completion signal says that it escalated, so you have one place to look. Other workers in the
-wave finish, and everything appears together at the join.
+approved requirements or design. Neither one improvises. The record is the worker's report
+scratchpad, and its completion signal says that it escalated, so you have one place to look. Other
+workers in the wave finish, and everything appears together at the join. A settled deviation
+updates `design.md` or `requirements.md`, and `implementation.md` records it.
 
 **Critique is adversarial, with one agent per lens.** A lens is one question about the target,
 such as requirements fidelity, correctness, or security. `references/critique/lenses/` holds one
 file per lens. Each file states when the lens applies, its model and effort, and what it never
 reports. Each agent tries to break the target on its own question rather than survey it. A lens
-whose question needs an intent runs only when the caller supplies one.
+whose question needs an intent runs only when the caller supplies one. `/implement` supplies the
+concern's requirements and design.
 
 **The lenses run in two batches.** Batch 1 holds requirements fidelity, design conformance, and
 root cause. Batch 2 holds the rest. Batch 2 waits for batch 1 because a rework changes the code
@@ -344,15 +446,15 @@ surviving finding reaches the filter, whichever lens raised it.
 `scope: systemic` means other code shares the cause. Only the root-cause lens raises a systemic
 finding. It gets no local patch. It becomes a proposed map edit on a `proposed edit:` line.
 
-**Two front ends share one engine.** `/critique` reviews your own work and runs inside `/plan` and
+**Two front ends share one engine.** `/critique` reviews your own work, standalone or inside
 `/implement`. `/review-pr` reviews someone else's pull request, reads the PR body as intent, and
 edits nothing. Both hand `references/critique/run.md` the target, the intent, and the output mode.
 That file runs the agents, the batches, the refutation pass, the filter, and the ledger.
 `/review-pr` turns the ledger into a draft review and posts it only after you approve.
 
 **A filter decides which findings reach you.** The critique accepts a finding by default. What
-acceptance does then depends on who called. A milestone critique inside `/implement` applies the
-fix; a standalone, `--integration`, or `/review-pr` pass reports the remedy and edits nothing. In
+acceptance does then depends on who called. A concern critique inside `/implement` applies the
+fix; a standalone or `/review-pr` pass reports the remedy and edits nothing. In
 `apply` mode, six criteria escalate a finding to you instead. In `report` mode, no finding
 escalates, and the ledger marks a match `criterion:`. The six criteria:
 
@@ -372,13 +474,14 @@ mismatch. Serial triage cost about 115 of your turns across 8 runs. Delegated tr
 **The ledger discloses every decision.** One line per finding, ranked by criticality. Each line
 carries the claim, the action, and the alternative the orchestrator declined. The ledger is where
 you correct a remedy choice, because C6 covers a genuine tie alone. `/implement` reports it with
-each milestone landing, so nobody triages a finding twice.
+the concern's landing, so nobody triages a finding twice.
 
-**`/implement` critiques each milestone, not the whole run.** That critique and any escalation
-block the next milestone, because a finding may change what it should do. Your review of the PR
-blocks nothing. The run opens the PR, reports the landing, and starts the next milestone.
+**`/implement` critiques each concern's diff before it opens the PR.** It critiques once per
+repository, against that repository's base. A critique escalation stops the run before the push.
+The run commits the remedies, pushes, and opens one draft PR per repository.
 
-**A separate integration pass sees only what one milestone cannot.** Its lenses are
-cross-milestone contract drift, plan completeness, claim consistency, and stack coherence. It may
-not raise a finding that lives wholly inside one milestone's diff. That milestone already put the
-finding through the filter.
+**`/implement` ends at a green draft PR and a record.** It watches CI and fixes a failing check,
+twice at most. A repository with no CI takes the proof commands as its gate. The run then writes
+`implementation.md` and sets the concern's `stage: in-review`. It reports `Landed`. It then closes
+its workers, cancels its guards, removes the worktree, and deletes the concern's todos and KV keys.
+You review the PR. `/implement` never sets `done`, which follows the merge.
